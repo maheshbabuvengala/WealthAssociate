@@ -1,0 +1,98 @@
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation, useRoute } from "@react-navigation/native";
+
+const BottomNavigation = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  const tabs = [
+    {
+      label: "Add Member",
+      icon: "person-add-outline",
+      screenName: "addmember",
+      iconActive: "person-add",
+    },
+    {
+      label: "Property",
+      icon: "home-outline",
+      screenName: "propertyhome",
+      iconActive: "home",
+    },
+    {
+      label: "Expert Panel",
+      icon: "people-outline",
+      screenName: "expertpanel",
+      iconActive: "people",
+    },
+    {
+      label: "Core Client",
+      icon: "business-outline",
+      screenName: "coreclipro",
+      iconActive: "business",
+    },
+    {
+      label: "FAQ's",
+      icon: "help-circle-outline",
+      screenName: "FAQScreen",
+      iconActive: "help-circle",
+    },
+  ];
+
+  const isActive = (screenName) => {
+    return route.name === screenName;
+  };
+
+  return (
+    <View style={styles.container}>
+      {tabs.map((tab, index) => (
+        <TouchableOpacity
+          key={index}
+          style={styles.tabItem}
+          onPress={() => navigation.navigate(tab.screenName)}
+        >
+          <Ionicons
+            name={isActive(tab.screenName) ? tab.iconActive : tab.icon}
+            size={24}
+            color={isActive(tab.screenName) ? "#D81B60" : "#555"}
+          />
+          <Text
+            style={[
+              styles.tabLabel,
+              { color: isActive(tab.screenName) ? "#D81B60" : "#555" },
+            ]}
+          >
+            {tab.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 10,
+    backgroundColor: "white",
+    borderTopWidth: 1,
+    borderColor: "#eee",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  tabItem: {
+    alignItems: "center",
+    paddingHorizontal: 5,
+  },
+  tabLabel: {
+    fontSize: 10,
+    marginTop: 4,
+    fontWeight: "500",
+  },
+});
+
+export default BottomNavigation;

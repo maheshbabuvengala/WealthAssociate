@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wealth Associates - Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+        }
+
+        .login-container {
+            width: 90%;
+            max-width: 900px;
+            padding: 30px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .logo-container {
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            max-width: 250px;
+            margin: 0 auto;
+        }
+
+        .tagline {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .login-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .login-option {
+            flex: 1;
+            min-width: 180px;
+            max-width: 220px;
+            padding: 25px 20px;
+            background-color: #ec3a6d;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 8px rgba(236, 58, 109, 0.3);
+        }
+
+        .login-option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(236, 58, 109, 0.4);
+        }
+
+        .login-text {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .login-subtext {
+            font-size: 16px;
+        }
+
+        .states {
+            margin-top: 10px;
+            background-color: #323c7e;
+            color: white;
+            padding: 3px 8px;
+            display: inline-block;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .login-options {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .login-option {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="logo-container">
+            <div class="logo">
+                <!-- Logo with tree image and text -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150">
+                    <!-- Circular text at top -->
+                    <path id="curve" fill="none" d="M 75,25 a 75,35 0 1,1 150,0" />
+                    <text width="300">
+                        <textPath xlink:href="#curve" fill="#666" font-size="10" letter-spacing="1">
+                            Creating a Legacy of Prosperity
+                        </textPath>
+                    </text>
+
+                    <!-- Tree graphic -->
+                    <g transform="translate(150, 70) scale(0.7)">
+                        <path fill="#7cb342"
+                            d="M0,-40 C-5,-30 -15,-25 -25,-23 L-15,-15 C-20,-10 -30,-8 -40,-7 L-25,5 C-32,12 -35,20 -37,30 L-15,15 C-5,25 5,25 15,15 L37,30 C35,20 32,12 25,5 L40,-7 C30,-8 20,-10 15,-15 L25,-23 C15,-25 5,-30 0,-40 Z" />
+                        <rect fill="#7cb342" x="-3" y="15" width="6" height="30" />
+                    </g>
+
+                    <!-- WEALTH text -->
+                    <text x="150" y="100" fill="#323c7e" font-size="36" font-weight="bold" text-anchor="middle">
+                        WEALTH
+                    </text>
+
+                    <!-- ASSOCIATES text -->
+                    <text x="150" y="120" fill="#323c7e" font-size="16" text-anchor="middle">
+                        ASSOCIATES
+                    </text>
+
+                    <!-- States text -->
+                    <rect x="95" y="130" width="110" height="15" rx="2" fill="#323c7e" />
+                    <text x="150" y="142" fill="white" font-size="10" text-anchor="middle">
+                        ANDHRA PRADESH | TELANGANA
+                    </text>
+                </svg>
+            </div>
+            <p class="tagline">Your Trusted Property Consultant</p>
+        </div>
+
+        <div class="login-options">
+            <div class="login-option" onclick="redirectToLogin('agent')">
+                <div class="login-text">Agent</div>
+                <div class="login-subtext">Login</div>
+            </div>
+
+            <div class="login-option" onclick="redirectToLogin('customer')">
+                <div class="login-text">Customer</div>
+                <div class="login-subtext">Login</div>
+            </div>
+
+            <div class="login-option" onclick="redirectToLogin('core')">
+                <div class="login-text">Core Member</div>
+                <div class="login-subtext">Login</div>
+            </div>
+
+            <div class="login-option" onclick="redirectToLogin('referral')">
+                <div class="login-text">Referral</div>
+                <div class="login-subtext">Login</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function redirectToLogin(userType) {
+            // In a real application, you would redirect to specific login pages
+            // For demonstration, we'll show an alert
+            switch (userType) {
+                case 'agent':
+                    alert('Redirecting to Agent Login Page');
+                    // window.location.href = '/agent-login.html';
+                    break;
+                case 'customer':
+                    alert('Redirecting to Customer Login Page');
+                    // window.location.href = '/customer-login.html';
+                    break;
+                case 'core':
+                    alert('Redirecting to Core Member Login Page');
+                    // window.location.href = '/core-login.html';
+                    break;
+                case 'referral':
+                    alert('Redirecting to Referral Login Page');
+                    // window.location.href = '/referral-login.html';
+                    break;
+                default:
+                    alert('Invalid login type');
+            }
+        }
+
+        // Add responsive behavior - if needed beyond CSS
+        window.addEventListener('resize', function () {
+            // Additional responsive adjustments can be made here if needed
+        });
+
+        // Initialize any animations or special effects
+        document.addEventListener('DOMContentLoaded', function () {
+            const options = document.querySelectorAll('.login-option');
+
+            // Add entrance animation if desired
+            options.forEach((option, index) => {
+                option.style.opacity = '0';
+                option.style.transform = 'translateY(20px)';
+
+                setTimeout(() => {
+                    option.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    option.style.opacity = '1';
+                    option.style.transform = 'translateY(0)';
+                }, 100 * index);
+            });
+        });
+    </script>
+</body>
+
+</html>

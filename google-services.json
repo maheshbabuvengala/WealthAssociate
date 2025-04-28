@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "395543693444",
+    "project_id": "wealthassociate-73b2e",
+    "storage_bucket": "wealthassociate-73b2e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:395543693444:android:667699475630847f659ad1",
+        "android_client_info": {
+          "package_name": "com.wealthassociates.alpha"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5KNmQtOmrhMwdDaL6HctEsamKsKGh5_o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

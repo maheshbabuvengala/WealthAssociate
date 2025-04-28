@@ -1,0 +1,122 @@
+{
+  "expo": {
+    "name": "WealthAssociate",
+    "slug": "wealthassociates",
+    "scheme": "wealthassociates",
+    "version": "1.2.5",
+    "runtimeVersion": "1.2.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/app_icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/38b6a11f-476f-46f4-8263-95fe96a6d8ca",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "deploymentTarget": "15.1",
+      "bundleIdentifier": "com.wealthassociates.alpha",
+      "jsEngine": "hermes",
+      "buildNumber": "1.2.5",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "wealthassociates"
+            ]
+          }
+        ]
+      },
+      "usesAppleSignIn": false
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app_icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "WAKE_LOCK"
+      ],
+      "package": "com.wealthassociates.alpha",
+      "versionCode": 12,
+      "intentFilters": [
+        {
+          "action": "android.intent.action.SEND",
+          "data": {
+            "mimeType": "image/*"
+          },
+          "category": [
+            "android.intent.category.DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "wealthassociates",
+              "host": "*"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "allowBackup": true,
+      "usesCleartextTraffic": true,
+      "googleServicesFile": "./google-services.json",
+      "notification": {
+        "icon": "./assets/play_store_512.png",
+        "color": "#FF231F7C"
+      }
+    },
+    "web": {
+      "favicon": "./assets/icon-512.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "38b6a11f-476f-46f4-8263-95fe96a6d8ca"
+      }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/logo.png",
+          "color": "#FF231F7C",
+          "androidMode": "default",
+          "androidCollapsedTitle": "WealthAssociate",
+          "androidChannelId": "default",
+          "sounds": []
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "useNextNotificationsApi": true
+          },
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
+    ]
+  }
+}
