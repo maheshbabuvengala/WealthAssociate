@@ -47,6 +47,10 @@ import PersistentLayout from "./NewWealth/MainScreen/MainNavigation";
 import PropertyHome from "./NewWealth/Properties/PropertyHome";
 import ExpertPanel from "./NewWealth/ExpertPanel/ExpertRoute";
 import Coreclipro from "./NewWealth/CoreProCli/CoreClientsPro";
+import PostProperty from "./NewWealth/Properties/PostProperty";
+import RequestedProperty from "./NewWealth/Properties/RequestProperty";
+import RequestedExpert from "./NewWealth/ExpertPanel/Requested_expert";
+import Add_Agent from "./NewWealth/Add_Member/Add_Agent";
 
 import { API_URL } from "./data/ApiUrl";
 
@@ -352,6 +356,39 @@ export default function App() {
             component={NriRegister}
             options={{ headerShown: false }}
           />
+          <Stack.Screen
+            name="postproperty"
+            component={PostProperty}
+            options={{
+              presentation: "modal",
+              headerShown: false,
+              cardOverlayEnabled: true,
+              gestureEnabled: true,
+              cardStyle: { backgroundColor: "transparent" },
+            }}
+          />
+          <Stack.Screen
+            name="requestproperty"
+            component={RequestedProperty}
+            options={{
+              presentation: "modal",
+              headerShown: false,
+              cardOverlayEnabled: true,
+              gestureEnabled: true,
+              cardStyle: { backgroundColor: "transparent" },
+            }}
+          />
+          <Stack.Screen
+            name="requestexpert"
+            component={RequestedExpert}
+            options={{ presentation: "transparentModal" }}
+          />
+          <Stack.Screen
+            name="addagent"
+            component={Add_Agent}
+            options={{ presentation: "transparentModal" }}
+          />
+
           <Stack.Screen
             name="invreg"
             component={InvestorRegister}

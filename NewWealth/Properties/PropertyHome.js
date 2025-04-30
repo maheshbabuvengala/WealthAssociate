@@ -11,10 +11,12 @@ import ViewAllRequestedProperties from "./AllrequestedProperties";
 import ViewAllProperties from "./ViewAllProperties";
 import MyProperties from "./ViewPostedProperties";
 import MyRequestedProperties from "./ViewRequestedProperties";
+import { useNavigation } from "@react-navigation/native";
 
-export default function PropertiesScreen({ navigation }) {
+export default function PropertiesScreen() {
   const [activeTab, setActiveTab] = useState("all");
   const [viewMode, setViewMode] = useState("all");
+  const navigation=useNavigation()
 
   const handleMyPropertiesPress = () => {
     setViewMode("my");
@@ -29,6 +31,12 @@ export default function PropertiesScreen({ navigation }) {
     setActiveTab("all");
   };
 
+  // Function to open modal with slide animation
+  const openModal = (screenName) => {
+    setViewMode("all");
+    navigation.navigate(screenName);
+  };
+
   return (
     <View style={styles.container}>
       {/* Options */}
@@ -38,18 +46,12 @@ export default function PropertiesScreen({ navigation }) {
             <Option
               icon="home"
               label="Post a Property"
-              onPress={() => {
-                setViewMode("all");
-                navigation?.navigate("PostProperty");
-              }}
+              onPress={() => openModal("postproperty")}
             />
             <Option
               icon="home-outline"
               label="Request a Property"
-              onPress={() => {
-                setViewMode("all");
-                navigation?.navigate("RequestProperty");
-              }}
+              onPress={() => openModal("requestproperty")}
             />
             <Option
               icon="people-outline"

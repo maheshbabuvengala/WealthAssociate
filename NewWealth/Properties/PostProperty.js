@@ -20,6 +20,7 @@ import { API_URL } from "../../data/ApiUrl";
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import PropertyCard from "./PropertyCards";
+import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
@@ -44,6 +45,8 @@ const PostProperty = ({ closeModal }) => {
   const [propertyDetails, setPropertyDetails] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const navigation = useNavigation();
 
   // Data fetching functions
   const getDetails = async () => {
@@ -460,7 +463,10 @@ const PostProperty = ({ closeModal }) => {
                 <Text style={styles.postButtonText}>Post Property</Text>
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => navigation.goBack()}
+            >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -490,11 +496,13 @@ const PostProperty = ({ closeModal }) => {
 // Styles
 const styles = StyleSheet.create({
   container: {
-    marginTop: Platform.OS === "ios" ? 90 : 0,
+    // marginTop: Platform.OS === "ios" ? 90 : 0,
     flex: 1,
-    backgroundColor: "#fff",
+    // backgroundColor: "#fff",
     width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "40%",
     borderRadius: 30,
+    top: "10%",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -520,7 +528,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 20,
     borderRadius: 12,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,

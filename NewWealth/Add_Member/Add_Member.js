@@ -22,13 +22,29 @@ import MyCustomersScreen from "../Mycustomers/MyCustomers";
 import SkilledResourceScreen from "../SkilledResource/SkilledResource";
 import MyInvestorsScreen from "../Investors/MyInvestors";
 import MyNRIsScreen from "../Nris/Nris";
+import { useNavigation } from "@react-navigation/native";
+
+import Regicus from "./Regicus";
+import AddNri from "./AddNri";
+import AddInvestor from "./AddInvestors";
+import Rskill from "./Rskill";
 
 export default function Add_Member() {
+  const navigation = useNavigation();
   const [userType, setUserType] = useState("");
   const [agentType, setAgentType] = useState("");
   const [loading, setLoading] = useState(true);
+  // const [modalVisible, setModalVisible] = useState(false);
+  // const [subModalVisible, setSubModalVisible] = useState(false);
+
+  // Modals state
   const [modalVisible, setModalVisible] = useState(false);
   const [subModalVisible, setSubModalVisible] = useState(false);
+  const [customerModalVisible, setCustomerModalVisible] = useState(false);
+  const [nriModalVisible, setNriModalVisible] = useState(false);
+  const [skilledModalVisible, setSkilledModalVisible] = useState(false);
+  const [investorModalVisible, setInvestorModalVisible] = useState(false);
+
   const [activeTab, setActiveTab] = useState(() => {
     // Default to "My Agents" for WealthAssociate and CoreMember
     if (["WealthAssociate", "CoreMember"].includes(userType)) {
@@ -73,7 +89,6 @@ export default function Add_Member() {
 
     fetchUserData();
   }, []);
-
 
   const fetchData = async () => {
     try {
@@ -282,28 +297,40 @@ export default function Add_Member() {
         <View style={styles.actionButtons}>
           {renderAddAssociateButton()}
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setCustomerModalVisible(true)}
+          >
             <View style={styles.circleIcon}>
               <Ionicons name="person-add" size={28} color="white" />
             </View>
             <Text style={styles.actionText}>Add Customer</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setNriModalVisible(true)}
+          >
             <View style={styles.circleIcon}>
               <Ionicons name="globe-outline" size={28} color="white" />
             </View>
             <Text style={styles.actionText}>Add NRI Member</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setSkilledModalVisible(true)}
+          >
             <View style={styles.circleIcon}>
               <Ionicons name="trophy-outline" size={28} color="white" />
             </View>
             <Text style={styles.actionText}>Register Skilled Resources</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setInvestorModalVisible(true)}
+          >
             <View style={styles.circleIcon}>
               <Ionicons name="business-outline" size={28} color="white" />
             </View>
@@ -442,6 +469,86 @@ export default function Add_Member() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={customerModalVisible}
+        onRequestClose={() => setCustomerModalVisible(false)}
+      >
+        <Regicus
+          closeModal={() => setCustomerModalVisible(false)}
+          onSuccess={() => {
+            setCustomerModalVisible(false);
+            fetchData(); // Refresh data after successful addition
+          }}
+        />
+      </Modal>
+
+      {/* Add NRI Modal */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={nriModalVisible}
+        onRequestClose={() => setNriModalVisible(false)}
+      >
+        <AddNri
+          closeModal={() => setNriModalVisible(false)}
+          onSuccess={() => {
+            setNriModalVisible(false);
+            fetchData(); // Refresh data after successful addition
+          }}
+        />
+      </Modal>
+
+      {/* Add Skilled Resource Modal */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={skilledModalVisible}
+        onRequestClose={() => setSkilledModalVisible(false)}
+      >
+        <Rskill
+          closeModal={() => setSkilledModalVisible(false)}
+          onSuccess={() => {
+            setSkilledModalVisible(false);
+            fetchData(); // Refresh data after successful addition
+          }}
+        />
+      </Modal>
+
+      {/* Add Investor Modal */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={investorModalVisible}
+        onRequestClose={() => setInvestorModalVisible(false)}
+      >
+        <AddInvestor
+          closeModal={() => setInvestorModalVisible(false)}
+          onSuccess={() => {
+            setInvestorModalVisible(false);
+            fetchData(); // Refresh data after successful addition
+          }}
+        />
+      </Modal>
+
+      {/* Keep your existing modals for Add Associate */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        {/* ... (your existing modal content) */}
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={subModalVisible}
+        onRequestClose={() => setSubModalVisible(false)}
+      ></Modal>
     </View>
   );
 }

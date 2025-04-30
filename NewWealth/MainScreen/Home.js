@@ -383,8 +383,17 @@ const HomeScreen = () => {
       </TouchableOpacity>
     </View>
   );
-  const actionButton = (iconName, label, bgColor, IconComponent = Ionicons) => (
-    <TouchableOpacity style={{ alignItems: "center" }}>
+  const actionButton = (
+    iconName,
+    label,
+    bgColor,
+    IconComponent = Ionicons,
+    screenName
+  ) => (
+    <TouchableOpacity
+      style={{ alignItems: "center" }}
+      onPress={() => navigation.navigate(screenName)}
+    >
       <View style={{ backgroundColor: bgColor, borderRadius: 50, padding: 15 }}>
         <IconComponent name={iconName} size={30} color="#fff" />
       </View>
@@ -409,7 +418,7 @@ const HomeScreen = () => {
       {/* <Uppernavigation/> */}
 
       {/* Search */}
-      <View style={styles.searchBar}>
+      {/* <View style={styles.searchBar}>
         <Ionicons
           name="search"
           size={20}
@@ -421,22 +430,30 @@ const HomeScreen = () => {
           placeholderTextColor="#999"
           style={styles.searchInput}
         />
-      </View>
+      </View> */}
 
       <ScrollView style={styles.scrollView}>
         <View style={styles.actionRow}>
-          {actionButton("home", "Post a\nProperty", "#D81B60", Ionicons)}
+          {actionButton(
+            "home",
+            "Post a\nProperty",
+            "#D81B60",
+            Ionicons,
+            "postproperty"
+          )}
           {actionButton(
             "home-search",
             "Request a\nProperty",
             "#009688",
-            MaterialCommunityIcons
+            MaterialCommunityIcons,
+            "requestproperty"
           )}
           {actionButton(
             "account-check",
             "Request\nExpert",
             "#3F51B5",
-            MaterialCommunityIcons
+            MaterialCommunityIcons,
+            "requestexpert"
           )}
         </View>
         {/* Regular Properties */}
