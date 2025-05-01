@@ -9,6 +9,8 @@
     "android": "NODE_OPTIONS=--openssl-legacy-provider expo run:android"
   },
   "dependencies": {
+    "@angular/common": "^19.2.8",
+    "@angular/core": "^19.2.8",
     "@expo/metro-runtime": "~4.0.1",
     "@expo/vector-icons": "^14.0.2",
     "@fortawesome/fontawesome-free": "^6.7.2",
@@ -21,6 +23,7 @@
     "@react-navigation/native-stack": "^7.2.0",
     "@react-navigation/stack": "^7.1.1",
     "browser-image-compression": "^2.0.2",
+    "core-js": "^3.41.0",
     "eas": "^0.1.0",
     "expo": "^52.0.46",
     "expo-build-properties": "~0.13.2",
@@ -39,6 +42,7 @@
     "expo-updates": "~0.27.4",
     "firebase": "^11.6.0",
     "install": "^0.13.0",
+    "jquery": "^3.7.1",
     "lucide-react-native": "^0.475.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -58,7 +62,9 @@
     "react-native-svg": "^15.11.2",
     "react-native-vector-icons": "^10.2.0",
     "react-native-view-shot": "~4.0.3",
-    "react-native-web": "~0.19.13"
+    "react-native-web": "~0.19.13",
+    "sass": "^1.87.0",
+    "zone.js": "^0.15.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
