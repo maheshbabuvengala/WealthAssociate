@@ -15,6 +15,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
 const RequestedPropertyForm = ({ closeModal }) => {
   const [propertyTitle, setPropertyTitle] = useState("");
@@ -30,6 +31,8 @@ const RequestedPropertyForm = ({ closeModal }) => {
   const [loading, setLoading] = useState(false);
   const [showPropertyTypeDropdown, setShowPropertyTypeDropdown] =
     useState(false);
+
+  const navigation = useNavigation();
 
   const modalRef = useRef();
 
@@ -251,7 +254,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.cancelButton}
-                  onPress={closeModal}
+                  onPress={() => navigation.goBack()}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
@@ -272,7 +275,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     // backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContainer: {
     width: Dimensions.get("window").width * 0.9,

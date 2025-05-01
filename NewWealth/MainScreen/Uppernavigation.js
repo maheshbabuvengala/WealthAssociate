@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, Image, StyleSheet, TouchableOpacity, SafeAreaView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import { ActivityIndicator } from "react-native";
+
+// Cache for user data
+let userDataCache = null;
+let lastFetchTime = 0;
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes cache
 
 const Header = () => {
   const navigation = useNavigation();
@@ -15,18 +20,36 @@ const Header = () => {
     loading: true,
   });
 
-  // Check if current screen is home screen
   const isHomeScreen = route.name === "newhome";
 
-  // Fetch user data based on type
-  const fetchUserDetails = async () => {
+  // Memoized fetch function
+  const fetchUserDetails = useCallback(async () => {
+    // Return cached data if it's fresh enough
+    if (userDataCache && Date.now() - lastFetchTime < CACHE_EXPIRY_TIME) {
+      setUserData({
+        details: userDataCache.details,
+        userType: userDataCache.userType,
+        loading: false,
+      });
+      return;
+    }
+
     try {
-      const token = await AsyncStorage.getItem("authToken");
-      const userType = await AsyncStorage.getItem("userType");
+      // Get both token and userType in one AsyncStorage call
+      const [token, userType] = await Promise.all([
+        AsyncStorage.getItem("authToken"),
+        AsyncStorage.getItem("userType"),
+      ]);
+
+      if (!token || !userType) {
+        setUserData(prev => ({ ...prev, loading: false }));
+        return;
+      }
 
       let endpoint = "";
       switch (userType) {
         case "WealthAssociate":
+        case "ReferralAssociate":
           endpoint = `${API_URL}/agent/AgentDetails`;
           break;
         case "Customer":
@@ -34,9 +57,6 @@ const Header = () => {
           break;
         case "CoreMember":
           endpoint = `${API_URL}/core/getcore`;
-          break;
-        case "ReferralAssociate":
-          endpoint = `${API_URL}/agent/AgentDetails`;
           break;
         case "Investor":
           endpoint = `${API_URL}/investors/getinvestor`;
@@ -52,83 +72,58 @@ const Header = () => {
       }
 
       const response = await fetch(endpoint, {
-        headers: { token: token || "" },
+        headers: { token },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      const details = await response.json();
+      
+      // Update cache
+      userDataCache = { details, userType };
+      lastFetchTime = Date.now();
 
       setUserData({
-        details: await response.json(),
+        details,
         userType,
         loading: false,
       });
     } catch (error) {
       console.error("Header data fetch failed:", error);
-      setUserData((prev) => ({ ...prev, loading: false }));
+      setUserData(prev => ({ ...prev, loading: false }));
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUserDetails();
-  }, []);
+  }, [fetchUserDetails]);
 
-  const showReferralCode = [
-    "WealthAssociate",
-    "Customer",
-    "CoreMember",
-    "ReferralAssociate",
-  ].includes(userData.userType);
-
-  const handleProfilePress = () => {
+  const handleProfilePress = useCallback(() => {
     if (!userData.userType) {
       navigation.navigate("DefaultProfile");
       return;
     }
 
-    switch (userData.userType) {
-      case "WealthAssociate":
-      case "ReferralAssociate":
-        navigation.navigate("agentprofile", {
-          userId: userData.details?._id,
-          userType: userData.userType,
-        });
-        break;
-      case "Customer":
-        navigation.navigate("CustomerProfile", {
-          userId: userData.details?._id,
-          userType: userData.userType,
-        });
-        break;
-      case "CoreMember":
-        navigation.navigate("CoreProfile", {
-          userId: userData.details?._id,
-          userType: userData.userType,
-        });
-        break;
-      case "Investor":
-        navigation.navigate("InvestorProfile", {
-          userId: userData.details?._id,
-          userType: userData.userType,
-        });
-        break;
-      case "NRI":
-        navigation.navigate("NRIProfile", {
-          userId: userData.details?._id,
-          userType: userData.userType,
-        });
-        break;
-      case "SkilledResource":
-        navigation.navigate("SkilledProfile", {
-          userId: userData.details?._id,
-          userType: userData.userType,
-        });
-        break;
-      default:
-        navigation.navigate("DefaultProfile");
-    }
-  };
+    const profileRoutes = {
+      WealthAssociate: "agentprofile",
+      ReferralAssociate: "agentprofile",
+      Customer: "CustomerProfile",
+      CoreMember: "CoreProfile",
+      Investor: "InvestorProfile",
+      NRI: "NRIProfile",
+      SkilledResource: "SkilledProfile",
+    };
+
+    const routeName = profileRoutes[userData.userType] || "DefaultProfile";
+    
+    navigation.navigate(routeName, {
+      userId: userData.details?._id,
+      userType: userData.userType,
+    });
+  }, [userData.details?._id, userData.userType, navigation]);
+
+  const showReferralCode = ["WealthAssociate", "Customer", "CoreMember", "ReferralAssociate"]
+    .includes(userData.userType);
 
   if (userData.loading) {
     return (
@@ -139,37 +134,34 @@ const Header = () => {
   }
 
   return (
-    <SafeAreaView><View style={styles.header}>
-    {/* Show back button only when not on home screen */}
-    {!isHomeScreen && (
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={26} color="#555" />
-      </TouchableOpacity>
-    )}
+    <SafeAreaView>
+      <View style={styles.header}>
+        {!isHomeScreen && (
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={26} color="#555" />
+          </TouchableOpacity>
+        )}
 
-    <TouchableOpacity onPress={() => navigation.navigate("newhome")}>
-      <Image source={require("../../assets/logo.png")} style={styles.logo} />
-    </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate("newhome")}>
+          <Image source={require("../../assets/logo.png")} style={styles.logo} />
+        </TouchableOpacity>
 
-    <View style={styles.userInfo}>
-      <Text style={styles.userName}>
-        {userData.details?.FullName || "Welcome User"}
-      </Text>
-      {showReferralCode && (
-        <Text style={styles.userRef}>
-          Ref: {userData.details?.MyRefferalCode || "N/A"}
-        </Text>
-      )}
-    </View>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
+            {userData.details?.FullName || "Welcome User"}
+          </Text>
+          {showReferralCode && (
+            <Text style={styles.userRef} numberOfLines={1} ellipsizeMode="tail">
+              Ref: {userData.details?.MyRefferalCode || "N/A"}
+            </Text>
+          )}
+        </View>
 
-    <TouchableOpacity
-      onPress={handleProfilePress}
-      style={styles.profileButton}
-    >
-      <Ionicons name="person-circle" size={36} color="#555" />
-    </TouchableOpacity>
-  </View>
-  </SafeAreaView>
+        <TouchableOpacity onPress={handleProfilePress} style={styles.profileButton}>
+          <Ionicons name="person-circle" size={36} color="#555" />
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -182,7 +174,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    top:10
+    top: 10,
   },
   logo: {
     width: 55,

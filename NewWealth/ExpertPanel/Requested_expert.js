@@ -10,11 +10,13 @@ import {
   Modal,
   TouchableWithoutFeedback,
   FlatList,
+  ActivityIndicator,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { useNavigation } from "@react-navigation/native";
 
 const expertTypes = [
   { label: "-- Select Type --", value: "" },
@@ -45,8 +47,12 @@ const RequestedExpert = ({ closeModal }) => {
     y: 0,
     width: 0,
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigation = useNavigation();
 
   const getDetails = async () => {
+    setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem("authToken");
       const response = await fetch(`${API_URL}/agent/AgentDetails`, {
@@ -59,6 +65,9 @@ const RequestedExpert = ({ closeModal }) => {
       setDetails(newDetails);
     } catch (error) {
       console.error("Error fetching agent details:", error);
+      Alert.alert("Error", "Failed to load agent details");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -66,16 +75,29 @@ const RequestedExpert = ({ closeModal }) => {
     getDetails();
   }, []);
 
-  const handleRequest = async () => {
+  const validateForm = () => {
     if (!selectedExpert) {
       Alert.alert("Error", "Please select an expert type.");
-      return;
+      return false;
     }
+    if (!reason.trim() || reason.length < 10) {
+      Alert.alert(
+        "Error",
+        "Please provide a detailed reason (at least 10 characters)."
+      );
+      return false;
+    }
+    return true;
+  };
 
+  const handleRequest = async () => {
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
     const requestData = {
       expertType: selectedExpert,
-      reason: reason,
-      WantedBy: Details ? Details.MobileNumber : "Number",
+      reason: reason.trim(),
+      WantedBy: Details?.MobileNumber || "Unknown",
       UserType: "Agent",
     };
 
@@ -94,11 +116,19 @@ const RequestedExpert = ({ closeModal }) => {
         Alert.alert("Success", "Request submitted successfully!");
         closeModal();
       } else {
-        Alert.alert("Error", result.message || "Failed to submit request.");
+        Alert.alert(
+          "Error",
+          result.message || "Failed to submit request. Please try again."
+        );
       }
     } catch (error) {
-      Alert.alert("Error", "An error occurred while submitting the request.");
+      Alert.alert(
+        "Network Error",
+        "Unable to connect to the server. Please check your internet connection."
+      );
       console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -114,6 +144,8 @@ const RequestedExpert = ({ closeModal }) => {
         setSelectedExpert(item.value);
         setShowDropdown(false);
       }}
+      accessibilityRole="button"
+      accessibilityLabel={`Select ${item.label}`}
     >
       <Text style={styles.dropdownItemText}>{item.label}</Text>
     </TouchableOpacity>
@@ -129,6 +161,7 @@ const RequestedExpert = ({ closeModal }) => {
             style={styles.picker}
             mode="dropdown"
             dropdownIconColor="#007AFF"
+            accessibilityLabel="Select expert type"
           >
             {expertTypes.map((item) => (
               <Picker.Item
@@ -142,7 +175,6 @@ const RequestedExpert = ({ closeModal }) => {
       );
     }
 
-    // iOS implementation
     const selectedLabel =
       expertTypes.find((item) => item.value === selectedExpert)?.label ||
       "-- Select Type --";
@@ -153,6 +185,8 @@ const RequestedExpert = ({ closeModal }) => {
           style={styles.dropdownTrigger}
           onPress={() => setShowDropdown(!showDropdown)}
           onLayout={measureDropdownPosition}
+          accessibilityLabel="Select expert type"
+          accessibilityRole="button"
         >
           <Text style={styles.dropdownText}>{selectedLabel}</Text>
           <Icon
@@ -167,6 +201,7 @@ const RequestedExpert = ({ closeModal }) => {
           transparent={true}
           animationType="fade"
           onRequestClose={() => setShowDropdown(false)}
+          accessibilityViewIsModal={true}
         >
           <TouchableWithoutFeedback onPress={() => setShowDropdown(false)}>
             <View style={styles.dropdownOverlay} />
@@ -181,6 +216,7 @@ const RequestedExpert = ({ closeModal }) => {
                 width: dropdownPosition.width,
               },
             ]}
+            accessibilityRole="list"
           >
             <FlatList
               data={expertTypes}
@@ -195,11 +231,19 @@ const RequestedExpert = ({ closeModal }) => {
     );
   };
 
+  if (isLoading) {
+    return (
+      <View style={[styles.modalContent, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#E91E63" />
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.modalContent}>
+    <View style={styles.modalContent} accessibilityViewIsModal={true}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerText}>Requested Expert</Text>
+        <Text style={styles.headerText}>Request Expert Assistance</Text>
       </View>
 
       {/* Dropdown */}
@@ -207,22 +251,41 @@ const RequestedExpert = ({ closeModal }) => {
       {renderDropdown()}
 
       {/* Reason Textbox */}
-      <Text style={styles.label}>Reason</Text>
+      <Text style={styles.label}>Reason (Minimum 10 characters)</Text>
       <TextInput
         style={styles.textArea}
-        placeholder="Enter Your Message..."
+        placeholder="Please describe why you need this expert..."
         placeholderTextColor="#999"
         multiline
+        minLength={10}
         value={reason}
         onChangeText={setReason}
+        accessibilityLabel="Reason for expert request"
+        accessibilityHint="Enter at least 10 characters"
       />
 
       {/* Buttons */}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.requestButton} onPress={handleRequest}>
-          <Text style={styles.buttonText}>Request</Text>
+        <TouchableOpacity
+          style={[styles.requestButton, isSubmitting && styles.disabledButton]}
+          onPress={handleRequest}
+          disabled={isSubmitting}
+          accessibilityRole="button"
+          accessibilityLabel="Submit expert request"
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.buttonText}>Request</Text>
+          )}
         </TouchableOpacity>
-        <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+        <TouchableOpacity
+          style={[styles.cancelButton, isSubmitting && styles.disabledButton]}
+          onPress={() => navigation.goBack()}
+          disabled={isSubmitting}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel expert request"
+        >
           <Text style={styles.buttonText}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -234,7 +297,7 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: "white",
     width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "40%",
-    marginLeft: 20,
+    // marginLeft: 20,
     borderRadius: 15,
     padding: 15,
     alignItems: "center",
@@ -243,6 +306,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+    top: "15%",
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    height: 200,
   },
   header: {
     backgroundColor: "#E91E63",
@@ -266,7 +334,6 @@ const styles = StyleSheet.create({
     marginTop: 60,
     color: "#000",
   },
-  // Android Picker Styles
   pickerWrapper: {
     borderWidth: 1,
     borderColor: "#d1d1d6",
@@ -282,7 +349,6 @@ const styles = StyleSheet.create({
     color: "#000",
     backgroundColor: "transparent",
   },
-  // iOS Dropdown Styles
   dropdownTrigger: {
     borderWidth: 1,
     borderColor: "#d1d1d6",
@@ -331,7 +397,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#000",
   },
-  // Common Styles
   textArea: {
     borderWidth: 1,
     borderColor: "#d1d1d6",
@@ -367,6 +432,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     marginLeft: 5,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   buttonText: {
     color: "white",
