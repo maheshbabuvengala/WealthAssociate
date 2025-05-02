@@ -9,6 +9,12 @@ const BottomNavigation = () => {
 
   const tabs = [
     {
+      label: "Home",
+      icon: "home-outline",
+      screenName: "newhome",
+      iconActive: "home",
+    },
+    {
       label: "Add Member",
       icon: "person-add-outline",
       screenName: "addmember",
@@ -16,10 +22,11 @@ const BottomNavigation = () => {
     },
     {
       label: "Property",
-      icon: "home-outline",
+      icon: "business-outline",
       screenName: "propertyhome",
-      iconActive: "home",
+      iconActive: "business",
     },
+    
     {
       label: "Expert Panel",
       icon: "people-outline",
@@ -28,16 +35,11 @@ const BottomNavigation = () => {
     },
     {
       label: "Core Client",
-      icon: "business-outline",
+      icon: "star-outline",
       screenName: "coreclipro",
-      iconActive: "business",
+      iconActive: "star",
     },
-    {
-      label: "FAQ's",
-      icon: "help-circle-outline",
-      screenName: "FAQScreen",
-      iconActive: "help-circle",
-    },
+    
   ];
 
   const isActive = (screenName) => {
