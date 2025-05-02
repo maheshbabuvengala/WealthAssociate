@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, Image, StyleSheet, TouchableOpacity, SafeAreaView } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -42,7 +49,7 @@ const Header = () => {
       ]);
 
       if (!token || !userType) {
-        setUserData(prev => ({ ...prev, loading: false }));
+        setUserData((prev) => ({ ...prev, loading: false }));
         return;
       }
 
@@ -75,10 +82,11 @@ const Header = () => {
         headers: { token },
       });
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
 
       const details = await response.json();
-      
+
       // Update cache
       userDataCache = { details, userType };
       lastFetchTime = Date.now();
@@ -90,7 +98,7 @@ const Header = () => {
       });
     } catch (error) {
       console.error("Header data fetch failed:", error);
-      setUserData(prev => ({ ...prev, loading: false }));
+      setUserData((prev) => ({ ...prev, loading: false }));
     }
   }, []);
 
@@ -115,15 +123,19 @@ const Header = () => {
     };
 
     const routeName = profileRoutes[userData.userType] || "DefaultProfile";
-    
+
     navigation.navigate(routeName, {
       userId: userData.details?._id,
       userType: userData.userType,
     });
   }, [userData.details?._id, userData.userType, navigation]);
 
-  const showReferralCode = ["WealthAssociate", "Customer", "CoreMember", "ReferralAssociate"]
-    .includes(userData.userType);
+  const showReferralCode = [
+    "WealthAssociate",
+    "Customer",
+    "CoreMember",
+    "ReferralAssociate",
+  ].includes(userData.userType);
 
   if (userData.loading) {
     return (
@@ -143,12 +155,17 @@ const Header = () => {
         )}
 
         <TouchableOpacity onPress={() => navigation.navigate("newhome")}>
-          <Image source={require("../../assets/logo.png")} style={styles.logo} />
+          <Image
+            source={require("../../assets/logo.png")}
+            style={styles.logo}
+          />
         </TouchableOpacity>
 
         <View style={styles.userInfo}>
           <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
-            {userData.details?.FullName || "Welcome User"}
+            {userData.details?.FullName ||
+              userData.details?.Name ||
+              "Welcome User"}
           </Text>
           {showReferralCode && (
             <Text style={styles.userRef} numberOfLines={1} ellipsizeMode="tail">
@@ -157,7 +174,10 @@ const Header = () => {
           )}
         </View>
 
-        <TouchableOpacity onPress={handleProfilePress} style={styles.profileButton}>
+        <TouchableOpacity
+          onPress={handleProfilePress}
+          style={styles.profileButton}
+        >
           <Ionicons name="person-circle" size={36} color="#555" />
         </TouchableOpacity>
       </View>
