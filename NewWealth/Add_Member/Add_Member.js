@@ -41,10 +41,6 @@ export default function Add_Member() {
   const [skilledModalVisible, setSkilledModalVisible] = useState(false);
   const [investorModalVisible, setInvestorModalVisible] = useState(false);
   const [agentvisible, setAgentVisible] = useState(false);
-  const [regionalModalVisible, setRegionalModalVisible] = useState(false);
-  const [valueModalVisible, setValueModalVisible] = useState(false);
-  const [executiveModalVisible, setExecutiveModalVisible] = useState(false);
-  const [generalModalVisible, setGeneralModalVisible] = useState(false);
 
   const [activeTab, setActiveTab] = useState("My Agents");
   const [data, setData] = useState([]);
@@ -245,7 +241,7 @@ export default function Add_Member() {
           if (isCoreMember || isRegionalWealthAssociate) {
             setModalVisible(true);
           } else {
-            setAgentVisible(true);
+            navigation.navigate("addagent");
           }
         }}
       >
@@ -436,8 +432,7 @@ export default function Add_Member() {
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => {
-                setModalVisible(false);
-                setAgentVisible(true);
+                navigation.navigate("addagent");
               }}
             >
               <View style={styles.modalButtonContent}>
@@ -559,12 +554,11 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: "row",
-    justifyContent:"space-evenly",
+    justifyContent: "space-evenly",
     paddingVertical: 15,
     marginBottom: 5,
     elevation: 2,
-    gap:20
-  
+    gap: 20,
   },
   actionButton: {
     alignItems: "center",

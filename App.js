@@ -57,11 +57,7 @@ import Rewa from "./NewWealth/Add_Member/Rewa";
 import PropertyDetailsScreen from "./NewWealth/Properties/ViewPropertyDetails";
 import PropertyCard from "./NewWealth/MainScreen/PropertyCard";
 import RegularProperties from "./NewWealth/Properties/PropertyTypesdata/RegularProperties";
-import ApprovedPropertiesScreen from "./NewWealth/Properties/PropertyTypesdata/ApprovesProperties";
-import WealthPropertiesScreen from "./NewWealth/Properties/PropertyTypesdata/WealthPropertys";
 import { API_URL } from "./data/ApiUrl";
-import ListedPropertiesScreen from "./NewWealth/Properties/PropertyTypesdata/ListedPropertys";
-import NRI_Profile from "./NewWealth/UsersProfiles/NriProfile";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -205,7 +201,7 @@ export default function App() {
           switch (userType) {
             case "WealthAssociate":
             case "Referral":
-              setInitialRoute("newhome");
+              setInitialRoute("Main");
               break;
             case "Customer":
               setInitialRoute("CustomerDashboard");
@@ -250,6 +246,87 @@ export default function App() {
       </View>
     );
   }
+
+  const MainStack = () => (
+    <PersistentLayout>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animationEnabled: true,
+        }}
+      >
+        {/* All screens that should have persistent layout */}
+        <Stack.Screen name="newhome" component={HomeScreen} />
+
+        <Stack.Screen name="nrireg" component={NriRegister} />
+        <Stack.Screen name="invreg" component={InvestorRegister} />
+        <Stack.Screen name="skillreg" component={SkilledRegister} />
+        <Stack.Screen name="addmember" component={Add_Member} />
+        <Stack.Screen name="agentprofile" component={Agent_Profile} />
+        <Stack.Screen name="propertyhome" component={PropertyHome} />
+        <Stack.Screen name="expertpanel" component={ExpertPanel} />
+        <Stack.Screen name="coreclipro" component={Coreclipro} />
+        <Stack.Screen name="requestexpert" component={RequestedExpert} />
+        <Stack.Screen name="regularprop" component={RegularProperties} />
+        <Stack.Screen
+          name="PropertyDetails"
+          component={PropertyDetailsScreen}
+        />
+
+        {/* Modal screens */}
+        <Stack.Screen
+          name="postproperty"
+          component={PostProperty}
+          // options={{
+          //   presentation: "modal",
+          //   cardOverlayEnabled: true,
+          //   gestureEnabled: true,
+          //   cardStyle: { backgroundColor: "transparent" },
+          // }}
+        />
+        <Stack.Screen
+          name="requestproperty"
+          component={RequestedProperty}
+          options={{
+            presentation: "modal",
+            cardOverlayEnabled: true,
+            gestureEnabled: true,
+            cardStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="addagent"
+          component={Add_Agent}
+          options={{
+            presentation: "modal",
+            cardOverlayEnabled: true,
+            gestureEnabled: true,
+            cardStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="AddRegionalWealthAssociate"
+          component={Rrwa}
+          options={{ presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="AddValueWealthAssociate"
+          component={RegisterValue}
+          options={{ presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="AddExecutiveWealthAssociate"
+          component={Rewa}
+          options={{ presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="PropertyCard"
+          component={PropertyCard}
+          options={{ presentation: "modal" }}
+        />
+      </Stack.Navigator>
+    </PersistentLayout>
+  );
 
   return (
     <NavigationIndependentTree>
@@ -311,6 +388,21 @@ export default function App() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
+            name="CustomerDashboard"
+            component={CustomerDashboard}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="CoreDashboard"
+            component={CoreDashboard}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="RefferalDashboard"
+            component={RLogin_screen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
             name="PrivacyPolicy"
             component={PrivacyPolicy}
             options={{ headerShown: true }}
@@ -320,7 +412,21 @@ export default function App() {
             component={Admin}
             options={{ headerShown: false }}
           />
-
+          <Stack.Screen
+            name="SkillDashboard"
+            component={SkillDasboard}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="NriDashboard"
+            component={NriDashboard}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="InvestorDashboard"
+            component={InvestorDashboard}
+            options={{ headerShown: false }}
+          />
           <Stack.Screen
             name="CallCenterDashboard"
             component={CallCenterDashboard}
@@ -332,6 +438,11 @@ export default function App() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
+            name="Main"
+            component={MainStack}
+            options={{ headerShown: false }}
+          />
+          {/* <Stack.Screen
             name="nrireg"
             component={NriRegister}
             options={{ headerShown: false }}
@@ -401,13 +512,11 @@ export default function App() {
             component={SkilledRegister}
             options={{ headerShown: false }}
           />
-          <Stack.Screen name="newhome">
-            {() => (
-              <PersistentLayout>
-                <HomeScreen />
-              </PersistentLayout>
-            )}
-          </Stack.Screen>
+          <Stack.Screen
+            name="newhome"
+            component={MainStack}
+            options={{ headerShown: false }}
+          />
 
           <Stack.Screen name="addmember">
             {() => (
@@ -421,13 +530,6 @@ export default function App() {
             {() => (
               <PersistentLayout>
                 <Agent_Profile />
-              </PersistentLayout>
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="nriprofile">
-            {() => (
-              <PersistentLayout>
-                <NRI_Profile />
               </PersistentLayout>
             )}
           </Stack.Screen>
@@ -466,34 +568,13 @@ export default function App() {
               </PersistentLayout>
             )}
           </Stack.Screen>
-          <Stack.Screen name="approveprop">
-            {() => (
-              <PersistentLayout>
-                <ApprovedPropertiesScreen />
-              </PersistentLayout>
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="wealthprop">
-            {() => (
-              <PersistentLayout>
-                <WealthPropertiesScreen />
-              </PersistentLayout>
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="listedprop">
-            {() => (
-              <PersistentLayout>
-                <ListedPropertiesScreen />
-              </PersistentLayout>
-            )}
-          </Stack.Screen>
           <Stack.Screen name="PropertyDetails">
             {(props) => (
               <PersistentLayout>
                 <PropertyDetailsScreen {...props} />
               </PersistentLayout>
             )}
-          </Stack.Screen>
+          </Stack.Screen> */}
         </Stack.Navigator>
       </NavigationContainer>
     </NavigationIndependentTree>

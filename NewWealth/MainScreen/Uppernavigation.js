@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
+import { useNavigationState } from "@react-navigation/native";
 
 // Cache for user data
 let userDataCache = null;
@@ -36,7 +37,17 @@ const Header = () => {
     loading: true,
   });
 
-  const isHomeScreen = route.name === "newhome";
+  const isHomeScreen = useNavigationState((state) => {
+    const mainRoute = state.routes.find((r) => r.name === "Main");
+  
+    if (!mainRoute || !mainRoute.state) return false;
+  
+    const nestedState = mainRoute.state;
+    const nestedIndex = nestedState.index;
+    const currentNestedRoute = nestedState.routes[nestedIndex];
+  
+    return currentNestedRoute?.name === "newhome";
+  });
 
   const fetchReferredDetails = useCallback(async (referredBy, addedBy) => {
     try {
@@ -218,10 +229,16 @@ const Header = () => {
           <Ionicons name="arrow-back" size={26} color="#555" />
         </TouchableOpacity>
       )}
+      {/* navigation.navigate("Main", { screen: screenName }); */}
+      <TouchableOpacity
+  onPress={async () => {
+    await AsyncStorage.setItem("activeTab", "newhome");
+    navigation.navigate("Main", { screen: "newhome" });
+  }}
+>
+  <Image source={require("../../assets/logo.png")} style={styles.logo} />
+</TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("newhome")}>
-        <Image source={require("../../assets/logo.png")} style={styles.logo} />
-      </TouchableOpacity>
 
       <View style={styles.userInfo}>
         <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
