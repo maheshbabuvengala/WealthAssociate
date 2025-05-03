@@ -62,6 +62,10 @@ import WealthPropertiesScreen from "./NewWealth/Properties/PropertyTypesdata/Wea
 import { API_URL } from "./data/ApiUrl";
 import ListedPropertiesScreen from "./NewWealth/Properties/PropertyTypesdata/ListedPropertys";
 import NRI_Profile from "./NewWealth/UsersProfiles/NriProfile";
+import CoreProfile from "./NewWealth/UsersProfiles/CoreProfile";
+import Customerprofile from "./NewWealth/UsersProfiles/CustomerProfile";
+import Investorprofile from "./NewWealth/UsersProfiles/InvestorProfile";
+import Skilledprofile from "./NewWealth/UsersProfiles/SkilledProfile";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -208,23 +212,23 @@ export default function App() {
               setInitialRoute("newhome");
               break;
             case "Customer":
-              setInitialRoute("CustomerDashboard");
+              setInitialRoute("newhome");
               break;
             case "Investor":
-              setInitialRoute("InvestorDashboard");
+              setInitialRoute("newhome");
               break;
             case "Coremember":
-              setInitialRoute("CoreDashboard");
+              setInitialRoute("newhome");
               break;
             case "SkilledLabour":
-              setInitialRoute("SkillDashboard");
+              setInitialRoute("newhome");
               break;
             case "CallCenter":
             case "Call center":
               setInitialRoute("CallCenterDashboard");
               break;
             case "Nri":
-              setInitialRoute("NriDashboard");
+              setInitialRoute("newhome");
               break;
             case "Admin":
               setInitialRoute("Admin");
@@ -298,6 +302,11 @@ export default function App() {
           <Stack.Screen
             name="RegisterCustomer"
             component={RegisterCustomer}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="CustomerDashboard"
+            component={CustomerDashboard}
             options={{ headerShown: false }}
           />
           <Stack.Screen
@@ -428,6 +437,34 @@ export default function App() {
             {() => (
               <PersistentLayout>
                 <NRI_Profile />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="CoreProfile">
+            {() => (
+              <PersistentLayout>
+                <CoreProfile />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="CustomerProfile">
+            {() => (
+              <PersistentLayout>
+                <Customerprofile />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="InvestorProfile">
+            {() => (
+              <PersistentLayout>
+                <Investorprofile />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="SkilledProfile">
+            {() => (
+              <PersistentLayout>
+                <Skilledprofile />
               </PersistentLayout>
             )}
           </Stack.Screen>

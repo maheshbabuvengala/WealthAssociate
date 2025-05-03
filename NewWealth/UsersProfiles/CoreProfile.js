@@ -7,6 +7,7 @@ import {
   Image,
   StyleSheet,
   ActivityIndicator,
+  Modal,
   ScrollView,
   Dimensions,
   Platform,
@@ -16,14 +17,14 @@ import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
-import Modify_Deatils from "./NriupdateProfile";
+import Modify_Deatils from "./CoreUpdateProfile";
 import CustomModal from "../../Components/CustomModal";
 import { useNavigation } from "@react-navigation/native";
 import { clearHeaderCache } from "../MainScreen/Uppernavigation";
 
 const { width } = Dimensions.get("window");
 
-const NRI_Profile = ({ onDetailsUpdates }) => {
+const CoreProfile = ({ onDetailsUpdates }) => {
   const [Details, setDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -158,7 +159,7 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/nri/getnri`, {
+      const response = await fetch(`${API_URL}/core/getcore`, {
         method: "GET",
         headers: {
           token: token || "",
@@ -181,7 +182,6 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
         "userType",
         "userData",
         "referredAddedByInfo",
-        "@profileImage",
       ]);
 
       // Clear the in-memory header cache
@@ -219,7 +219,7 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.container}>
-        <Text style={styles.agentProfileText}>NRI Profile</Text>
+        <Text style={styles.agentProfileText}>Core Profile</Text>
         {loading ? (
           <ActivityIndicator
             size="large"
@@ -254,6 +254,7 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
                   </TouchableOpacity>
                 )}
               </View>
+              <Text style={styles.profileName}>{Details.name}</Text>
             </View>
             <View style={styles.profileCard}>
               <View style={styles.profileForm}>
@@ -290,18 +291,14 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
                 <Text style={styles.buttonTexts}>Delete Your Account </Text>
               </TouchableOpacity>
             </View>
-            {/* // Update the CustomModal usage to include proper animation */}
+
             <CustomModal
               isVisible={modalVisible}
               closeModal={() => setModalVisible(false)}
-              animationType="slide"
-              style={styles.modal}
             >
               <Modify_Deatils
-                closeModal={() => {
-                  setModalVisible(false);
-                  handleDetailsUpdate();
-                }}
+                closeModal={() => setModalVisible(false)}
+                onDetailsUpdate={handleDetailsUpdate}
               />
             </CustomModal>
           </>
@@ -312,11 +309,14 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
 };
 
 const profileFields = [
-  { label: "Full Name", icon: "user", key: "Name" },
-  { label: "MobileIN", icon: "phone", key: "MobileIN" },
-  { label: "Locality", icon: "map", key: "Locality" },
-  { label: "Country", icon: "briefcase", key: "Country" },
-  { label: "Occupation", icon: "briefcase", key: "Occupation" },
+  { label: "Full Name", icon: "user", key: "FullName" },
+  { label: "Mobile Number", icon: "phone", key: "MobileNumber" },
+  { label: "Password", icon: "envelope", key: "Password" },
+  { label: "Select District", icon: "map-marker", key: "District" },
+  { label: "Select Constituency", icon: "location-arrow", key: "Contituency" },
+  { label: "Location", icon: "map", key: "Locations" },
+  { label: "Select Occupation", icon: "briefcase", key: "Occupation" },
+  { label: "Referral Code", icon: "users", key: "MyRefferalCode" },
 ];
 
 const CustomInput = ({ label, icon, value }) => (
@@ -336,13 +336,13 @@ const CustomInput = ({ label, icon, value }) => (
 
 const styles = StyleSheet.create({
   agentProfileText: {
-    fontWeight: "600",
+    fontWeight: 600,
     fontSize: 20,
-    // paddingBottom: "20%",
+    marginBottom: 10,
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: "10%",
+    paddingBottom:"12%"
   },
   container: {
     flex: 1,
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     flexWrap: Platform.OS === "web" ? "wrap" : "nowrap",
     justifyContent: Platform.OS === "web" ? "space-between" : "flex-start",
     width: "100%",
-    fontWeight: "600",
+    fontWeight: 600,
     fontSize: 16,
   },
   inputWrapper: {
@@ -377,6 +377,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     width: Platform.OS === "web" ? "100%" : 200,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    width: Platform.OS === "web" ? "40%" : "80%",
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 20,
+  },
+  closeButton: {
+    backgroundColor: "#FF3366",
+    padding: 10,
+    borderRadius: 5,
+    width: "100%",
+    alignItems: "center",
   },
   buttonText: {
     color: "#fff",
@@ -405,6 +435,11 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     marginBottom: 10,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginTop: 10,
   },
   loader: {
     marginTop: 50,
@@ -446,11 +481,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  modal: {
-    justifyContent: "center",
-    alignItems: "center",
-    margin: 0,
-  },
 });
 
-export default NRI_Profile;
+export default CoreProfile;

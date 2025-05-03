@@ -16,14 +16,14 @@ import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
-import Modify_Deatils from "./NriupdateProfile";
+import Modify_Deatils from "./SkilledUpdateProfile";
 import CustomModal from "../../Components/CustomModal";
 import { useNavigation } from "@react-navigation/native";
 import { clearHeaderCache } from "../MainScreen/Uppernavigation";
 
 const { width } = Dimensions.get("window");
 
-const NRI_Profile = ({ onDetailsUpdates }) => {
+const SkilledProfile = ({ onDetailsUpdates }) => {
   const [Details, setDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -158,7 +158,7 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/nri/getnri`, {
+      const response = await fetch(`${API_URL}/skillLabour/getskilled`, {
         method: "GET",
         headers: {
           token: token || "",
@@ -219,7 +219,7 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.container}>
-        <Text style={styles.agentProfileText}>NRI Profile</Text>
+        <Text style={styles.agentProfileText}>Skilled Resource Profile</Text>
         {loading ? (
           <ActivityIndicator
             size="large"
@@ -254,6 +254,7 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
                   </TouchableOpacity>
                 )}
               </View>
+              {/* <Text style={styles.profileName}>{Details.FullName}</Text> */}
             </View>
             <View style={styles.profileCard}>
               <View style={styles.profileForm}>
@@ -290,18 +291,14 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
                 <Text style={styles.buttonTexts}>Delete Your Account </Text>
               </TouchableOpacity>
             </View>
-            {/* // Update the CustomModal usage to include proper animation */}
+
             <CustomModal
               isVisible={modalVisible}
               closeModal={() => setModalVisible(false)}
-              animationType="slide"
-              style={styles.modal}
             >
               <Modify_Deatils
-                closeModal={() => {
-                  setModalVisible(false);
-                  handleDetailsUpdate();
-                }}
+                closeModal={() => setModalVisible(false)}
+                onDetailsUpdate={handleDetailsUpdate}
               />
             </CustomModal>
           </>
@@ -312,11 +309,10 @@ const NRI_Profile = ({ onDetailsUpdates }) => {
 };
 
 const profileFields = [
-  { label: "Full Name", icon: "user", key: "Name" },
-  { label: "MobileIN", icon: "phone", key: "MobileIN" },
-  { label: "Locality", icon: "map", key: "Locality" },
-  { label: "Country", icon: "briefcase", key: "Country" },
-  { label: "Occupation", icon: "briefcase", key: "Occupation" },
+  { label: "Full Name", icon: "user", key: "FullName" },
+  { label: "Mobile Number", icon: "phone", key: "MobileNumber" },
+  { label: "Location", icon: "map", key: "Location" },
+  { label: "Select Skill", icon: "briefcase", key: "SelectSkill" },
 ];
 
 const CustomInput = ({ label, icon, value }) => (
@@ -338,11 +334,11 @@ const styles = StyleSheet.create({
   agentProfileText: {
     fontWeight: "600",
     fontSize: 20,
-    // paddingBottom: "20%",
+    marginBottom: 10,
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: "10%",
+    paddingBottom: "12%",
   },
   container: {
     flex: 1,
@@ -406,6 +402,11 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     marginBottom: 10,
   },
+  profileName: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginTop: 10,
+  },
   loader: {
     marginTop: 50,
   },
@@ -446,11 +447,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  modal: {
-    justifyContent: "center",
-    alignItems: "center",
-    margin: 0,
-  },
 });
 
-export default NRI_Profile;
+export default SkilledProfile;
