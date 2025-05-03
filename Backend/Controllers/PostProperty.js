@@ -11,8 +11,7 @@ const mongoose = require("mongoose");
 const axios = require("axios");
 const getNearbyProperty = require("../Models/ApprovedPropertys");
 const CallExecutive = require("../Models/CallExecutiveModel");
-const ApprovedProperty = require("../Models/ApprovedPropertys")
-
+const ApprovedProperty = require("../Models/ApprovedPropertys");
 
 const getReferrerDetails = async (req, res) => {
   const { PostedBy } = req.params;
@@ -99,7 +98,6 @@ const getReferrerDetails = async (req, res) => {
   }
 };
 
-
 // Create a new property
 const createProperty = async (req, res) => {
   try {
@@ -127,9 +125,6 @@ const createProperty = async (req, res) => {
       return res.status(400).json({ message: "Photo is required." });
     }
 
-    // Find the user who posted the property
-
-    // Create and save new property
     const newProperty = new Property({
       propertyType,
       location,
@@ -195,21 +190,23 @@ const GetAllPropertys = async (req, res) => {
 const GetMyPropertys = async (req, res) => {
   try {
     const mobileNumber = req.mobileNumber;
-    
+
     // First check the Property collection
     const properties = await Property.find({ PostedBy: mobileNumber });
 
     if (!properties || properties.length === 0) {
       // If not found in Property collection, check ApprovedProperty collection
-      const approvedProperties = await ApprovedProperty.find({ PostedBy: mobileNumber });
-      
+      const approvedProperties = await ApprovedProperty.find({
+        PostedBy: mobileNumber,
+      });
+
       if (!approvedProperties || approvedProperties.length === 0) {
-        return res.status(200).json({ 
-          message: "No properties found for this user", 
-          MyPosts: [] 
+        return res.status(200).json({
+          message: "No properties found for this user",
+          MyPosts: [],
         });
       }
-      
+
       return res.status(200).json(approvedProperties);
     }
 
@@ -348,7 +345,7 @@ const getReferredByDetails = async (req, res) => {
   if (!referredBy) {
     return res.status(400).json({ error: "referredBy is required" });
   }
-console.log(referredBy)
+  console.log(referredBy);
   try {
     let referredUser =
       (await AgentSchema.findOne({ MyRefferalCode: referredBy })) ||
@@ -393,7 +390,6 @@ console.log(referredBy)
     return res.status(500).json({ error: "Server error" });
   }
 };
-
 
 // const Property = require('../models/propertyModel');
 

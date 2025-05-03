@@ -21,7 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width } = Dimensions.get("window");
 
-const Add_Agent = ({ closeModal }) => {
+const RegisterEx = ({ closeModal }) => {
   const [fullname, setFullname] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
@@ -116,7 +116,7 @@ const Add_Agent = ({ closeModal }) => {
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
+      const response = await fetch(`${API_URL}/core/getcore`, {
         method: "GET",
         headers: {
           token: `${token}` || "",
@@ -181,7 +181,7 @@ const Add_Agent = ({ closeModal }) => {
       ReferredBy: referralCode || "WA0000000001",
       Password: "Wealth",
       MyRefferalCode: referenceId,
-      AgentType: "WealthAssociate",
+      AgentType: "RegionalWealthAssociate",
     };
 
     try {
@@ -227,7 +227,7 @@ const Add_Agent = ({ closeModal }) => {
           <View style={styles.card}>
             <View style={styles.register_main}>
               <Text style={styles.register_text}>
-                Register Wealth Associate
+                Register Regional Wealth Associate
               </Text>
             </View>
             {responseStatus === 400 && (
@@ -534,7 +534,7 @@ const Add_Agent = ({ closeModal }) => {
               <TouchableOpacity
                 style={styles.cancelButton}
                 disabled={isLoading}
-                onPress={closeModal}
+                onPress={() => navigation.goBack()}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
@@ -696,6 +696,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
+    backgroundColor: "#FFF",
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 5,
@@ -712,4 +713,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Add_Agent;
+export default RegisterEx;

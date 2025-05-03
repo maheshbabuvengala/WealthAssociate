@@ -87,7 +87,6 @@ const PropertyCard = ({ property, closeModal }) => {
                 width: 70,
                 height: 70,
                 position: "relative",
-                // left: "20%",
                 size: "contain",
                 top: 10,
                 left: -10,

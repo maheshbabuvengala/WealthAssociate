@@ -17,8 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import Uppernavigation from "./Uppernavigation";
-import BottomNavigation from "./BottomNavigation";
+import PropertyCard from "./PropertyCard";
 
 const { width } = Dimensions.get("window");
 
@@ -34,6 +33,7 @@ const HomeScreen = () => {
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
   const [referredInfo, setReferredInfo] = useState(null);
   const navigation = useNavigation();
+  const [postedProperty, setPostedProperty] = useState(null);
 
   const getDetails = async () => {
     try {
@@ -162,18 +162,38 @@ const HomeScreen = () => {
     }
   };
 
+  const loadReferredInfoFromStorage = async () => {
+    try {
+      const storedInfo = await AsyncStorage.getItem("referredAddedByInfo");
+      if (storedInfo) {
+        setReferredInfo(JSON.parse(storedInfo));
+      }
+    } catch (error) {
+      console.error("Error loading referred info from storage:", error);
+    }
+  };
+
   const getImageByPropertyType = (propertyType) => {
     switch (propertyType.toLowerCase()) {
+      case "flat(apartment)":
+      case "apartment":
+        return require("../../assets/download.jpeg");
+      case "land(opensite)":
       case "land":
         return require("../../assets/Land.jpg");
-      case "residential":
-        return require("../../assets/residntial.jpg");
-      case "commercial":
-        return require("../../assets/commercial.jpg");
+      case "house(individual)":
+      case "house":
+        return require("../../assets/house.png");
       case "villa":
         return require("../../assets/villa.jpg");
+      case "agriculture land":
+        return require("../../assets/agriculture.jpeg");
+      case "commercial property":
+        return require("../../assets/commercial.jpeg");
+      case "commercial land":
+        return require("../../assets/commland.jpeg");
       default:
-        return require("../../assets/house.png");
+        return require("../../assets/house.png"); // Default house image
     }
   };
 
@@ -213,12 +233,24 @@ const HomeScreen = () => {
     }
   };
 
-  const handleEnquiryNow = (property) => {
+  const handleShare = (property) => {
+    navigation.navigate("PropertyCard", {
+      property: {
+        photo: property.photo ? `${API_URL}${property.photo}` : null,
+        location: property.location || "Location not specified",
+        price: property.price || "Price not available",
+        propertyType: property.propertyType || "Property",
+        PostedBy: property.PostedBy || details?.Number || "",
+        fullName: property.fullName || details?.name || "Wealth Associate",
+      },
+    });
+  };
+  const handleIHave = (property) => {
     setSelectedProperty(property);
     setPropertyModalVisible(true);
   };
 
-  const handleIHave = (property) => {
+  const handleEnquiryNow = (property) => {
     setSelectedProperty(property);
     setPropertyModalVisible(true);
   };
@@ -267,7 +299,26 @@ const HomeScreen = () => {
     fetchCoreProjects();
     fetchProperties();
     fetchPropertiess();
+    loadReferredInfoFromStorage();
   }, []);
+
+  const renderModalContent = () => {
+    if (!referredInfo) {
+      return (
+        <View style={styles.noReferredInfo}>
+          <Text style={styles.noReferredInfoText}>
+            No referral information available
+          </Text>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setPropertyModalVisible(false)}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+  };
 
   const regularProperties = properties.filter(
     (property) => getPropertyTag(property.createdAt) === "Regular Property"
@@ -297,7 +348,44 @@ const HomeScreen = () => {
     );
   }
 
-  const PropertyCard = ({ property }) => {
+  const handlePropertyPress = (property) => {
+    if (!property?._id) {
+      console.error("Property ID is missing");
+      return;
+    }
+
+    // Safely format the price
+    let formattedPrice = "Price not available";
+    try {
+      const priceValue = parseInt(property.price);
+      if (!isNaN(priceValue)) {
+        formattedPrice = `₹${priceValue.toLocaleString()}`;
+      }
+    } catch (e) {
+      console.error("Error formatting price:", e);
+    }
+
+    // Handle image URI
+    let imageSource;
+    if (property.photo) {
+      imageSource = property.photo.startsWith("http")
+        ? { uri: property.photo }
+        : { uri: `${API_URL}${property.photo}` };
+    } else {
+      imageSource = require("../../assets/logo.png");
+    }
+
+    navigation.navigate("PropertyDetails", {
+      property: {
+        ...property,
+        id: property._id,
+        price: formattedPrice,
+        image: imageSource,
+      },
+    });
+  };
+
+  const RenderPropertyCard = ({ property }) => {
     const imageUri = property.photo
       ? { uri: `${API_URL}${property.photo}` }
       : require("../../assets/logo.png");
@@ -305,47 +393,63 @@ const HomeScreen = () => {
     const propertyId = getLastFourChars(property._id);
 
     return (
-      <View style={styles.propertyCard}>
-        <Image source={imageUri} style={styles.propertyImage} />
-        <View
-          style={[
-            styles.statusTag,
-            {
-              backgroundColor:
-                propertyTag === "Approved Property" ? "#4CAF50" : "#FF9800",
-            },
-          ]}
-        >
-          <Text style={styles.statusText}>{propertyTag}</Text>
-        </View>
-        <View style={styles.propertyIdContainer}>
-          <Text style={styles.propertyId}>ID: {propertyId}</Text>
-        </View>
-        <Text style={styles.cardTitle}>{property.propertyType}</Text>
-        <Text style={styles.cardSubtitle}>
-          {property.propertyDetails || "20 sqft"}
-        </Text>
-        <Text style={styles.cardSubtitle}>Location: {property.location}</Text>
-        <Text style={styles.cardPrice}>
-          ₹ {parseInt(property.price).toLocaleString()}
-        </Text>
-        <View style={styles.cardButtons}>
-          <TouchableOpacity
-            style={styles.enquiryBtn}
-            onPress={() => handleEnquiryNow(property)}
+      <TouchableOpacity
+        onPress={() => handlePropertyPress(property)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.propertyCard}>
+          <Image source={imageUri} style={styles.propertyImage} />
+          <View
+            style={[
+              styles.statusTag,
+              {
+                backgroundColor:
+                  propertyTag === "Approved Property" ? "#4CAF50" : "#FF9800",
+              },
+            ]}
           >
-            <Text style={{ color: "white", fontWeight: "bold" }}>
-              Enquiry Now
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shareBtn}>
-            <FontAwesome name="share" size={16} color="white" />
-            <Text style={{ color: "white", marginLeft: 5, fontWeight: "bold" }}>
-              Share
-            </Text>
-          </TouchableOpacity>
+            <Text style={styles.statusText}>{propertyTag}</Text>
+          </View>
+          <View style={styles.propertyIdContainer}>
+            <Text style={styles.propertyId}>ID: {propertyId}</Text>
+          </View>
+          <Text style={styles.cardTitle}>{property.propertyType}</Text>
+          <Text style={styles.cardSubtitle}>
+            {property.propertyDetails || "20 sqft"}
+          </Text>
+          <Text style={styles.cardSubtitle}>Location: {property.location}</Text>
+          <Text style={styles.cardPrice}>
+            ₹ {parseInt(property.price).toLocaleString()}
+          </Text>
+          <View style={styles.cardButtons}>
+            <TouchableOpacity
+              style={styles.enquiryBtn}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleEnquiryNow(property);
+              }}
+            >
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                Enquiry Now
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.shareBtn}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleShare(property);
+              }}
+            >
+              <FontAwesome name="share" size={16} color="white" />
+              <Text
+                style={{ color: "white", marginLeft: 5, fontWeight: "bold" }}
+              >
+                Share
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -367,7 +471,10 @@ const HomeScreen = () => {
         </View>
         <TouchableOpacity
           style={styles.iHaveButton}
-          onPress={() => handleIHave(item)}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleIHave(item);
+          }}
         >
           <Text style={styles.buttonText}>I Have</Text>
         </TouchableOpacity>
@@ -375,14 +482,17 @@ const HomeScreen = () => {
     );
   };
 
-  const SectionHeader = ({ title }) => (
+  const SectionHeader = ({ title, onViewAll }) => (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <TouchableOpacity>
+      <TouchableOpacity onPress={onViewAll}>
         <Text style={styles.viewAll}>View All</Text>
       </TouchableOpacity>
     </View>
   );
+
+  // Then in your HomeScreen component, update the section headers like this:
+
   const actionButton = (
     iconName,
     label,
@@ -400,38 +510,9 @@ const HomeScreen = () => {
       <Text style={{ textAlign: "center", marginTop: 5 }}>{label}</Text>
     </TouchableOpacity>
   );
-  const bottomTab = (label, icon, screenName) => {
-    return (
-      <TouchableOpacity
-        style={styles.tabItem}
-        onPress={() => navigation.navigate(screenName)}
-      >
-        <Ionicons name={icon} size={22} color="#555" />
-        <Text style={styles.tabLabel}>{label}</Text>
-      </TouchableOpacity>
-    );
-  };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      {/* <Uppernavigation/> */}
-
-      {/* Search */}
-      {/* <View style={styles.searchBar}>
-        <Ionicons
-          name="search"
-          size={20}
-          color="#999"
-          style={{ marginRight: 8 }}
-        />
-        <TextInput
-          placeholder="Search a Property"
-          placeholderTextColor="#999"
-          style={styles.searchInput}
-        />
-      </View> */}
-
       <ScrollView style={styles.scrollView}>
         <View style={styles.actionRow}>
           {actionButton(
@@ -456,17 +537,21 @@ const HomeScreen = () => {
             "requestexpert"
           )}
         </View>
+
         {/* Regular Properties */}
         {regularProperties.length > 0 && (
           <>
-            <SectionHeader title="Regular Properties" />
+            <SectionHeader
+              title="Regular Properties"
+              onViewAll={() => navigation.navigate("regularprop")}
+            />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
               {regularProperties.map((property, index) => (
-                <PropertyCard key={index} property={property} />
+                <RenderPropertyCard key={index} property={property} />
               ))}
             </ScrollView>
           </>
@@ -475,14 +560,17 @@ const HomeScreen = () => {
         {/* Approved Properties */}
         {approvedProperties.length > 0 && (
           <>
-            <SectionHeader title="Approved Properties" />
+            <SectionHeader
+              title="Approved Properties"
+              onViewAll={() => navigation.navigate("approveprop")}
+            />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
               {approvedProperties.map((property, index) => (
-                <PropertyCard key={index} property={property} />
+                <RenderPropertyCard key={index} property={property} />
               ))}
             </ScrollView>
           </>
@@ -491,14 +579,17 @@ const HomeScreen = () => {
         {/* Wealth Properties */}
         {wealthProperties.length > 0 && (
           <>
-            <SectionHeader title="Wealth Properties" />
+            <SectionHeader
+              title="Wealth Properties"
+              onViewAll={() => navigation.navigate("wealthprop")}
+            />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
               {wealthProperties.map((property, index) => (
-                <PropertyCard key={index} property={property} />
+                <RenderPropertyCard key={index} property={property} />
               ))}
             </ScrollView>
           </>
@@ -507,14 +598,17 @@ const HomeScreen = () => {
         {/* Listed Properties */}
         {listedProperties.length > 0 && (
           <>
-            <SectionHeader title="Listed Properties" />
+            <SectionHeader
+              title="Listed Properties"
+              onViewAll={() => navigation.navigate("listedprop")}
+            />
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
               {listedProperties.map((property, index) => (
-                <PropertyCard key={index} property={property} />
+                <RenderPropertyCard key={index} property={property} />
               ))}
             </ScrollView>
           </>
@@ -587,7 +681,6 @@ const HomeScreen = () => {
           </>
         )}
       </ScrollView>
-      {/* <BottomNavigation/> */}
 
       <Modal
         visible={isPropertyModalVisible}
@@ -598,7 +691,17 @@ const HomeScreen = () => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             {!referredInfo ? (
-              <ActivityIndicator size="large" color="#007bff" />
+              <View style={styles.noReferredInfo}>
+                <Text style={styles.noReferredInfoText}>
+                  No referral information available
+                </Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setPropertyModalVisible(false)}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               <>
                 <Image
@@ -608,11 +711,13 @@ const HomeScreen = () => {
                 <Text style={styles.modalTitle}>Referred By</Text>
                 <Text style={styles.modalText}>Name: {referredInfo.name}</Text>
                 <Text style={styles.modalText}>
-                  Mobile: {referredInfo.Number}
+                  Mobile: {referredInfo.mobileNumber}
                 </Text>
                 <TouchableOpacity
                   style={styles.callButton}
-                  onPress={() => Linking.openURL(`tel:${referredInfo.Number}`)}
+                  onPress={() =>
+                    Linking.openURL(`tel:${referredInfo.mobileNumber}`)
+                  }
                 >
                   <Ionicons name="call" size={20} color="white" />
                   <Text style={styles.callButtonText}>Call Now</Text>
@@ -643,99 +748,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 15,
-    justifyContent: "space-between",
-  },
-  userInfo: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  logo: {
-    width: 60,
-    height: 60,
-    resizeMode: "contain",
-    borderRadius: 10,
-  },
-  userName: {
-    fontWeight: "bold",
-    fontSize: 16,
-    color: "#333",
-    left: "20%",
-  },
-  userRef: {
-    fontSize: 12,
-    color: "#666",
-    left: "18%",
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
   actionRow: {
     flexDirection: "row",
     justifyContent: "space-evenly",
     marginVertical: 20,
     gap: 30,
-  },
-  actionButton: {
-    alignItems: "center",
-    width: "30%",
-    borderRadius: "50%",
-    color: "#D81B60",
-  },
-  actionIconContainer: {
-    backgroundColor: "white",
-    width: 70,
-    height: 70,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    borderRadius: "50%",
-  },
-  actionLabel: {
-    fontSize: 12,
-    textAlign: "center",
-    color: "#555",
-    fontWeight: "500",
-  },
-  scrollView: {
-    flex: 1,
-    marginBottom: 60,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 15,
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontWeight: "bold",
-    fontSize: 16,
-    color: "#333",
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: "#333",
   },
   scrollView: {
     flex: 1,
@@ -744,6 +761,16 @@ const styles = StyleSheet.create({
   horizontalScroll: {
     paddingVertical: 10,
   },
+  // noReferredInfo: {
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  //   padding: 20,
+  // },
+  // noReferredInfoText: {
+  //   fontSize: 16,
+  //   color: "#666",
+  //   marginBottom: 20,
+  // },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -923,27 +950,6 @@ const styles = StyleSheet.create({
   projectTitle: {
     fontSize: 12,
     textAlign: "center",
-  },
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingVertical: 10,
-    backgroundColor: "white",
-    borderTopWidth: 1,
-    borderColor: "#eee",
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  tabItem: {
-    alignItems: "center",
-    paddingHorizontal: 5,
-  },
-  tabLabel: {
-    fontSize: 10,
-    marginTop: 4,
-    color: "#555",
   },
   modalContainer: {
     flex: 1,

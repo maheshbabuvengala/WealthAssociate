@@ -169,7 +169,7 @@ export default function ViewSkilledLabours() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScrollView style={styles.container}>
       <Text style={styles.heading}>Skilled Resource</Text>
 
       {loading ? (
@@ -187,15 +187,16 @@ export default function ViewSkilledLabours() {
           )}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
+    // backgroundColor: "#f2f2f2",
     paddingHorizontal: 10,
+    // backgroundColor: "rgba(0,0,0,0.5)",
   },
   loaderContainer: {
     flex: 1,

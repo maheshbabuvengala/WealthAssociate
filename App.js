@@ -51,8 +51,17 @@ import PostProperty from "./NewWealth/Properties/PostProperty";
 import RequestedProperty from "./NewWealth/Properties/RequestProperty";
 import RequestedExpert from "./NewWealth/ExpertPanel/Requested_expert";
 import Add_Agent from "./NewWealth/Add_Member/Add_Agent";
-
+import RegisterValue from "./NewWealth/Add_Member/RegisterValue";
+import Rrwa from "./NewWealth/Add_Member/Rrwa";
+import Rewa from "./NewWealth/Add_Member/Rewa";
+import PropertyDetailsScreen from "./NewWealth/Properties/ViewPropertyDetails";
+import PropertyCard from "./NewWealth/MainScreen/PropertyCard";
+import RegularProperties from "./NewWealth/Properties/PropertyTypesdata/RegularProperties";
+import ApprovedPropertiesScreen from "./NewWealth/Properties/PropertyTypesdata/ApprovesProperties";
+import WealthPropertiesScreen from "./NewWealth/Properties/PropertyTypesdata/WealthPropertys";
 import { API_URL } from "./data/ApiUrl";
+import ListedPropertiesScreen from "./NewWealth/Properties/PropertyTypesdata/ListedPropertys";
+import NRI_Profile from "./NewWealth/UsersProfiles/NriProfile";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -302,21 +311,6 @@ export default function App() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
-            name="CustomerDashboard"
-            component={CustomerDashboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="CoreDashboard"
-            component={CoreDashboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="RefferalDashboard"
-            component={RLogin_screen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
             name="PrivacyPolicy"
             component={PrivacyPolicy}
             options={{ headerShown: true }}
@@ -326,21 +320,7 @@ export default function App() {
             component={Admin}
             options={{ headerShown: false }}
           />
-          <Stack.Screen
-            name="SkillDashboard"
-            component={SkillDasboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="NriDashboard"
-            component={NriDashboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="InvestorDashboard"
-            component={InvestorDashboard}
-            options={{ headerShown: false }}
-          />
+
           <Stack.Screen
             name="CallCenterDashboard"
             component={CallCenterDashboard}
@@ -378,15 +358,37 @@ export default function App() {
               cardStyle: { backgroundColor: "transparent" },
             }}
           />
-          <Stack.Screen
-            name="requestexpert"
-            component={RequestedExpert}
-            options={{ presentation: "transparentModal" }}
-          />
+
           <Stack.Screen
             name="addagent"
             component={Add_Agent}
-            options={{ presentation: "transparentModal" }}
+            options={{
+              presentation: "modal",
+              headerShown: false,
+              cardOverlayEnabled: true,
+              gestureEnabled: true,
+              cardStyle: { backgroundColor: "transparent" },
+            }}
+          />
+          <Stack.Screen
+            name="AddRegionalWealthAssociate"
+            component={Rrwa}
+            options={{ presentation: "modal", headerShown: false }}
+          />
+          <Stack.Screen
+            name="AddValueWealthAssociate"
+            component={RegisterValue}
+            options={{ presentation: "modal", headerShown: false }}
+          />
+          <Stack.Screen
+            name="AddExecutiveWealthAssociate"
+            component={Rewa}
+            options={{ presentation: "modal", headerShown: false }}
+          />
+          <Stack.Screen
+            name="PropertyCard"
+            component={PropertyCard}
+            options={{ presentation: "modal", headerShown: false }}
           />
 
           <Stack.Screen
@@ -422,6 +424,13 @@ export default function App() {
               </PersistentLayout>
             )}
           </Stack.Screen>
+          <Stack.Screen name="nriprofile">
+            {() => (
+              <PersistentLayout>
+                <NRI_Profile />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
           <Stack.Screen name="propertyhome">
             {() => (
               <PersistentLayout>
@@ -443,13 +452,54 @@ export default function App() {
               </PersistentLayout>
             )}
           </Stack.Screen>
+          <Stack.Screen name="requestexpert">
+            {() => (
+              <PersistentLayout>
+                <RequestedExpert />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="regularprop">
+            {() => (
+              <PersistentLayout>
+                <RegularProperties />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="approveprop">
+            {() => (
+              <PersistentLayout>
+                <ApprovedPropertiesScreen />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="wealthprop">
+            {() => (
+              <PersistentLayout>
+                <WealthPropertiesScreen />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="listedprop">
+            {() => (
+              <PersistentLayout>
+                <ListedPropertiesScreen />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="PropertyDetails">
+            {(props) => (
+              <PersistentLayout>
+                <PropertyDetailsScreen {...props} />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
     </NavigationIndependentTree>
   );
 }
 
-// Helper function to send token to backend
 async function sendTokenToBackend(token, deviceType) {
   try {
     const userId = await AsyncStorage.getItem("userId");

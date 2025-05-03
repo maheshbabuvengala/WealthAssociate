@@ -6,16 +6,25 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
+  Platform,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
-import { ActivityIndicator } from "react-native";
 
 // Cache for user data
 let userDataCache = null;
 let lastFetchTime = 0;
+
+// Add this export function
+export const clearHeaderCache = () => {
+  userDataCache = null;
+  lastFetchTime = 0;
+  console.log("Header cache cleared");
+};
 const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes cache
 
 const Header = () => {
@@ -29,9 +38,50 @@ const Header = () => {
 
   const isHomeScreen = route.name === "newhome";
 
-  // Memoized fetch function
+  const fetchReferredDetails = useCallback(async (referredBy, addedBy) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const identifier = referredBy || addedBy;
+      if (!identifier) return;
+
+      const response = await fetch(
+        `${API_URL}/properties/getPropertyreffered`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token || "",
+          },
+          body: JSON.stringify({
+            referredBy: referredBy || addedBy,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === "success") {
+        const details = data.referredByDetails || data.addedByDetails;
+        if (details) {
+          await AsyncStorage.setItem(
+            "referredAddedByInfo",
+            JSON.stringify({
+              name: details.name || details.Name,
+              mobileNumber: details.Number,
+            })
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching referred/added by info:", error);
+    }
+  }, []);
+
   const fetchUserDetails = useCallback(async () => {
-    // Return cached data if it's fresh enough
     if (userDataCache && Date.now() - lastFetchTime < CACHE_EXPIRY_TIME) {
       setUserData({
         details: userDataCache.details,
@@ -42,7 +92,6 @@ const Header = () => {
     }
 
     try {
-      // Get both token and userType in one AsyncStorage call
       const [token, userType] = await Promise.all([
         AsyncStorage.getItem("authToken"),
         AsyncStorage.getItem("userType"),
@@ -87,7 +136,6 @@ const Header = () => {
 
       const details = await response.json();
 
-      // Update cache
       userDataCache = { details, userType };
       lastFetchTime = Date.now();
 
@@ -96,11 +144,27 @@ const Header = () => {
         userType,
         loading: false,
       });
+
+      // Fetch referred/added by details based on user type
+      if (
+        [
+          "WealthAssociate",
+          "Customer",
+          "CoreMember",
+          "ReferralAssociate",
+        ].includes(userType)
+      ) {
+        if (details.ReferredBy) {
+          await fetchReferredDetails(details.ReferredBy, null);
+        }
+      } else if (details.AddedBy) {
+        await fetchReferredDetails(null, details.AddedBy);
+      }
     } catch (error) {
       console.error("Header data fetch failed:", error);
       setUserData((prev) => ({ ...prev, loading: false }));
     }
-  }, []);
+  }, [fetchReferredDetails]);
 
   useEffect(() => {
     fetchUserDetails();
@@ -118,7 +182,7 @@ const Header = () => {
       Customer: "CustomerProfile",
       CoreMember: "CoreProfile",
       Investor: "InvestorProfile",
-      NRI: "NRIProfile",
+      NRI: "nriprofile",
       SkilledResource: "SkilledProfile",
     };
 
@@ -139,77 +203,76 @@ const Header = () => {
 
   if (userData.loading) {
     return (
-      <View style={[styles.header, { justifyContent: "center" }]}>
+      <View
+        style={[styles.header, styles.safeArea, { justifyContent: "center" }]}
+      >
         <ActivityIndicator size="small" color="#555" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView>
-      <View style={styles.header}>
-        {!isHomeScreen && (
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={26} color="#555" />
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity onPress={() => navigation.navigate("newhome")}>
-          <Image
-            source={require("../../assets/logo.png")}
-            style={styles.logo}
-          />
+    <View style={[styles.header, styles.safeArea]}>
+      {!isHomeScreen && (
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={26} color="#555" />
         </TouchableOpacity>
+      )}
 
-        <View style={styles.userInfo}>
-          <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
-            {userData.details?.FullName ||
-              userData.details?.Name ||
-              "Welcome User"}
+      <TouchableOpacity onPress={() => navigation.navigate("newhome")}>
+        <Image source={require("../../assets/logo.png")} style={styles.logo} />
+      </TouchableOpacity>
+
+      <View style={styles.userInfo}>
+        <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
+          {userData.details?.FullName ||
+            userData.details?.Name ||
+            "Welcome User"}
+        </Text>
+        {showReferralCode && (
+          <Text style={styles.userRef} numberOfLines={1} ellipsizeMode="tail">
+            Ref: {userData.details?.MyRefferalCode || "N/A"}
           </Text>
-          {showReferralCode && (
-            <Text style={styles.userRef} numberOfLines={1} ellipsizeMode="tail">
-              Ref: {userData.details?.MyRefferalCode || "N/A"}
-            </Text>
-          )}
-        </View>
-
-        <TouchableOpacity
-          onPress={handleProfilePress}
-          style={styles.profileButton}
-        >
-          <Ionicons name="person-circle" size={36} color="#555" />
-        </TouchableOpacity>
+        )}
       </View>
-    </SafeAreaView>
+
+      <TouchableOpacity
+        onPress={handleProfilePress}
+        style={styles.profileButton}
+      >
+        <Ionicons name="person-circle" size={36} color="#555" />
+      </TouchableOpacity>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: "#fff",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 15,
-    paddingHorizontal: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    top: 10,
   },
   logo: {
-    width: 55,
-    height: 55,
+    width: 50,
+    height: 50,
     marginHorizontal: 10,
-    bottom: 6,
   },
   userInfo: {
     flex: 1,
-    marginLeft: 5,
-    left: "10%",
+    marginLeft: 10,
   },
   userName: {
     fontWeight: "600",
     fontSize: 16,
+    color: "#333",
   },
   userRef: {
     fontSize: 12,

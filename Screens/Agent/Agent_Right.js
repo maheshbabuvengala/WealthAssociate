@@ -918,7 +918,7 @@ const Agent_Right = ({ onViewAllPropertiesClick }) => {
         onRequestClose={() => setPostedProperty(null)}
       >
         <View style={styles.modalContainer}>
-          {postedProperty && ( // Only render PropertyCard if postedProperty exists
+          {postedProperty && ( 
             <PropertyCard
               property={postedProperty}
               closeModal={() => setPostedProperty(null)}

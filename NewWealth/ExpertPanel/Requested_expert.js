@@ -11,6 +11,8 @@ import {
   TouchableWithoutFeedback,
   FlatList,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  ScrollView,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { API_URL } from "../../data/ApiUrl";
@@ -199,7 +201,7 @@ const RequestedExpert = ({ closeModal }) => {
         <Modal
           visible={showDropdown}
           transparent={true}
-          animationType="fade"
+          animationType="none"
           onRequestClose={() => setShowDropdown(false)}
           accessibilityViewIsModal={true}
         >
@@ -209,9 +211,9 @@ const RequestedExpert = ({ closeModal }) => {
 
           <View
             style={[
-              styles.dropdownContainer,
+              styles.dropdownContainerIOS,
               {
-                top: dropdownPosition.y,
+                top: dropdownPosition.y + 10,
                 left: dropdownPosition.x,
                 width: dropdownPosition.width,
               },
@@ -224,6 +226,8 @@ const RequestedExpert = ({ closeModal }) => {
               keyExtractor={(item) => item.value}
               style={styles.dropdownList}
               nestedScrollEnabled={true}
+              bounces={false}
+              keyboardShouldPersistTaps="always"
             />
           </View>
         </Modal>
@@ -240,56 +244,76 @@ const RequestedExpert = ({ closeModal }) => {
   }
 
   return (
-    <View style={styles.modalContent} accessibilityViewIsModal={true}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Request Expert Assistance</Text>
-      </View>
-
-      {/* Dropdown */}
-      <Text style={styles.label}>Select Expert Type</Text>
-      {renderDropdown()}
-
-      {/* Reason Textbox */}
-      <Text style={styles.label}>Reason (Minimum 10 characters)</Text>
-      <TextInput
-        style={styles.textArea}
-        placeholder="Please describe why you need this expert..."
-        placeholderTextColor="#999"
-        multiline
-        minLength={10}
-        value={reason}
-        onChangeText={setReason}
-        accessibilityLabel="Reason for expert request"
-        accessibilityHint="Enter at least 10 characters"
-      />
-
-      {/* Buttons */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.requestButton, isSubmitting && styles.disabledButton]}
-          onPress={handleRequest}
-          disabled={isSubmitting}
-          accessibilityRole="button"
-          accessibilityLabel="Submit expert request"
+      <ScrollView>
+    <KeyboardAvoidingView>
+        <View
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignContent: "center",
+            height: "100vh",
+            backgroundColor: "white",
+          }}
         >
-          {isSubmitting ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.buttonText}>Request</Text>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.cancelButton, isSubmitting && styles.disabledButton]}
-          onPress={() => navigation.goBack()}
-          disabled={isSubmitting}
-          accessibilityRole="button"
-          accessibilityLabel="Cancel expert request"
-        >
-          <Text style={styles.buttonText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          <View style={styles.modalContent} accessibilityViewIsModal={true}>
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.headerText}>Request Expert Assistance</Text>
+            </View>
+
+            {/* Dropdown */}
+            <Text style={styles.label}>Select Expert Type</Text>
+            {renderDropdown()}
+
+            {/* Reason Textbox */}
+            <Text style={styles.label}>Reason (Minimum 10 characters)</Text>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Please describe why you need this expert..."
+              placeholderTextColor="#999"
+              multiline
+              minLength={10}
+              value={reason}
+              onChangeText={setReason}
+              accessibilityLabel="Reason for expert request"
+              accessibilityHint="Enter at least 10 characters"
+            />
+
+            {/* Buttons */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.requestButton,
+                  isSubmitting && styles.disabledButton,
+                ]}
+                onPress={handleRequest}
+                disabled={isSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel="Submit expert request"
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Request</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.cancelButton,
+                  isSubmitting && styles.disabledButton,
+                ]}
+                onPress={() => navigation.goBack()}
+                disabled={isSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel expert request"
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+    </KeyboardAvoidingView>
+      </ScrollView>
   );
 };
 
@@ -297,8 +321,7 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: "white",
     width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "40%",
-    // marginLeft: 20,
-    borderRadius: 15,
+    // borderRadius: 15,
     padding: 15,
     alignItems: "center",
     shadowColor: "#000",
@@ -307,6 +330,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     top: "15%",
+    height: "100%",
   },
   loadingContainer: {
     justifyContent: "center",
@@ -316,15 +340,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#E91E63",
     width: "100%",
     paddingVertical: 12,
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
+    // borderTopLeftRadius: 15,
+    // borderTopRightRadius: 15,
     alignItems: "center",
     position: "absolute",
-    top: 0,
+    // top: 0,
   },
   headerText: {
     color: "white",
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: "bold",
   },
   label: {
@@ -341,11 +365,11 @@ const styles = StyleSheet.create({
     width: "100%",
     overflow: "hidden",
     marginTop: 5,
-    height: 50,
+    height: 60,
     backgroundColor: "#f8f8f8",
   },
   picker: {
-    height: 50,
+    height: 60,
     color: "#000",
     backgroundColor: "transparent",
   },
@@ -370,19 +394,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.2)",
   },
-  dropdownContainer: {
+  dropdownContainerIOS: {
     position: "absolute",
     backgroundColor: "white",
     borderWidth: 1,
     borderColor: "#d1d1d6",
     borderRadius: 8,
-    maxHeight: 200,
-    elevation: 4,
+    maxHeight: 300,
+    zIndex: 9999,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    marginLeft: 600,
   },
   dropdownList: {
     flex: 1,
@@ -392,6 +415,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
+    minHeight: 44,
   },
   dropdownItemText: {
     fontSize: 16,
