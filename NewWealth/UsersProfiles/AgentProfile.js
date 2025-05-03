@@ -21,8 +21,7 @@ import Modify_Deatils from "./AgentUpdateProfile";
 import CustomModal from "../../Components/CustomModal";
 import { useNavigation } from "@react-navigation/native";
 import logo1 from "../../assets/man2.png";
-import Uppernavigation from "../MainScreen/Uppernavigation";
-import BottomNavigation from "../MainScreen/BottomNavigation";
+import { clearHeaderCache } from "../MainScreen/Uppernavigation";
 
 const { width } = Dimensions.get("window");
 
@@ -178,8 +177,23 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
   };
 
   const LogOut = async () => {
-    const token = await AsyncStorage.removeItem("authToken");
-    navigation.navigate("Main Screen");
+    try {
+      // Clear all user-related data from AsyncStorage
+      await AsyncStorage.multiRemove([
+        "authToken",
+        "userType",
+        "userData",
+        "referredAddedByInfo",
+      ]);
+
+      // Clear the in-memory header cache
+      clearHeaderCache();
+
+      // Navigate to main screen
+      navigation.navigate("Main Screen");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
   };
 
   const LogOuts = async () => {

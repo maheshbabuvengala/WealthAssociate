@@ -22,7 +22,7 @@ import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
-const Agent_Profile = ({ onDetailsUpdates }) => {
+const NRI_Profile = ({ onDetailsUpdates }) => {
   const [Details, setDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -218,7 +218,7 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
                   source={
                     profileImage
                       ? { uri: profileImage }
-                      : require("../../../assets/man2.png")
+                      : require("../../assets/man2.png")
                   }
                   style={styles.avatar}
                 />
@@ -274,14 +274,18 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
                 <Text style={styles.buttonTexts}>Delete Your Account </Text>
               </TouchableOpacity>
             </View>
-
+            // Update the CustomModal usage to include proper animation
             <CustomModal
               isVisible={modalVisible}
               closeModal={() => setModalVisible(false)}
+              animationType="slide"
+              style={styles.modal}
             >
               <Modify_Deatils
-                closeModal={() => setModalVisible(false)}
-                onDetailsUpdate={handleDetailsUpdate}
+                closeModal={() => {
+                  setModalVisible(false);
+                  handleDetailsUpdate();
+                }}
               />
             </CustomModal>
           </>
@@ -318,10 +322,11 @@ const styles = StyleSheet.create({
   agentProfileText: {
     fontWeight: "600",
     fontSize: 20,
-    marginBottom: 10,
+    // paddingBottom: "20%",
   },
   scrollContainer: {
     flexGrow: 1,
+    paddingBottom: "10%",
   },
   container: {
     flex: 1,
@@ -425,6 +430,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  modal: {
+    justifyContent: "center",
+    alignItems: "center",
+    margin: 0,
+  },
 });
 
-export default Agent_Profile;
+export default NRI_Profile;

@@ -70,7 +70,7 @@ const Rskill = ({ closeModal }) => {
         const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
         const data = await response.json();
         setConstituencies(data);
-        setFilteredConstituencies(data.flatMap(item => item.assemblies));
+        setFilteredConstituencies(data.flatMap((item) => item.assemblies));
       } catch (error) {
         console.error("Error fetching constituencies:", error);
       }
@@ -83,7 +83,7 @@ const Rskill = ({ closeModal }) => {
   // Filter skills based on search input
   useEffect(() => {
     if (skillSearch) {
-      const filtered = skills.filter(skillItem =>
+      const filtered = skills.filter((skillItem) =>
         skillItem.toLowerCase().includes(skillSearch.toLowerCase())
       );
       setFilteredSkills(filtered);
@@ -95,14 +95,16 @@ const Rskill = ({ closeModal }) => {
   // Filter constituencies based on search input
   useEffect(() => {
     if (locationSearch) {
-      const filtered = constituencies.flatMap(item =>
-        item.assemblies.filter(assembly =>
+      const filtered = constituencies.flatMap((item) =>
+        item.assemblies.filter((assembly) =>
           assembly.name.toLowerCase().includes(locationSearch.toLowerCase())
         )
       );
       setFilteredConstituencies(filtered);
     } else {
-      setFilteredConstituencies(constituencies.flatMap(item => item.assemblies));
+      setFilteredConstituencies(
+        constituencies.flatMap((item) => item.assemblies)
+      );
     }
   }, [locationSearch, constituencies]);
 
@@ -113,7 +115,10 @@ const Rskill = ({ closeModal }) => {
     }
 
     if (!Details || !Details.MobileNumber) {
-      Alert.alert("Error", "Agent details are not available. Please try again.");
+      Alert.alert(
+        "Error",
+        "Agent details are not available. Please try again."
+      );
       return;
     }
 
@@ -154,56 +159,120 @@ const Rskill = ({ closeModal }) => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
     >
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerText}>Register Skilled Resource</Text>
-        </View>
-        <View style={styles.form}>
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            value={fullName}
-            onChangeText={setFullName}
-            style={styles.input}
-            placeholder="Enter full name"
-          />
+      <ScrollView>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.headerText}>Register Skilled Resource</Text>
+          </View>
+          <View style={styles.form}>
+            <Text style={styles.label}>Full Name</Text>
+            <TextInput
+              value={fullName}
+              onChangeText={setFullName}
+              style={styles.input}
+              placeholder="Enter full name"
+            />
 
-          <Text style={styles.label}>Select Skill</Text>
-          {loadingSkills ? (
-            <ActivityIndicator size="small" color="#E91E63" />
-          ) : (
+            <Text style={styles.label}>Select Skill</Text>
+            {loadingSkills ? (
+              <ActivityIndicator size="small" color="#E91E63" />
+            ) : (
+              <View style={styles.inputContainer}>
+                <View style={styles.searchInputContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search and select skill"
+                    value={showSkillDropdown ? skillSearch : skill}
+                    onChangeText={(text) => {
+                      if (showSkillDropdown) {
+                        setSkillSearch(text);
+                      } else {
+                        setSkill(text);
+                        setSkillSearch(text);
+                        setShowSkillDropdown(true);
+                      }
+                    }}
+                    onFocus={() => {
+                      setShowSkillDropdown(true);
+                      setSkillSearch("");
+                    }}
+                  />
+                  {showSkillDropdown && (
+                    <TouchableOpacity
+                      onPress={() => setShowSkillDropdown(false)}
+                      style={styles.dropdownToggle}
+                    >
+                      <Text style={styles.dropdownToggleText}>▲</Text>
+                    </TouchableOpacity>
+                  )}
+                  {!showSkillDropdown && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowSkillDropdown(true);
+                        setSkillSearch("");
+                      }}
+                      style={styles.dropdownToggle}
+                    >
+                      <Text style={styles.dropdownToggleText}>▼</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {showSkillDropdown && (
+                  <View style={styles.dropdownContainer}>
+                    <ScrollView style={styles.scrollContainer}>
+                      {filteredSkills.map((item) => (
+                        <TouchableOpacity
+                          key={item}
+                          style={styles.listItem}
+                          onPress={() => {
+                            setSkill(item);
+                            setSkillSearch("");
+                            setShowSkillDropdown(false);
+                          }}
+                        >
+                          <Text>{item}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+            )}
+
+            <Text style={styles.label}>Location</Text>
             <View style={styles.inputContainer}>
               <View style={styles.searchInputContainer}>
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Search and select skill"
-                  value={showSkillDropdown ? skillSearch : skill}
+                  placeholder="Search and select location"
+                  value={showLocationList ? locationSearch : location}
                   onChangeText={(text) => {
-                    if (showSkillDropdown) {
-                      setSkillSearch(text);
+                    if (showLocationList) {
+                      setLocationSearch(text);
                     } else {
-                      setSkill(text);
-                      setSkillSearch(text);
-                      setShowSkillDropdown(true);
+                      setLocation(text);
+                      setLocationSearch(text);
+                      setShowLocationList(true);
                     }
                   }}
                   onFocus={() => {
-                    setShowSkillDropdown(true);
-                    setSkillSearch("");
+                    setShowLocationList(true);
+                    setLocationSearch("");
                   }}
                 />
-                {showSkillDropdown && (
+                {showLocationList && (
                   <TouchableOpacity
-                    onPress={() => setShowSkillDropdown(false)}
+                    onPress={() => setShowLocationList(false)}
                     style={styles.dropdownToggle}
                   >
                     <Text style={styles.dropdownToggleText}>▲</Text>
                   </TouchableOpacity>
                 )}
-                {!showSkillDropdown && (
+                {!showLocationList && (
                   <TouchableOpacity
                     onPress={() => {
-                      setShowSkillDropdown(true);
-                      setSkillSearch("");
+                      setShowLocationList(true);
+                      setLocationSearch("");
                     }}
                     style={styles.dropdownToggle}
                   >
@@ -211,118 +280,62 @@ const Rskill = ({ closeModal }) => {
                   </TouchableOpacity>
                 )}
               </View>
-              {showSkillDropdown && (
+              {showLocationList && (
                 <View style={styles.dropdownContainer}>
                   <ScrollView style={styles.scrollContainer}>
-                    {filteredSkills.map((item) => (
+                    {filteredConstituencies.map((item) => (
                       <TouchableOpacity
-                        key={item}
+                        key={`${item.code}-${item.name}`}
                         style={styles.listItem}
                         onPress={() => {
-                          setSkill(item);
-                          setSkillSearch("");
-                          setShowSkillDropdown(false);
+                          setLocation(item.name);
+                          setLocationSearch("");
+                          setShowLocationList(false);
                         }}
                       >
-                        <Text>{item}</Text>
+                        <Text>{item.name}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
                 </View>
               )}
             </View>
-          )}
 
-          <Text style={styles.label}>Location</Text>
-          <View style={styles.inputContainer}>
-            <View style={styles.searchInputContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search and select location"
-                value={showLocationList ? locationSearch : location}
-                onChangeText={(text) => {
-                  if (showLocationList) {
-                    setLocationSearch(text);
-                  } else {
-                    setLocation(text);
-                    setLocationSearch(text);
-                    setShowLocationList(true);
-                  }
-                }}
-                onFocus={() => {
-                  setShowLocationList(true);
-                  setLocationSearch("");
-                }}
-              />
-              {showLocationList && (
-                <TouchableOpacity
-                  onPress={() => setShowLocationList(false)}
-                  style={styles.dropdownToggle}
-                >
-                  <Text style={styles.dropdownToggleText}>▲</Text>
-                </TouchableOpacity>
-              )}
-              {!showLocationList && (
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowLocationList(true);
-                    setLocationSearch("");
-                  }}
-                  style={styles.dropdownToggle}
-                >
-                  <Text style={styles.dropdownToggleText}>▼</Text>
-                </TouchableOpacity>
-              )}
+            <Text style={styles.label}>Mobile Number</Text>
+            <TextInput
+              value={mobileNumber}
+              onChangeText={setMobileNumber}
+              keyboardType="numeric"
+              style={styles.input}
+              placeholder="Enter mobile number"
+              maxLength={10}
+            />
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.registerButton,
+                  loading && styles.disabledButton,
+                ]}
+                onPress={handleRegister}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Register</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={closeModal}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
             </View>
-            {showLocationList && (
-              <View style={styles.dropdownContainer}>
-                <ScrollView style={styles.scrollContainer}>
-                  {filteredConstituencies.map((item) => (
-                    <TouchableOpacity
-                      key={`${item.code}-${item.name}`}
-                      style={styles.listItem}
-                      onPress={() => {
-                        setLocation(item.name);
-                        setLocationSearch("");
-                        setShowLocationList(false);
-                      }}
-                    >
-                      <Text>{item.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-
-          <Text style={styles.label}>Mobile Number</Text>
-          <TextInput
-            value={mobileNumber}
-            onChangeText={setMobileNumber}
-            keyboardType="numeric"
-            style={styles.input}
-            placeholder="Enter mobile number"
-            maxLength={10}
-          />
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.registerButton, loading && styles.disabledButton]}
-              onPress={handleRegister}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Register</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-              <Text style={styles.buttonText}>Cancel</Text>
-            </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };

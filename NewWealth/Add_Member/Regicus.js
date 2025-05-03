@@ -214,8 +214,8 @@ const RegisterExecute = ({ closeModal }) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
-        resetScrollToCoords={{ x: 0, y: 0 }} // Add this
-      >
+        resetScrollToCoords={{ x: 0, y: 0 }} 
+        style={{left:"8%",top:"5%"}}      >
         <View
           style={[
             styles.container,
@@ -433,6 +433,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
+    left:"10%"
   },
   errorText: {
     color: "red",

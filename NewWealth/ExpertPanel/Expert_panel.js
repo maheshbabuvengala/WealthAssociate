@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 
 const data = [
   {
@@ -72,22 +73,64 @@ const data = [
   },
 ];
 
-const ExpertPanel = ({ onSwitch }) => {
+const ExpertPanel = ({ onSwitch, userType }) => {
   const { width } = useWindowDimensions();
   const numColumns = width > 600 ? 4 : width > 300 ? 3 : 2;
   const spacing = 8;
   const itemSize = (width - spacing * (numColumns + 1)) / numColumns;
 
+  const navigation = useNavigation();
+
+  const isCoreMember = userType === "CoreMember";
+
+  const handleRequestExpert = () => {
+    console.log("Attempting to navigate to requestexpert"); 
+    try {
+      navigation.navigate("requestexpert");
+      console.log("Navigation successful"); 
+    } catch (error) {
+      console.error("Navigation error:", error);
+      Alert.alert(
+        "Navigation Error",
+        `Failed to open request screen: ${error.message}`
+      );
+    }
+  };
   return (
     <ScrollView>
       <View style={styles.mainContainer}>
-        <Text style={styles.header}>Expert Panel</Text>
+        <View style={{ display: "flex", flexDirection: "row" }}>
+          <Text style={styles.header}>Expert Panel</Text>
+
+          {/* Buttons Container */}
+          <View style={styles.buttonContainer}>
+            {/* Request Expert - Visible to all users */}
+            <TouchableOpacity
+              style={[styles.button, styles.requestButton]}
+              onPress={handleRequestExpert}
+            >
+              <Text style={styles.buttonText}>Request Expert</Text>
+            </TouchableOpacity>
+
+            {/* Add Expert - Only for Core Members */}
+            {isCoreMember && (
+              <TouchableOpacity
+                style={[styles.button, styles.addExpertButton]}
+                onPress={() => console.log("Add Expert pressed")}
+              >
+                <Text style={styles.buttonText}>Add Expert</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Expert Categories Grid */}
         <View style={styles.listContainer}>
           {data.map((item) => (
             <TouchableOpacity
               key={item.id}
               style={[styles.item, { width: itemSize }]}
-              onPress={() => onSwitch(item.title)} // Pass title on click
+              onPress={() => onSwitch(item.title)}
             >
               <View style={styles.iconContainer}>
                 <Image source={{ uri: item.icon }} style={styles.icon} />
@@ -102,23 +145,65 @@ const ExpertPanel = ({ onSwitch }) => {
 };
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: "#f8f9fa", paddingBottom: 60,padding:20 },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+    paddingBottom: 60,
+    padding: 20,
+  },
   header: {
     fontSize: 22,
     fontWeight: "bold",
-    marginBottom: 15,
+    // marginBottom: 15,
     textAlign: "center",
+    color: "#333",
+    top: 5,
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 150,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  requestButton: {
+    backgroundColor: "#4CAF50", // Green color
+  },
+  addExpertButton: {
+    backgroundColor: "#2196F3", // Blue color
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
   },
   listContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
   },
-  item: { alignItems: "center", justifyContent: "center", margin: 4 },
+  item: {
+    alignItems: "center",
+    justifyContent: "center",
+    margin: 10,
+    marginBottom: 15,
+  },
   iconContainer: {
     width: 80,
     height: 80,
-    borderRadius: 50,
+    borderRadius: 40,
     backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
@@ -127,13 +212,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 4,
+    marginBottom: 5,
   },
-  icon: { width: 35, height: 35, resizeMode: "contain" },
+  icon: {
+    width: 35,
+    height: 35,
+    resizeMode: "contain",
+  },
   text: {
     fontSize: 12,
     fontWeight: "bold",
     textAlign: "center",
-    marginTop: 4,
     color: "#333",
   },
 });

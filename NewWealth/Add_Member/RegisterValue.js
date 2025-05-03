@@ -21,7 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width } = Dimensions.get("window");
 
-const Add_Agent = ({ closeModal }) => {
+const RegisterValue = ({ closeModal }) => {
   const [fullname, setFullname] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
@@ -78,7 +78,6 @@ const Add_Agent = ({ closeModal }) => {
     fetchDistrictsAndConstituencies();
     fetchExpertise();
   }, []);
-
   const experienceOptions = [
     { name: "0-1 years", code: "01" },
     { name: "1-3 years", code: "02" },
@@ -116,7 +115,7 @@ const Add_Agent = ({ closeModal }) => {
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
+      const response = await fetch(`${API_URL}/core/getcore`, {
         method: "GET",
         headers: {
           token: `${token}` || "",
@@ -181,7 +180,7 @@ const Add_Agent = ({ closeModal }) => {
       ReferredBy: referralCode || "WA0000000001",
       Password: "Wealth",
       MyRefferalCode: referenceId,
-      AgentType: "WealthAssociate",
+      AgentType: "ValueAssociate",
     };
 
     try {
@@ -227,7 +226,7 @@ const Add_Agent = ({ closeModal }) => {
           <View style={styles.card}>
             <View style={styles.register_main}>
               <Text style={styles.register_text}>
-                Register Wealth Associate
+                Register Value Wealth Associate
               </Text>
             </View>
             {responseStatus === 400 && (
@@ -411,21 +410,19 @@ const Add_Agent = ({ closeModal }) => {
                     />
                     {showExperienceList && (
                       <View style={styles.dropdownContainer}>
-                        <ScrollView style={styles.scrollView}>
-                          {filteredExperience.map((item) => (
-                            <TouchableOpacity
-                              key={item.code}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setExperience(item.name);
-                                setExperienceSearch(item.name);
-                                setShowExperienceList(false);
-                              }}
-                            >
-                              <Text>{item.name}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
+                        {filteredExperience.map((item) => (
+                          <TouchableOpacity
+                            key={item.code}
+                            style={styles.listItem}
+                            onPress={() => {
+                              setExperience(item.name);
+                              setExperienceSearch(item.name);
+                              setShowExperienceList(false);
+                            }}
+                          >
+                            <Text>{item.name}</Text>
+                          </TouchableOpacity>
+                        ))}
                       </View>
                     )}
                   </View>
@@ -511,6 +508,7 @@ const Add_Agent = ({ closeModal }) => {
                         setShowExperienceList(false);
                       }}
                       value={referralCode}
+                      editable={false}
                     />
                     <MaterialIcons
                       name="card-giftcard"
@@ -534,7 +532,7 @@ const Add_Agent = ({ closeModal }) => {
               <TouchableOpacity
                 style={styles.cancelButton}
                 disabled={isLoading}
-                onPress={closeModal}
+                onPress={() => navigation.goBack()}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
@@ -696,6 +694,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
+    backgroundColor: "#FFF",
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 5,
@@ -712,4 +711,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Add_Agent;
+export default RegisterValue;

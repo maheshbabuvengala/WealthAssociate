@@ -8,51 +8,45 @@ import {
   Modal,
   ActivityIndicator,
   Dimensions,
-  width,
 } from "react-native";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
 import UpperNavigation from "../MainScreen/Uppernavigation";
 import BottomNavigation from "../MainScreen/BottomNavigation";
 
-import Add_Agent from "../Myagents/Myagents";
+import MyAgents from "../Myagents/Myagents";
 import MyCustomersScreen from "../Mycustomers/MyCustomers";
 import SkilledResourceScreen from "../SkilledResource/SkilledResource";
 import MyInvestorsScreen from "../Investors/MyInvestors";
 import MyNRIsScreen from "../Nris/Nris";
-import { useNavigation } from "@react-navigation/native";
 
 import Regicus from "./Regicus";
 import AddNri from "./AddNri";
 import AddInvestor from "./AddInvestors";
 import Rskill from "./Rskill";
+import Add_Agent from "./Add_Agent";
 
 export default function Add_Member() {
   const navigation = useNavigation();
   const [userType, setUserType] = useState("");
   const [agentType, setAgentType] = useState("");
   const [loading, setLoading] = useState(true);
-  // const [modalVisible, setModalVisible] = useState(false);
-  // const [subModalVisible, setSubModalVisible] = useState(false);
 
   // Modals state
   const [modalVisible, setModalVisible] = useState(false);
-  const [subModalVisible, setSubModalVisible] = useState(false);
   const [customerModalVisible, setCustomerModalVisible] = useState(false);
   const [nriModalVisible, setNriModalVisible] = useState(false);
   const [skilledModalVisible, setSkilledModalVisible] = useState(false);
   const [investorModalVisible, setInvestorModalVisible] = useState(false);
+  const [agentvisible, setAgentVisible] = useState(false);
+  const [regionalModalVisible, setRegionalModalVisible] = useState(false);
+  const [valueModalVisible, setValueModalVisible] = useState(false);
+  const [executiveModalVisible, setExecutiveModalVisible] = useState(false);
+  const [generalModalVisible, setGeneralModalVisible] = useState(false);
 
-  const [activeTab, setActiveTab] = useState(() => {
-    // Default to "My Agents" for WealthAssociate and CoreMember
-    if (["WealthAssociate", "CoreMember"].includes(userType)) {
-      return "My Agents";
-    }
-    // For other user types, default to "My Customers"
-    return "My Customers";
-  });
+  const [activeTab, setActiveTab] = useState("My Agents");
   const [data, setData] = useState([]);
 
   const tabsScrollRef = useRef(null);
@@ -65,7 +59,6 @@ export default function Add_Member() {
         const type = await AsyncStorage.getItem("userType");
         setUserType(type || "");
 
-        // Set active tab based on user type
         if (["Customer", "Investor", "NRI", "SkilledResource"].includes(type)) {
           setActiveTab("My Customers");
         } else if (["WealthAssociate", "CoreMember"].includes(type)) {
@@ -186,15 +179,13 @@ export default function Add_Member() {
         }
       };
 
-      // Start immediately
       animateScroll();
       animateActionButtonsScroll();
 
-      // Then repeat every 10 seconds
       scrollInterval = setInterval(() => {
         animateScroll();
         animateActionButtonsScroll();
-      }, 5000); // 10 seconds
+      }, 5000);
 
       return () => {
         clearInterval(scrollInterval);
@@ -254,7 +245,7 @@ export default function Add_Member() {
           if (isCoreMember || isRegionalWealthAssociate) {
             setModalVisible(true);
           } else {
-            console.log("Add Wealth Associate");
+            setAgentVisible(true);
           }
         }}
       >
@@ -269,7 +260,7 @@ export default function Add_Member() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "My Agents":
-        return <Add_Agent data={data} />;
+        return <MyAgents data={data} />;
       case "My Customers":
         return <MyCustomersScreen data={data} />;
       case "Skilled Resource":
@@ -279,7 +270,7 @@ export default function Add_Member() {
       case "My NRIs":
         return <MyNRIsScreen data={data} />;
       default:
-        return <MyAgentsScreen data={data} />;
+        return <Add_Agent data={data} />;
     }
   };
 
@@ -374,8 +365,9 @@ export default function Add_Member() {
 
       {renderTabContent()}
 
-      {/* <BottomNavigation/> */}
+      {/* <BottomNavigation /> */}
 
+      {/* Modal for Associate Types */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -384,30 +376,50 @@ export default function Add_Member() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={() => {
-                setModalVisible(false);
-                setSubModalVisible(true);
-              }}
-            >
-              <View style={styles.modalButtonContent}>
-                <View style={styles.modalIconCircle}>
-                  <Ionicons name="person-add" size={24} color="white" />
-                </View>
-                <Text style={styles.modalButtonText}>
-                  {isCoreMember
-                    ? "Add Regional Wealth Associate"
-                    : "Add Executive Wealth Associate"}
-                </Text>
-              </View>
-            </TouchableOpacity>
             {isCoreMember && (
+              <>
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={() => {
+                    setModalVisible(false);
+                    navigation.navigate("AddRegionalWealthAssociate");
+                  }}
+                >
+                  <View style={styles.modalButtonContent}>
+                    <View style={styles.modalIconCircle}>
+                      <Ionicons name="person-add" size={24} color="white" />
+                    </View>
+                    <Text style={styles.modalButtonText}>
+                      Add Regional Wealth Associate
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  onPress={() => {
+                    setModalVisible(false);
+                    navigation.navigate("AddValueWealthAssociate");
+                  }}
+                >
+                  <View style={styles.modalButtonContent}>
+                    <View style={styles.modalIconCircle}>
+                      <Ionicons name="person-add" size={24} color="white" />
+                    </View>
+                    <Text style={styles.modalButtonText}>
+                      Add Value Wealth Associate
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {isRegionalWealthAssociate && (
               <TouchableOpacity
                 style={styles.modalButton}
                 onPress={() => {
                   setModalVisible(false);
-                  setSubModalVisible(true);
+                  navigation.navigate("AddExecutiveWealthAssociate");
                 }}
               >
                 <View style={styles.modalButtonContent}>
@@ -415,7 +427,7 @@ export default function Add_Member() {
                     <Ionicons name="person-add" size={24} color="white" />
                   </View>
                   <Text style={styles.modalButtonText}>
-                    Add value Wealth Associate
+                    Add Executive Wealth Associate
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -425,7 +437,7 @@ export default function Add_Member() {
               style={styles.modalButton}
               onPress={() => {
                 setModalVisible(false);
-                console.log("Add Wealth Associate");
+                setAgentVisible(true);
               }}
             >
               <View style={styles.modalButtonContent}>
@@ -446,30 +458,7 @@ export default function Add_Member() {
         </View>
       </Modal>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={subModalVisible}
-        onRequestClose={() => setSubModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, { padding: 25 }]}>
-            <Text style={styles.modalTitle}>
-              {isCoreMember
-                ? "Regional Wealth Associate"
-                : "Executive Wealth Associate"}
-            </Text>
-
-            <TouchableOpacity
-              style={[styles.modalCancelButton, { marginTop: 20 }]}
-              onPress={() => setSubModalVisible(false)}
-            >
-              <Text style={styles.modalCancelButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
+      {/* Customer Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -480,12 +469,12 @@ export default function Add_Member() {
           closeModal={() => setCustomerModalVisible(false)}
           onSuccess={() => {
             setCustomerModalVisible(false);
-            fetchData(); // Refresh data after successful addition
+            fetchData();
           }}
         />
       </Modal>
 
-      {/* Add NRI Modal */}
+      {/* NRI Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -496,12 +485,12 @@ export default function Add_Member() {
           closeModal={() => setNriModalVisible(false)}
           onSuccess={() => {
             setNriModalVisible(false);
-            fetchData(); // Refresh data after successful addition
+            fetchData();
           }}
         />
       </Modal>
 
-      {/* Add Skilled Resource Modal */}
+      {/* Skilled Resource Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -512,12 +501,28 @@ export default function Add_Member() {
           closeModal={() => setSkilledModalVisible(false)}
           onSuccess={() => {
             setSkilledModalVisible(false);
-            fetchData(); // Refresh data after successful addition
+            fetchData();
           }}
         />
       </Modal>
 
-      {/* Add Investor Modal */}
+      {/*Agent Modal */}
+
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={agentvisible}
+        onRequestClose={() => setAgentVisible(false)}
+      >
+        <Add_Agent
+          closeModal={() => setAgentVisible(false)}
+          onSuccess={() => {
+            setAgentVisible(false);
+          }}
+        />
+      </Modal>
+
+      {/* Investor Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -528,27 +533,10 @@ export default function Add_Member() {
           closeModal={() => setInvestorModalVisible(false)}
           onSuccess={() => {
             setInvestorModalVisible(false);
-            fetchData(); // Refresh data after successful addition
+            fetchData();
           }}
         />
       </Modal>
-
-      {/* Keep your existing modals for Add Associate */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        {/* ... (your existing modal content) */}
-      </Modal>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={subModalVisible}
-        onRequestClose={() => setSubModalVisible(false)}
-      ></Modal>
     </View>
   );
 }
@@ -567,20 +555,23 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   actionButtonsContentContainer: {
-    paddingHorizontal: 5,
+    paddingHorizontal: 2,
   },
   actionButtons: {
     flexDirection: "row",
-    justifyContent: "space-around",
+    justifyContent:"space-evenly",
     paddingVertical: 15,
     marginBottom: 5,
     elevation: 2,
+    gap:20
+  
   },
   actionButton: {
     alignItems: "center",
-    width: width * 0.45,
-    minWidth: 120,
+    // width: Dimensions.get("window").width * 0.45,
+    // minWidth: 120,
     paddingHorizontal: 5,
+    // gap:5
   },
   circleIcon: {
     width: 50,
@@ -639,72 +630,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#e63946",
     borderRadius: 2,
   },
-  agentList: {
-    flex: 1,
-    padding: 10,
-  },
-  agentCard: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
-    elevation: 2,
-  },
-  agentSection: {
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 5,
-  },
-  sectionContent: {
-    fontSize: 14,
-    color: "#555",
-    marginLeft: 15,
-  },
-  subSection: {
-    marginLeft: 15,
-  },
-  subSectionTitle: {
-    fontSize: 14,
-    color: "#777",
-  },
-  subSectionContent: {
-    fontSize: 14,
-    color: "#555",
-    marginTop: 3,
-  },
-  deleteText: {
-    color: "#e63946",
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#e0e0e0",
-    marginVertical: 10,
-  },
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    alignItems: "center",
-    paddingVertical: 10,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
-    position: "relative",
-  },
-  navItem: {
-    alignItems: "center",
-    padding: 10,
-    width: "25%",
-  },
-  navText: {
-    fontSize: 12,
-    textAlign: "center",
-    color: "#555",
-    marginTop: 3,
-  },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
@@ -749,12 +674,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#e63946",
     fontWeight: "bold",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 20,
-    color: "#333",
-    textAlign: "center",
   },
 });

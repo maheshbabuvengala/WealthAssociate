@@ -72,7 +72,6 @@ export default function ViewNri() {
 
       const response = await fetch(`${API_URL}/nri/referred-members/${id}`, {
         method: "DELETE",
-       
       });
 
       // First check if the response is OK (status 200-299)
