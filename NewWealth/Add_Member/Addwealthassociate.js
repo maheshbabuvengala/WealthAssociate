@@ -534,7 +534,7 @@ const Add_Agent = ({ closeModal }) => {
               <TouchableOpacity
                 style={styles.cancelButton}
                 disabled={isLoading}
-                onPress={() => navigation.goBack()}
+                onPress={closeModal}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
@@ -549,7 +549,7 @@ const Add_Agent = ({ closeModal }) => {
             )}
           </View>
         </ScrollView>
-        <StatusBar style="auto" />
+        {/* <StatusBar style="auto" /> */}
       </KeyboardAvoidingView>
     </View>
   );
@@ -590,8 +590,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: Platform.OS === "web" ? (width > 1024 ? "100%" : "100%") : "100%",
     backgroundColor: "#FFFFFF",
-    // padding: 15,
-    // borderRadius: 25,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.25,

@@ -21,7 +21,7 @@ import { FontAwesome5, AntDesign } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import defaultAgentImage from "../../assets/man.png";
 
-const PropertyCard = ({ property, closeModal }) => {
+const PropertyCard = ({ property = {}, closeModal }) => {
   const viewShotRef = useRef();
   const [isSharing, setIsSharing] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
@@ -31,7 +31,6 @@ const PropertyCard = ({ property, closeModal }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Fade in animation when component mounts
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 300,

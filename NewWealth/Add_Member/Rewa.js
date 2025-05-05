@@ -539,7 +539,7 @@ const Register = ({ closeModal }) => {
           )}
         </View>
       </ScrollView>
-      <StatusBar style="auto" />
+      {/* <StatusBar style="auto" /> */}
     </View>
   );
 };
@@ -555,15 +555,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 20,
     backgroundColor: "#fff",
-    borderRadius: 30,
+    // borderRadius: 30,
   },
   register_main: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#E82E5F",
-    width: Platform.OS === "web" ? "100%" : 260,
-    height: 40,
+    width: Platform.OS === "web" ? "100%" : "100%",
+    height: 50,
     borderRadius: 20,
   },
   register_text: {
@@ -575,12 +575,13 @@ const styles = StyleSheet.create({
     color: "#ccc",
   },
   card: {
+    top:-20,
     display: "flex",
     justifyContent: "center",
-    width: Platform.OS === "web" ? (width > 1024 ? "100%" : "100%") : "90%",
+    width: Platform.OS === "web" ? (width > 1024 ? "100%" : "100%") : "100%",
     backgroundColor: "#FFFFFF",
-    padding: 20,
-    borderRadius: 25,
+    padding: 10,
+    // borderRadius: 25,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.25,
@@ -589,6 +590,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: Platform.OS === "web" ? 0 : 1,
     borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
+    paddingBottom:30
   },
   webInputWrapper: {
     width: "100%",
@@ -684,7 +686,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
-    backgroundColor: "#FFF",
+    backgroundColor: "#e6708e",
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 5,

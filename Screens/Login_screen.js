@@ -145,7 +145,7 @@ export default function Login_screen() {
         await AsyncStorage.setItem("userType", userType);
         console.log("Token stored in AsyncStorage:", token);
 
-        navigation.navigate("Middlenav");
+        navigation.navigate("Main");
       } else {
         setErrorMessage(
           data.message || "Mobile number or password is incorrect."

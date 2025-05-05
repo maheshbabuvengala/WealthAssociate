@@ -9,8 +9,6 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableWithoutFeedback,
-  Modal,
-  Dimensions,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
@@ -31,16 +29,49 @@ const RequestedPropertyForm = ({ closeModal }) => {
   const [loading, setLoading] = useState(false);
   const [showPropertyTypeDropdown, setShowPropertyTypeDropdown] =
     useState(false);
+  const [userType, setUserType] = useState("");
 
   const navigation = useNavigation();
-
   const modalRef = useRef();
 
-  // Fetch agent details
+  // Fetch user details and user type
   const getDetails = async () => {
     try {
-      const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
+      const [token, storedUserType] = await Promise.all([
+        AsyncStorage.getItem("authToken"),
+        AsyncStorage.getItem("userType"),
+      ]);
+
+      setUserType(storedUserType);
+
+      if (!token) return;
+
+      let endpoint = "";
+      switch (storedUserType) {
+        case "WealthAssociate":
+        case "ReferralAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Customer":
+          endpoint = `${API_URL}/customer/getcustomer`;
+          break;
+        case "CoreMember":
+          endpoint = `${API_URL}/core/getcore`;
+          break;
+        case "Investor":
+          endpoint = `${API_URL}/investors/getinvestor`;
+          break;
+        case "NRI":
+          endpoint = `${API_URL}/nri/getnri`;
+          break;
+        case "SkilledResource":
+          endpoint = `${API_URL}/skillLabour/getskilled`;
+          break;
+        default:
+          endpoint = `${API_URL}/agent/AgentDetails`;
+      }
+
+      const response = await fetch(endpoint, {
         method: "GET",
         headers: {
           token: `${token}` || "",
@@ -50,7 +81,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
       const newDetails = await response.json();
       setDetails(newDetails);
     } catch (error) {
-      console.error("Error fetching agent details:", error);
+      console.error("Error fetching user details:", error);
     }
   };
 
@@ -89,7 +120,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
     )
   );
 
-  // Handle form submission
+  // Handle form submission with user type specific logic
   const handleSubmit = async () => {
     if (!propertyTitle || !propertyType || !location || !budget) {
       Alert.alert("Error", "Please fill all the fields.");
@@ -102,8 +133,23 @@ const RequestedPropertyForm = ({ closeModal }) => {
       location,
       islocation,
       Budget: budget,
-      PostedBy: Details.MobileNumber,
+      userType, // Include userType in the request
     };
+
+    // Add user identifier based on user type
+    if (userType === "WealthAssociate" || userType === "ReferralAssociate") {
+      requestData.PostedBy = Details.MobileNumber;
+    } else if (userType === "Customer") {
+      requestData.CustomerId = Details.MobileNumber;
+    } else if (userType === "CoreMember") {
+      requestData.CoreMemberId = Details.MobileNumber;
+    } else if (userType === "Investor") {
+      requestData.InvestorId = Details.MobileNumber;
+    } else if (userType === "NRI") {
+      requestData.NRIId = Details.MobileIN;
+    } else if (userType === "SkilledResource") {
+      requestData.SkilledId = Details.MobileNumber;
+    }
 
     setLoading(true);
     try {
@@ -178,36 +224,40 @@ const RequestedPropertyForm = ({ closeModal }) => {
                 )}
               </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select Constituency</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex. Vijayawada"
-                  value={locationSearch}
-                  onChangeText={(text) => {
-                    setLocationSearch(text);
-                    setShowLocationList(true);
-                  }}
-                  onFocus={() => setShowLocationList(true)}
-                />
-                {showLocationList && (
-                  <View style={styles.dropdownContainer}>
-                    {filteredConstituencies.map((item) => (
-                      <TouchableOpacity
-                        key={`${item.code}-${item.name}`}
-                        style={styles.listItem}
-                        onPress={() => {
-                          setLocation(item.name);
-                          setLocationSearch(item.name);
-                          setShowLocationList(false);
-                        }}
-                      >
-                        <Text>{item.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
+              <ScrollView>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Select Constituency</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. Vijayawada"
+                    value={locationSearch}
+                    onChangeText={(text) => {
+                      setLocationSearch(text);
+                      setShowLocationList(true);
+                    }}
+                    onFocus={() => setShowLocationList(true)}
+                  />
+                  {showLocationList && (
+                    <ScrollView>
+                      <View style={styles.dropdownContainer}>
+                        {filteredConstituencies.map((item) => (
+                          <TouchableOpacity
+                            key={`${item.code}-${item.name}`}
+                            style={styles.listItem}
+                            onPress={() => {
+                              setLocation(item.name);
+                              setLocationSearch(item.name);
+                              setShowLocationList(false);
+                            }}
+                          >
+                            <Text>{item.name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  )}
+                </View>
+              </ScrollView>
 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Property Location</Text>
@@ -268,22 +318,9 @@ const RequestedPropertyForm = ({ closeModal }) => {
 };
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    height: "100vh",
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    // backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContainer: {
-    width: Dimensions.get("window").width * 0.9,
-    maxHeight: Dimensions.get("window").height * 0.8,
-  },
   container: {
     backgroundColor: "white",
-    padding: 20,
-    borderRadius: 15,
+    padding: 10,
     width: "100%",
     alignSelf: "center",
     shadowColor: "#000",
@@ -300,8 +337,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     backgroundColor: "#e91e63",
     padding: 12,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    width: "100%",
   },
   inputContainer: {
     marginTop: 12,
@@ -371,6 +407,7 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: "rgba(0, 0, 0, 0.5)",
   },
+ 
 });
 
 export default RequestedPropertyForm;

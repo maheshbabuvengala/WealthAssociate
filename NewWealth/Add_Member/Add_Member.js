@@ -13,8 +13,6 @@ import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
-import UpperNavigation from "../MainScreen/Uppernavigation";
-import BottomNavigation from "../MainScreen/BottomNavigation";
 
 import MyAgents from "../Myagents/Myagents";
 import MyCustomersScreen from "../Mycustomers/MyCustomers";
@@ -241,7 +239,7 @@ export default function Add_Member() {
           if (isCoreMember || isRegionalWealthAssociate) {
             setModalVisible(true);
           } else {
-            navigation.navigate("addagent");
+            navigation.navigate("addwealthass");
           }
         }}
       >
@@ -286,7 +284,7 @@ export default function Add_Member() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => setCustomerModalVisible(true)}
+            onPress={() => navigation.navigate("regicuss")}
           >
             <View style={styles.circleIcon}>
               <Ionicons name="person-add" size={28} color="white" />
@@ -296,7 +294,7 @@ export default function Add_Member() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => setNriModalVisible(true)}
+            onPress={() => navigation.navigate("reginri")}
           >
             <View style={styles.circleIcon}>
               <Ionicons name="globe-outline" size={28} color="white" />
@@ -306,7 +304,7 @@ export default function Add_Member() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => setSkilledModalVisible(true)}
+            onPress={() => navigation.navigate("regiskill")}
           >
             <View style={styles.circleIcon}>
               <Ionicons name="trophy-outline" size={28} color="white" />
@@ -316,7 +314,7 @@ export default function Add_Member() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => setInvestorModalVisible(true)}
+            onPress={() => navigation.navigate("regiinvestor")}
           >
             <View style={styles.circleIcon}>
               <Ionicons name="business-outline" size={28} color="white" />
@@ -361,9 +359,6 @@ export default function Add_Member() {
 
       {renderTabContent()}
 
-      {/* <BottomNavigation /> */}
-
-      {/* Modal for Associate Types */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -432,7 +427,7 @@ export default function Add_Member() {
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => {
-                navigation.navigate("addagent");
+                navigation.navigate("addwealthass");
               }}
             >
               <View style={styles.modalButtonContent}>
@@ -453,7 +448,6 @@ export default function Add_Member() {
         </View>
       </Modal>
 
-      {/* Customer Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -497,22 +491,6 @@ export default function Add_Member() {
           onSuccess={() => {
             setSkilledModalVisible(false);
             fetchData();
-          }}
-        />
-      </Modal>
-
-      {/*Agent Modal */}
-
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={agentvisible}
-        onRequestClose={() => setAgentVisible(false)}
-      >
-        <Add_Agent
-          closeModal={() => setAgentVisible(false)}
-          onSuccess={() => {
-            setAgentVisible(false);
           }}
         />
       </Modal>

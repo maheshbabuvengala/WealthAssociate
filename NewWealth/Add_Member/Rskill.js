@@ -344,10 +344,10 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: "center",
     backgroundColor: "#fff",
-    borderRadius: 10,
-    width: 310,
+    // borderRadius: 10,
+    width: "100%",
     maxWidth: 400,
-    marginTop: "40%",
+    // marginTop: "40%",
     // alignItems:"center",justifyContent:"center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 5 },
@@ -449,5 +449,6 @@ const styles = StyleSheet.create({
     color: "rgba(0, 0, 0, 0.5)",
   },
 });
+
 
 export default Rskill;

@@ -19,14 +19,12 @@ import { useNavigationState } from "@react-navigation/native";
 // Cache for user data
 let userDataCache = null;
 let lastFetchTime = 0;
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes cache
 
-// Add this export function
 export const clearHeaderCache = () => {
   userDataCache = null;
   lastFetchTime = 0;
-  console.log("Header cache cleared");
 };
-const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes cache
 
 const Header = () => {
   const navigation = useNavigation();
@@ -39,14 +37,10 @@ const Header = () => {
 
   const isHomeScreen = useNavigationState((state) => {
     const mainRoute = state.routes.find((r) => r.name === "Main");
-  
     if (!mainRoute || !mainRoute.state) return false;
-  
     const nestedState = mainRoute.state;
-    const nestedIndex = nestedState.index;
-    const currentNestedRoute = nestedState.routes[nestedIndex];
-  
-    return currentNestedRoute?.name === "newhome";
+    const currentRoute = nestedState.routes[nestedState.index];
+    return currentRoute?.name === "newhome";
   });
 
   const fetchReferredDetails = useCallback(async (referredBy, addedBy) => {
@@ -69,22 +63,19 @@ const Header = () => {
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.status === "success") {
-        const details = data.referredByDetails || data.addedByDetails;
-        if (details) {
-          await AsyncStorage.setItem(
-            "referredAddedByInfo",
-            JSON.stringify({
-              name: details.name || details.Name,
-              mobileNumber: details.Number,
-            })
-          );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === "success") {
+          const details = data.referredByDetails || data.addedByDetails;
+          if (details) {
+            await AsyncStorage.setItem(
+              "referredAddedByInfo",
+              JSON.stringify({
+                name: details.name || details.Name,
+                mobileNumber: details.Number,
+              })
+            );
+          }
         }
       }
     } catch (error) {
@@ -93,7 +84,8 @@ const Header = () => {
   }, []);
 
   const fetchUserDetails = useCallback(async () => {
-    if (userDataCache && Date.now() - lastFetchTime < CACHE_EXPIRY_TIME) {
+    const now = Date.now();
+    if (userDataCache && now - lastFetchTime < CACHE_EXPIRY_TIME) {
       setUserData({
         details: userDataCache.details,
         userType: userDataCache.userType,
@@ -138,25 +130,16 @@ const Header = () => {
           endpoint = `${API_URL}/agent/AgentDetails`;
       }
 
-      const response = await fetch(endpoint, {
-        headers: { token },
-      });
-
+      const response = await fetch(endpoint, { headers: { token } });
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
 
       const details = await response.json();
-
       userDataCache = { details, userType };
-      lastFetchTime = Date.now();
+      lastFetchTime = now;
 
-      setUserData({
-        details,
-        userType,
-        loading: false,
-      });
+      setUserData({ details, userType, loading: false });
 
-      // Fetch referred/added by details based on user type
       if (
         [
           "WealthAssociate",
@@ -165,9 +148,8 @@ const Header = () => {
           "ReferralAssociate",
         ].includes(userType)
       ) {
-        if (details.ReferredBy) {
+        if (details.ReferredBy)
           await fetchReferredDetails(details.ReferredBy, null);
-        }
       } else if (details.AddedBy) {
         await fetchReferredDetails(null, details.AddedBy);
       }
@@ -183,7 +165,9 @@ const Header = () => {
 
   const handleProfilePress = useCallback(() => {
     if (!userData.userType) {
-      navigation.navigate("DefaultProfile");
+      navigation.navigate("Main", {
+        screen: "DefaultProfile",
+      });
       return;
     }
 
@@ -197,14 +181,32 @@ const Header = () => {
       SkilledResource: "SkilledProfile",
     };
 
-    const routeName = profileRoutes[userData.userType] || "DefaultProfile";
-
-    navigation.navigate(routeName, {
-      userId: userData.details?._id,
-      userType: userData.userType,
+    navigation.navigate("Main", {
+      screen: profileRoutes[userData.userType] || "DefaultProfile",
+      params: {
+        userId: userData.details?._id,
+        userType: userData.userType,
+      },
     });
   }, [userData.details?._id, userData.userType, navigation]);
 
+  const getUserInitials = () => {
+    const name = userData.details?.FullName || userData.details?.Name || "User";
+    const nameParts = name.split(" ");
+    let initials = "";
+
+    if (nameParts.length === 1) {
+      initials = nameParts[0].charAt(0).toUpperCase();
+    } else {
+      initials =
+        nameParts[0].charAt(0).toUpperCase() +
+        nameParts[nameParts.length - 1].charAt(0).toUpperCase();
+    }
+
+    return initials;
+  };
+
+  const showBackButton = !isHomeScreen && route.name !== "newhome";
   const showReferralCode = [
     "WealthAssociate",
     "Customer",
@@ -214,33 +216,40 @@ const Header = () => {
 
   if (userData.loading) {
     return (
-      <View
-        style={[styles.header, styles.safeArea, { justifyContent: "center" }]}
-      >
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="small" color="#555" />
       </View>
     );
   }
 
   return (
-    <View style={[styles.header, styles.safeArea]}>
-      {!isHomeScreen && (
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+    <View style={styles.container}>
+      {showBackButton && (
+        <TouchableOpacity
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              // Fallback to home screen if can't go back
+              navigation.navigate("Main", { screen: "newhome" });
+            }
+          }}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={26} color="#555" />
         </TouchableOpacity>
       )}
-      {/* navigation.navigate("Main", { screen: screenName }); */}
       <TouchableOpacity
-  onPress={async () => {
-    await AsyncStorage.setItem("activeTab", "newhome");
-    navigation.navigate("Main", { screen: "newhome" });
-  }}
->
-  <Image source={require("../../assets/logo.png")} style={styles.logo} />
-</TouchableOpacity>
-
-
-      <View style={styles.userInfo}>
+        onPress={() => navigation.navigate("Main", { screen: "newhome" })}
+        style={styles.logoContainer}
+      >
+        <Image
+          source={require("../../assets/logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
+      <View style={styles.userInfoContainer}>
         <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
           {userData.details?.FullName ||
             userData.details?.Name ||
@@ -252,39 +261,50 @@ const Header = () => {
           </Text>
         )}
       </View>
-
       <TouchableOpacity
         onPress={handleProfilePress}
         style={styles.profileButton}
       >
-        <Ionicons name="person-circle" size={36} color="#555" />
+        <View style={styles.profileInitialsContainer}>
+          <Text style={styles.profileInitials}>{getUserInitials()}</Text>
+        </View>
       </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: "#fff",
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-  },
-  header: {
+  container: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    height: 70,
     paddingHorizontal: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+    marginTop: 20,
+  },
+  loadingContainer: {
+    height: 60,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  backButton: {
+    paddingRight: 10,
+  },
+  logoContainer: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   logo: {
     width: 50,
     height: 50,
-    marginHorizontal: 10,
   },
-  userInfo: {
+  userInfoContainer: {
     flex: 1,
-    marginLeft: 10,
+    marginLeft: 12,
+    justifyContent: "center",
   },
   userName: {
     fontWeight: "600",
@@ -294,9 +314,24 @@ const styles = StyleSheet.create({
   userRef: {
     fontSize: 12,
     color: "#666",
+    marginTop: 2,
   },
   profileButton: {
     padding: 5,
+    marginLeft: 10,
+  },
+  profileInitialsContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#25D366", // WhatsApp-like green color
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  profileInitials: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

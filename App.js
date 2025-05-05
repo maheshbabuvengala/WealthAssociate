@@ -57,11 +57,19 @@ import Rewa from "./NewWealth/Add_Member/Rewa";
 import PropertyDetailsScreen from "./NewWealth/Properties/ViewPropertyDetails";
 import PropertyCard from "./NewWealth/MainScreen/PropertyCard";
 import RegularProperties from "./NewWealth/Properties/PropertyTypesdata/RegularProperties";
+import ApprovedProperties from "./NewWealth/Properties/PropertyTypesdata/ApprovesProperties";
+import WealthProperties from "./NewWealth/Properties/PropertyTypesdata/WealthPropertys";
+import ListedProperties from "./NewWealth/Properties/PropertyTypesdata/ListedPropertys";
 import { API_URL } from "./data/ApiUrl";
 import CoreProfile from "./NewWealth/UsersProfiles/CoreProfile";
 import Customerprofile from "./NewWealth/UsersProfiles/CustomerProfile";
 import Investorprofile from "./NewWealth/UsersProfiles/InvestorProfile";
 import Skilledprofile from "./NewWealth/UsersProfiles/SkilledProfile";
+import Addwealthassociate from "./NewWealth/Add_Member/Addwealthassociate";
+import regicuss from "./NewWealth/Add_Member/Regicus";
+import regnri from "./NewWealth/Add_Member/AddNri";
+import regskill from "./NewWealth/Add_Member/Rskill";
+import reginvestor from "./NewWealth/Add_Member/AddInvestors";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -101,7 +109,7 @@ export default function App() {
         return;
       }
 
-      // Set up notification channel for Android
+      // Set up notification channel for Android8
       if (Platform.OS === "android") {
         await Notifications.setNotificationChannelAsync("default", {
           name: "default",
@@ -259,7 +267,6 @@ export default function App() {
           animationEnabled: true,
         }}
       >
-        {/* All screens that should have persistent layout */}
         <Stack.Screen name="newhome" component={HomeScreen} />
 
         <Stack.Screen name="nrireg" component={NriRegister} />
@@ -267,46 +274,30 @@ export default function App() {
         <Stack.Screen name="skillreg" component={SkilledRegister} />
         <Stack.Screen name="addmember" component={Add_Member} />
         <Stack.Screen name="agentprofile" component={Agent_Profile} />
+        <Stack.Screen name="CoreProfile" component={CoreProfile} />
         <Stack.Screen name="propertyhome" component={PropertyHome} />
         <Stack.Screen name="expertpanel" component={ExpertPanel} />
         <Stack.Screen name="coreclipro" component={Coreclipro} />
         <Stack.Screen name="requestexpert" component={RequestedExpert} />
         <Stack.Screen name="regularprop" component={RegularProperties} />
+        <Stack.Screen name="approveprop" component={ApprovedProperties} />
+        <Stack.Screen name="wealthprop" component={WealthProperties} />
+        <Stack.Screen name="listedprop" component={ListedProperties} />
+        <Stack.Screen name="regicuss" component={regicuss} />
+        <Stack.Screen name="reginri" component={regnri} />
+        <Stack.Screen name="regiskill" component={regskill} />
+        <Stack.Screen name="regiinvestor" component={reginvestor} />
         <Stack.Screen
           name="PropertyDetails"
           component={PropertyDetailsScreen}
         />
-
-        {/* Modal screens */}
-        <Stack.Screen
-          name="postproperty"
-          component={PostProperty}
-          // options={{
-          //   presentation: "modal",
-          //   cardOverlayEnabled: true,
-          //   gestureEnabled: true,
-          //   cardStyle: { backgroundColor: "transparent" },
-          // }}
-        />
-        <Stack.Screen
-          name="requestproperty"
-          component={RequestedProperty}
-          options={{
-            presentation: "modal",
-            cardOverlayEnabled: true,
-            gestureEnabled: true,
-            cardStyle: { backgroundColor: "transparent" },
-          }}
-        />
+        <Stack.Screen name="postproperty" component={PostProperty} />
+        <Stack.Screen name="requestproperty" component={RequestedProperty} />
+        {/* <Stack.Screen name="agentprofile" component={Agent_Profile} /> */}
         <Stack.Screen
           name="addagent"
           component={Add_Agent}
-          options={{
-            presentation: "modal",
-            cardOverlayEnabled: true,
-            gestureEnabled: true,
-            cardStyle: { backgroundColor: "transparent" },
-          }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="AddRegionalWealthAssociate"
@@ -327,6 +318,16 @@ export default function App() {
           name="PropertyCard"
           component={PropertyCard}
           options={{ presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="addwealthass"
+          component={Addwealthassociate}
+          options={{ presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="RegisterCustomer"
+          component={RegisterCustomer}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </PersistentLayout>
@@ -381,16 +382,17 @@ export default function App() {
             component={RegisterCustomer}
             options={{ headerShown: false }}
           />
-          <Stack.Screen
+          {/* <Stack.Screen
             name="CustomerDashboard"
             component={CustomerDashboard}
             options={{ headerShown: false }}
-          />
+          /> */}
           <Stack.Screen
             name="Login"
             component={Login_screen}
             options={{ headerShown: false }}
           />
+
           <Stack.Screen
             name="Home"
             component={Admin_panel}

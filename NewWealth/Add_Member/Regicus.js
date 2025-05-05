@@ -215,7 +215,7 @@ const RegisterExecute = ({ closeModal }) => {
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
         resetScrollToCoords={{ x: 0, y: 0 }} 
-        style={{left:"8%",top:"5%"}}      >
+            >
         <View
           style={[
             styles.container,
@@ -430,10 +430,10 @@ const RegisterExecute = ({ closeModal }) => {
 
 const styles = StyleSheet.create({
   scrollContainer: {
-    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    left:"10%"
+    display:"flex",
+    // left:10
   },
   errorText: {
     color: "red",
@@ -441,16 +441,14 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: "white",
-    padding: 30,
-    borderRadius: 30,
     elevation: 5,
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "90%" : "100%",
+    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "100%",
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "#ccc",
   },
   smallScreenContainer: {
-    width: 300,
+    // width: 300,
     padding: 10,
   },
   title: {

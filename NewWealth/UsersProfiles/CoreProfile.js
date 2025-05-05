@@ -176,7 +176,6 @@ const CoreProfile = ({ onDetailsUpdates }) => {
 
   const LogOut = async () => {
     try {
-      // Clear all user-related data from AsyncStorage
       await AsyncStorage.multiRemove([
         "authToken",
         "userType",
@@ -184,10 +183,8 @@ const CoreProfile = ({ onDetailsUpdates }) => {
         "referredAddedByInfo",
       ]);
 
-      // Clear the in-memory header cache
       clearHeaderCache();
 
-      // Navigate to main screen
       navigation.navigate("Main Screen");
     } catch (error) {
       console.error("Error during logout:", error);
@@ -342,7 +339,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom:"12%"
+    paddingBottom: "12%",
   },
   container: {
     flex: 1,

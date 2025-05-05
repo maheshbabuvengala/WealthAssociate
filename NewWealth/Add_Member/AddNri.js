@@ -276,10 +276,10 @@ const AddNRIMember = ({ closeModal }) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#fff",
-    padding: 20,
+    padding: 10,
     borderRadius: 10,
     borderColor: "black",
-    width: 320,
+    width: "100%",
     alignSelf: "center",
     elevation: 4,
   },

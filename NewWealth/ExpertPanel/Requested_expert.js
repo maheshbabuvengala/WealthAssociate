@@ -51,23 +51,58 @@ const RequestedExpert = ({ closeModal }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userType, setUserType] = useState("");
   const navigation = useNavigation();
 
   const getDetails = async () => {
     setIsLoading(true);
     try {
-      const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
+      const [token, storedUserType] = await Promise.all([
+        AsyncStorage.getItem("authToken"),
+        AsyncStorage.getItem("userType"),
+      ]);
+
+      setUserType(storedUserType);
+
+      if (!token) return;
+
+      let endpoint = "";
+      switch (storedUserType) {
+        case "WealthAssociate":
+        case "ReferralAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Customer":
+          endpoint = `${API_URL}/customer/getcustomer`;
+          break;
+        case "CoreMember":
+          endpoint = `${API_URL}/core/getcore`;
+          break;
+        case "Investor":
+          endpoint = `${API_URL}/investors/getinvestor`;
+          break;
+        case "NRI":
+          endpoint = `${API_URL}/nri/getnri`;
+          break;
+        case "SkilledResource":
+          endpoint = `${API_URL}/skillLabour/getskilled`;
+          break;
+        default:
+          endpoint = `${API_URL}/agent/AgentDetails`;
+      }
+
+      const response = await fetch(endpoint, {
         method: "GET",
         headers: {
           token: `${token}` || "",
         },
       });
+
       const newDetails = await response.json();
       setDetails(newDetails);
     } catch (error) {
-      console.error("Error fetching agent details:", error);
-      Alert.alert("Error", "Failed to load agent details");
+      console.error("Error fetching user details:", error);
+      Alert.alert("Error", "Failed to load user details");
     } finally {
       setIsLoading(false);
     }
@@ -99,9 +134,23 @@ const RequestedExpert = ({ closeModal }) => {
     const requestData = {
       expertType: selectedExpert,
       reason: reason.trim(),
-      WantedBy: Details?.MobileNumber || "Unknown",
-      UserType: "Agent",
+      userType,
     };
+
+    // Add user identifier based on user type
+    if (userType === "WealthAssociate" || userType === "ReferralAssociate") {
+      requestData.WantedBy = Details?.MobileNumber || "Unknown";
+    } else if (userType === "Customer") {
+      requestData.CustomerId = Details?.MobileNumber;
+    } else if (userType === "CoreMember") {
+      requestData.CoreMemberId = Details?.MobileNumber;
+    } else if (userType === "Investor") {
+      requestData.InvestorId = Details?.MobileNumber;
+    } else if (userType === "NRI") {
+      requestData.NRIId = Details?.MobileIN;
+    } else if (userType === "SkilledResource") {
+      requestData.SkilledId = Details?.MobileNumber;
+    }
 
     try {
       const response = await fetch(`${API_URL}/direqexp/direqexp`, {
@@ -244,8 +293,8 @@ const RequestedExpert = ({ closeModal }) => {
   }
 
   return (
-      <ScrollView>
-    <KeyboardAvoidingView>
+    <ScrollView>
+      <KeyboardAvoidingView>
         <View
           style={{
             display: "flex",
@@ -312,8 +361,8 @@ const RequestedExpert = ({ closeModal }) => {
             </View>
           </View>
         </View>
-    </KeyboardAvoidingView>
-      </ScrollView>
+      </KeyboardAvoidingView>
+    </ScrollView>
   );
 };
 
@@ -321,7 +370,6 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: "white",
     width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "40%",
-    // borderRadius: 15,
     padding: 15,
     alignItems: "center",
     shadowColor: "#000",
@@ -340,11 +388,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#E91E63",
     width: "100%",
     paddingVertical: 12,
-    // borderTopLeftRadius: 15,
-    // borderTopRightRadius: 15,
     alignItems: "center",
     position: "absolute",
-    // top: 0,
   },
   headerText: {
     color: "white",

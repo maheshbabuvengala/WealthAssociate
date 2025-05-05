@@ -31,7 +31,12 @@ const HomeScreen = () => {
   const [coreProjects, setCoreProjects] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
-  const [referredInfo, setReferredInfo] = useState(null);
+  const [property,setProperty]=useState(null)
+  const [referredInfo, setReferredInfo] = useState({
+    name: "",
+    mobileNumber: "",
+  });
+
   const navigation = useNavigation();
   const [postedProperty, setPostedProperty] = useState(null);
 
@@ -164,14 +169,20 @@ const HomeScreen = () => {
 
   const loadReferredInfoFromStorage = async () => {
     try {
-      const storedInfo = await AsyncStorage.getItem("referredAddedByInfo");
-      if (storedInfo) {
-        setReferredInfo(JSON.parse(storedInfo));
+      const data = await AsyncStorage.getItem("referredAddedByInfo");
+      if (data) {
+        setReferredInfo(JSON.parse(data));
       }
     } catch (error) {
-      console.error("Error loading referred info from storage:", error);
+      console.error("Failed to load referred info:", error);
     }
   };
+
+  useEffect(() => {
+    if (isPropertyModalVisible) {
+      loadReferredInfoFromStorage();
+    }
+  }, [isPropertyModalVisible]);
 
   const getImageByPropertyType = (propertyType) => {
     switch (propertyType.toLowerCase()) {
@@ -245,6 +256,7 @@ const HomeScreen = () => {
       },
     });
   };
+
   const handleIHave = (property) => {
     setSelectedProperty(property);
     setPropertyModalVisible(true);
@@ -302,23 +314,23 @@ const HomeScreen = () => {
     loadReferredInfoFromStorage();
   }, []);
 
-  const renderModalContent = () => {
-    if (!referredInfo) {
-      return (
-        <View style={styles.noReferredInfo}>
-          <Text style={styles.noReferredInfoText}>
-            No referral information available
-          </Text>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setPropertyModalVisible(false)}
-          >
-            <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-  };
+  // const renderModalContent = () => {
+  //   if (!referredInfo) {
+  //     return (
+  //       <View style={styles.noReferredInfo}>
+  //         <Text style={styles.noReferredInfoText}>
+  //           No referral information available
+  //         </Text>
+  //         <TouchableOpacity
+  //           style={styles.closeButton}
+  //           onPress={() => setPropertyModalVisible(false)}
+  //         >
+  //           <Text style={styles.closeButtonText}>Close</Text>
+  //         </TouchableOpacity>
+  //       </View>
+  //     );
+  //   }
+  // };
 
   const regularProperties = properties.filter(
     (property) => getPropertyTag(property.createdAt) === "Regular Property"
@@ -690,46 +702,32 @@ const HomeScreen = () => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            {!referredInfo ? (
-              <View style={styles.noReferredInfo}>
-                <Text style={styles.noReferredInfoText}>
-                  No referral information available
-                </Text>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setPropertyModalVisible(false)}
-                >
-                  <Text style={styles.closeButtonText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <Image
-                  source={require("../../assets/man.png")}
-                  style={styles.agentLogo}
-                />
-                <Text style={styles.modalTitle}>Referred By</Text>
-                <Text style={styles.modalText}>Name: {referredInfo.name}</Text>
-                <Text style={styles.modalText}>
-                  Mobile: {referredInfo.mobileNumber}
-                </Text>
-                <TouchableOpacity
-                  style={styles.callButton}
-                  onPress={() =>
-                    Linking.openURL(`tel:${referredInfo.mobileNumber}`)
-                  }
-                >
-                  <Ionicons name="call" size={20} color="white" />
-                  <Text style={styles.callButtonText}>Call Now</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setPropertyModalVisible(false)}
-                >
-                  <Text style={styles.closeButtonText}>Close</Text>
-                </TouchableOpacity>
-              </>
-            )}
+            <>
+              <Image
+                source={require("../../assets/man.png")}
+                style={styles.agentLogo}
+              />
+              <Text style={styles.modalTitle}>Referred By</Text>
+              <Text style={styles.modalText}>Name: {referredInfo.name}</Text>
+              <Text style={styles.modalText}>
+                Mobile: {referredInfo.mobileNumber}
+              </Text>
+              <TouchableOpacity
+                style={styles.callButton}
+                onPress={() =>
+                  Linking.openURL(`tel:${referredInfo.mobileNumber}`)
+                }
+              >
+                <Ionicons name="call" size={20} color="white" />
+                <Text style={styles.callButtonText}>Call Now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setPropertyModalVisible(false)}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </>
           </View>
         </View>
       </Modal>
