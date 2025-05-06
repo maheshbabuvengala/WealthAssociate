@@ -85,15 +85,15 @@ Notifications.setNotificationHandler({
 });
 
 // Deep linking configuration
-const linking = {
-  prefixes: ["https://www.wealthassociate.in"],
-  config: {
-    screens: {
-      "Main Screen": "",
-      PrivacyPolicy: "privacy_policy",
-    },
-  },
-};
+// const linking = {
+//   prefixes: ["https://www.wealthassociate.in"],
+//   config: {
+//     screens: {
+//       "Main Screen": "",
+//       PrivacyPolicy: "privacy_policy",
+//     },
+//   },
+// };
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -453,7 +453,7 @@ export default function App() {
             component={MainStack}
             options={{ headerShown: false }}
           />
-          {/* <Stack.Screen
+          <Stack.Screen
             name="nrireg"
             component={NriRegister}
             options={{ headerShown: false }}
@@ -510,7 +510,7 @@ export default function App() {
           <Stack.Screen
             name="PropertyCard"
             component={PropertyCard}
-            options={{ presentation: "modal", headerShown: false }}
+            options={{ headerShown: false }}
           />
 
           <Stack.Screen
@@ -592,7 +592,7 @@ export default function App() {
                 <PropertyDetailsScreen {...props} />
               </PersistentLayout>
             )}
-          </Stack.Screen> */}
+          </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
     </NavigationIndependentTree>
