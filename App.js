@@ -382,17 +382,11 @@ export default function App() {
             component={RegisterCustomer}
             options={{ headerShown: false }}
           />
-          {/* <Stack.Screen
-            name="CustomerDashboard"
-            component={CustomerDashboard}
-            options={{ headerShown: false }}
-          /> */}
           <Stack.Screen
             name="Login"
             component={Login_screen}
             options={{ headerShown: false }}
           />
-
           <Stack.Screen
             name="Home"
             component={Admin_panel}
