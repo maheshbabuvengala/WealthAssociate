@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
+import { useNavigation } from "@react-navigation/native";
 
 const AddInvestor = ({ closeModal }) => {
   const [fullName, setFullName] = useState("");
@@ -27,20 +28,58 @@ const AddInvestor = ({ closeModal }) => {
   const [constituencies, setConstituencies] = useState([]);
   const [locationSearch, setLocationSearch] = useState("");
   const [showLocationList, setShowLocationList] = useState(false);
+  const [userType, setUserType] = useState("");
 
+  const navigation = useNavigation();
   const getDetails = async () => {
     try {
-      const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
-        method: "GET",
-        headers: {
-          token: `${token}` || "",
-        },
+      const [token, storedUserType] = await Promise.all([
+        AsyncStorage.getItem("authToken"),
+        AsyncStorage.getItem("userType"),
+      ]);
+
+      if (!token) return;
+
+      setUserType(storedUserType || "");
+
+      let endpoint = "";
+      switch (storedUserType) {
+        case "WealthAssociate":
+        case "ReferralAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Customer":
+          endpoint = `${API_URL}/customer/getcustomer`;
+          break;
+        case "CoreMember":
+          endpoint = `${API_URL}/core/getcore`;
+          break;
+        case "Investor":
+          endpoint = `${API_URL}/investors/getinvestor`;
+          break;
+        case "NRI":
+          endpoint = `${API_URL}/nri/getnri`;
+          break;
+        case "SkilledResource":
+          endpoint = `${API_URL}/skillLabour/getskilled`;
+          break;
+        case "CallCenter":
+          endpoint = `${API_URL}/callcenter/getcallcenter`;
+          break;
+        default:
+          endpoint = `${API_URL}/agent/AgentDetails`;
+      }
+
+      const response = await fetch(endpoint, {
+        headers: { token },
       });
-      const newDetails = await response.json();
-      setDetails(newDetails);
+
+      if (!response.ok) throw new Error("Failed to fetch user details");
+
+      const data = await response.json();
+      setDetails(data);
     } catch (error) {
-      console.error("Error fetching agent details:", error);
+      console.error("Error fetching user details:", error);
     }
   };
 
@@ -71,16 +110,23 @@ const AddInvestor = ({ closeModal }) => {
       return;
     }
 
-    if (!Details || !Details.MobileNumber) {
-      Alert.alert(
-        "Error",
-        "Agent details are not available. Please try again."
-      );
-      return;
-    }
-
     setLoading(true);
     try {
+      // Determine the AddedBy value with fallbacks
+      const addedByValue =
+        Details?.MobileNumber ||
+        Details?.MobileIN ||
+        Details?.Number ||
+        "Wealthassociate";
+
+      // Determine the RegisteredBy value based on user type
+      const registeredByValue = [
+        "WealthAssociate",
+        "ReferralAssociate",
+      ].includes(userType)
+        ? userType
+        : "WealthAssociate";
+
       const response = await fetch(`${API_URL}/investors/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -89,10 +135,11 @@ const AddInvestor = ({ closeModal }) => {
           SelectSkill: skill,
           Location: location,
           MobileNumber: mobileNumber,
-          AddedBy: Details.MobileNumber,
-          RegisteredBy: "WealthAssociate",
+          AddedBy: addedByValue,
+          RegisteredBy: registeredByValue,
         }),
       });
+
       const data = await response.json();
       if (response.ok) {
         Alert.alert("Success", "Registration successful");
@@ -253,7 +300,10 @@ const AddInvestor = ({ closeModal }) => {
                 <Text style={styles.buttonText}>Register</Text>
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => navigation.goBack()}
+            >
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
           </View>

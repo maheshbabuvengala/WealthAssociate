@@ -8,9 +8,9 @@ import {
   TouchableOpacity,
   Linking,
   Dimensions,
-  Share,
   Modal,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -19,23 +19,37 @@ import { API_URL } from "../../data/ApiUrl";
 const { width } = Dimensions.get("window");
 
 const PropertyDetailsScreen = ({ route, navigation }) => {
-  const { property } = route.params;
+  const [property, setProperty] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
   const [referredInfo, setReferredInfo] = useState(null);
   const [loadingReferral, setLoadingReferral] = useState(false);
   const [referralError, setReferralError] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
 
-  // Format the createdAt date with null check
-  const formattedDate = property?.createdAt
-    ? new Date(property.createdAt).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : "Date not available";
-
   useEffect(() => {
+    const loadProperty = async () => {
+      try {
+        // First try to get from route.params
+        if (route?.params?.property) {
+          setProperty(route.params.property);
+          setLoading(false);
+          return;
+        }
+
+        // If not in route.params, try to load from AsyncStorage
+        const storedProperty = await AsyncStorage.getItem("currentProperty");
+        if (storedProperty) {
+          setProperty(JSON.parse(storedProperty));
+        }
+      } catch (error) {
+        console.error("Error loading property:", error);
+        Alert.alert("Error", "Failed to load property details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     const fetchUserDetails = async () => {
       try {
         const token = await AsyncStorage.getItem("authToken");
@@ -46,9 +60,8 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
           },
         });
 
-        if (!response.ok) {
+        if (!response.ok)
           throw new Error(`HTTP error! status: ${response.status}`);
-        }
 
         const data = await response.json();
         setUserDetails(data);
@@ -57,27 +70,40 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
       }
     };
 
+    loadProperty();
     fetchUserDetails();
-  }, []);
+  }, [route.params]);
+
+  const formattedDate = property?.createdAt
+    ? new Date(property.createdAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "Date not available";
 
   const handleShare = async () => {
     try {
-      // Prepare property data in the same format as HomeScreen
-      const shareProperty = {
-        photo: property?.photo ? `${API_URL}${property.photo}` : null,
-        location: property?.location || "Location not specified",
-        price: property?.price || "Price not available",
-        propertyType: property?.propertyType || "Property",
-        PostedBy: property?.PostedBy || userDetails?.Number || "",
-        fullName: property?.fullName || userDetails?.name || "Wealth Associate",
+      if (!property) {
+        Alert.alert("Error", "No property data to share");
+        return;
+      }
+
+      const shareData = {
+        photo: property.photo ? `${API_URL}${property.photo}` : null,
+        location: property.location || "Location not specified",
+        price: property.price || "Price not available",
+        propertyType: property.propertyType || "Property",
+        PostedBy: property.PostedBy || "",
+        fullName: property.fullName || "Wealth Associate",
+        mobile: property.mobile || property.MobileNumber || "",
       };
 
-      // Navigate to PropertyCard screen with the property data
-      navigation.navigate("PropertyCard", {
-        property: shareProperty,
-      });
+      await AsyncStorage.setItem("sharedProperty", JSON.stringify(shareData));
+      navigation.navigate("PropertyCard", { property: shareData });
     } catch (error) {
-      console.error("Error sharing property:", error);
+      console.error("Sharing error:", error);
+      Alert.alert("Error", "Failed to share property");
     }
   };
 
@@ -96,7 +122,6 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
     try {
       setLoadingReferral(true);
       setReferralError(null);
-
       const token = await AsyncStorage.getItem("authToken");
       const response = await fetch(
         `${API_URL}/properties/getPropertyreffered`,
@@ -106,18 +131,14 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
             "Content-Type": "application/json",
             token: token || "",
           },
-          body: JSON.stringify({
-            referredBy: userDetails.ReferredBy,
-          }),
+          body: JSON.stringify({ referredBy: userDetails.ReferredBy }),
         }
       );
 
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
-      }
 
       const data = await response.json();
-
       if (data.status === "success") {
         setReferredInfo(data.referredByDetails);
       } else {
@@ -131,31 +152,25 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  // Helper function to format keys (camelCase to Title Case)
-  const formatKey = (key) => {
-    return key
+  const formatKey = (key) =>
+    key
       .replace(/([A-Z])/g, " $1")
       .replace(/^./, (str) => str.toUpperCase())
       .trim();
-  };
 
-  // Recursive function to render different value types
   const renderDynamicValue = (value, indent = 0) => {
-    if (value === null || value === undefined) {
+    if (value === null || value === undefined)
       return <Text style={styles.dynamicDataValue}>N/A</Text>;
-    }
 
     if (Array.isArray(value)) {
-      if (value.length === 0) {
+      if (value.length === 0)
         return <Text style={styles.dynamicDataValue}>Empty</Text>;
-      }
       return (
         <View style={{ marginLeft: indent * 10 }}>
           {value.map((item, index) => (
             <View key={index} style={styles.arrayItem}>
-              <Text style={styles.dynamicDataValue}>
-                {index + 1}. {renderDynamicValue(item, indent + 1)}
-              </Text>
+              <Text style={styles.dynamicDataValue}>{index + 1}.</Text>
+              {renderDynamicValue(item, indent + 1)}
             </View>
           ))}
         </View>
@@ -177,14 +192,32 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
       );
     }
 
-    if (typeof value === "boolean") {
+    if (typeof value === "boolean")
       return (
         <Text style={styles.dynamicDataValue}>{value ? "Yes" : "No"}</Text>
       );
-    }
 
     return <Text style={styles.dynamicDataValue}>{value.toString()}</Text>;
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!property) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Property data not available</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backButton}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -194,7 +227,7 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Property Details</Text>
-          <View style={{ width: 24 }} /> {/* For alignment */}
+          <View style={{ width: 24 }} />
         </View>
 
         <Image
@@ -235,7 +268,6 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
               </View>
             )}
 
-            {/* Display dynamic data if available */}
             {property?.dynamicData &&
               Object.keys(property.dynamicData).length > 0 && (
                 <View style={styles.dynamicDataContainer}>
@@ -256,7 +288,6 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
         </View>
       </ScrollView>
 
-      {/* Fixed buttons at the bottom */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: "#2196F3" }]}
@@ -265,7 +296,6 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
           <FontAwesome name="share" size={20} color="white" />
           <Text style={styles.actionButtonText}>Share</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: "#4CAF50" }]}
           onPress={handleEnquiry}
@@ -275,7 +305,6 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Enquiry Modal */}
       <Modal
         visible={isPropertyModalVisible}
         transparent={true}
@@ -354,7 +383,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f8f8",
   },
   scrollContent: {
-    paddingBottom: 80, // Add padding to prevent content from being hidden behind buttons
+    paddingBottom: 80,
   },
   header: {
     flexDirection: "row",
@@ -371,163 +400,157 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   image: {
-    width: "100%",
-    height: width * 0.7,
-    backgroundColor: "#eee",
+    width: width,
+    height: 200,
   },
   contentContainer: {
-    padding: 20,
+    padding: 15,
   },
   titleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 15,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#333",
-    flex: 1,
-  },
-  price: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#4CAF50",
-    marginLeft: 10,
+    color: "#222",
+  },
+  price: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#444",
   },
   detailSection: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginTop: 10,
   },
   detailRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginVertical: 5,
   },
   detailText: {
-    fontSize: 16,
-    color: "#666",
     marginLeft: 10,
+    fontSize: 14,
+    color: "#666",
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
-    marginBottom: 10,
-    marginTop: 15,
+    marginVertical: 10,
   },
-  descriptionContainer: {
-    marginTop: 10,
-  },
+  descriptionContainer: {},
   descriptionText: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#555",
-    lineHeight: 22,
   },
   dynamicDataContainer: {
-    marginTop: 15,
+    marginTop: 10,
   },
   dynamicDataRow: {
-    flexDirection: "row",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   dynamicDataKey: {
     fontWeight: "bold",
-    width: 120,
-    color: "#555",
+    color: "#333",
+  },
+  dynamicDataValueContainer: {
+    marginLeft: 5,
   },
   dynamicDataValue: {
-    flex: 1,
     color: "#555",
   },
-  buttonContainer: {
+  arrayItem: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    alignItems: "flex-start",
+  },
+  nestedItem: {
+    marginBottom: 5,
+  },
+  buttonContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    padding: 15,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#eee",
-    position: "relative",
-    bottom: "10%",
-    left: 0,
-    right: 0,
   },
   actionButton: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    padding: 12,
-    borderRadius: 8,
-    marginHorizontal: 5,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 5,
   },
   actionButtonText: {
     color: "white",
-    fontWeight: "bold",
-    marginLeft: 8,
+    marginLeft: 10,
     fontSize: 16,
   },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
+    alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
-    margin: 20,
     backgroundColor: "white",
-    borderRadius: 10,
     padding: 20,
-    elevation: 5,
+    borderRadius: 10,
+    alignItems: "center",
+    width: width * 0.8,
   },
   agentLogo: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    alignSelf: "center",
-    marginBottom: 15,
+    marginBottom: 10,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
-    textAlign: "center",
     marginBottom: 10,
   },
   modalText: {
-    fontSize: 16,
-    marginVertical: 4,
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 5,
+  },
+  closeButton: {
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: "#ccc",
+    borderRadius: 5,
+  },
+  closeButtonText: {
+    color: "#333",
   },
   callButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#28a745",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: "#4CAF50",
+    borderRadius: 5,
+    marginTop: 10,
   },
   callButtonText: {
     color: "white",
-    fontSize: 16,
-    marginLeft: 8,
+    marginLeft: 10,
   },
-  closeButton: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: "#dc3545",
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
-  closeButtonText: {
-    color: "white",
+  backButton: {
+    marginTop: 20,
+    color: "#007AFF",
     fontSize: 16,
   },
 });

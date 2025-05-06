@@ -1,58 +1,48 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Image,
   StyleSheet,
-  Platform,
-  ScrollView,
-  StatusBar,
   Dimensions,
+  ScrollView,
+  Platform,
   Alert,
   ActivityIndicator,
-  FlatList,
+  Image,
 } from "react-native";
-import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import { API_URL } from "../../data/ApiUrl";
+import { API_URL } from "../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import logo1 from "../assets/logo.png";
+import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
-const Register = ({ closeModal }) => {
+const RegisterCustomer = ({ closeModal }) => {
   const [fullname, setFullname] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [district, setDistrict] = useState("");
   const [constituency, setConstituency] = useState("");
-  const [expertise, setExpertise] = useState("");
-  const [experience, setExperience] = useState("");
+  const [occupation, setOccupation] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [location, setLocation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [responseStatus, setResponseStatus] = useState(null);
   const [districtSearch, setDistrictSearch] = useState("");
   const [constituencySearch, setConstituencySearch] = useState("");
-  const [expertiseSearch, setExpertiseSearch] = useState("");
-  const [experienceSearch, setExperienceSearch] = useState("");
+  const [occupationSearch, setOccupationSearch] = useState("");
   const [showDistrictList, setShowDistrictList] = useState(false);
   const [showConstituencyList, setShowConstituencyList] = useState(false);
-  const [showExpertiseList, setShowExpertiseList] = useState(false);
-  const [showExperienceList, setShowExperienceList] = useState(false);
+  const [showOccupationList, setShowOccupationList] = useState(false);
   const [districts, setDistricts] = useState([]);
   const [constituencies, setConstituencies] = useState([]);
-  const [expertiseOptions, setExpertiseOptions] = useState([]);
+  const [occupationOptions, setOccupationOptions] = useState([]);
   const [Details, setDetails] = useState({});
-
-  const mobileRef = useRef(null);
-  const emailRef = useRef(null);
-  const districtRef = useRef(null);
-
+  const [errorMessage, setErrorMessage] = useState("");
   const navigation = useNavigation();
-
-  // Fetch all districts and constituencies from the API
+  // Fetch all districts and constituencies
   const fetchDistrictsAndConstituencies = async () => {
     try {
       const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
@@ -63,28 +53,21 @@ const Register = ({ closeModal }) => {
     }
   };
 
-  // Fetch expertise
-  const fetchExpertise = async () => {
+  // Fetch occupations
+  const fetchOccupations = async () => {
     try {
-      const response = await fetch(`${API_URL}/discons/expertise`);
+      const response = await fetch(`${API_URL}/discons/occupations`);
       const data = await response.json();
-      setExpertiseOptions(data);
+      setOccupationOptions(data);
     } catch (error) {
-      console.error("Error fetching expertise:", error);
+      console.error("Error fetching occupations:", error);
     }
   };
 
   useEffect(() => {
     fetchDistrictsAndConstituencies();
-    fetchExpertise();
+    fetchOccupations();
   }, []);
-
-  const experienceOptions = [
-    { name: "0-1 years", code: "01" },
-    { name: "1-3 years", code: "02" },
-    { name: "3-5 years", code: "03" },
-    { name: "5+ years", code: "04" },
-  ];
 
   // Filter districts based on search input
   const filteredDistricts = districts.filter((item) =>
@@ -126,53 +109,56 @@ const Register = ({ closeModal }) => {
     }
   }, [Details]);
 
+  const closeAllDropdowns = () => {
+    setShowDistrictList(false);
+    setShowConstituencyList(false);
+    setShowOccupationList(false);
+  };
+
   const handleRegister = async () => {
     if (
-      !fullname ||
-      !mobile ||
-      !email ||
-      !district ||
-      !constituency ||
-      !location ||
-      !expertise ||
-      !experience
+      !fullname.trim() ||
+      !mobile.trim() ||
+      !district.trim() ||
+      !constituency.trim() ||
+      !location.trim() ||
+      !occupation.trim()
     ) {
       Alert.alert("Error", "Please fill in all required fields.");
       return;
     }
 
     setIsLoading(true);
+    setErrorMessage("");
 
     const selectedDistrict = districts.find((d) => d.parliament === district);
-    const selectedAssembly = selectedDistrict?.assemblies.find(
+    const selectedConstituency = selectedDistrict?.assemblies.find(
       (a) => a.name === constituency
     );
 
-    if (!selectedDistrict || !selectedAssembly) {
+    if (!selectedDistrict || !selectedConstituency) {
       Alert.alert("Error", "Invalid district or constituency selected.");
       setIsLoading(false);
       return;
     }
 
-    const referenceId = `${selectedDistrict.parliamentCode}${selectedAssembly.code}`;
+    const referenceId = `${selectedDistrict.parliamentCode}${selectedConstituency.code}`;
 
     const userData = {
       FullName: fullname,
       MobileNumber: mobile,
-      Email: email,
       District: district,
       Contituency: constituency,
       Locations: location,
-      Expertise: expertise,
-      Experience: experience,
+      Occupation: occupation,
       ReferredBy: referralCode || "WA0000000001",
       Password: "Wealth",
       MyRefferalCode: referenceId,
-      AgentType: "ExecutiveWealthAssociate",
+      RegisteredBY: "WealthAssociate",
     };
 
     try {
-      const response = await fetch(`${API_URL}/agent/AgentRegister`, {
+      const response = await fetch(`${API_URL}/customer/CustomerRegister`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -180,25 +166,19 @@ const Register = ({ closeModal }) => {
         body: JSON.stringify(userData),
       });
 
-      setResponseStatus(response.status);
-
       if (response.ok) {
         const result = await response.json();
         Alert.alert("Success", "Registration successful!");
         closeModal();
       } else if (response.status === 400) {
         const errorData = await response.json();
-        Alert.alert("Error", "Mobile number already exists.");
+        setErrorMessage(errorData.message || "Mobile number already exists.");
       } else {
         const errorData = await response.json();
-        Alert.alert("Error", errorData.message || "Something went wrong.");
+        setErrorMessage(errorData.message || "Something went wrong.");
       }
     } catch (error) {
       console.error("Error during registration:", error);
-      Alert.alert(
-        "Error",
-        "Failed to connect to the server. Please try again later."
-      );
     } finally {
       setIsLoading(false);
     }
@@ -206,30 +186,30 @@ const Register = ({ closeModal }) => {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        nestedScrollEnabled={true}
+      >
         <View style={styles.card}>
-          <View style={styles.register_main}>
-            <Text style={styles.register_text}>
-              Register Executive Wealth Associate
-            </Text>
-          </View>
-          {responseStatus === 400 && (
-            <Text style={styles.errorText}>Mobile number already exists.</Text>
-          )}
+          <Image source={logo1} style={styles.logo} />
+          <Text style={styles.tagline}>Your Trusted Property Consultant</Text>
+          <Text style={styles.title}>REGISTER CUSTOMER</Text>
+
+          {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
           <View style={styles.webInputWrapper}>
             {/* Row 1 */}
             <View style={styles.inputRow}>
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Fullname</Text>
+                <Text style={styles.label}>Full Name</Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
                     placeholder="Full name"
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={fullname}
                     onChangeText={setFullname}
-                    returnKeyType="next"
-                    onSubmitEditing={() => mobileRef.current.focus()}
+                    onFocus={closeAllDropdowns}
                   />
                   <FontAwesome
                     name="user"
@@ -243,20 +223,13 @@ const Register = ({ closeModal }) => {
                 <Text style={styles.label}>Mobile Number</Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
-                    ref={mobileRef}
                     style={styles.input}
                     placeholder="Mobile Number"
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={mobile}
                     onChangeText={setMobile}
                     keyboardType="number-pad"
-                    returnKeyType="next"
-                    onSubmitEditing={() => emailRef.current.focus()}
-                    onFocus={() => {
-                      setShowDistrictList(false);
-                      setShowConstituencyList(false);
-                      setShowExpertiseList(false);
-                      setShowExperienceList(false);
-                    }}
+                    onFocus={closeAllDropdowns}
                   />
                   <MaterialIcons
                     name="phone"
@@ -267,61 +240,35 @@ const Register = ({ closeModal }) => {
                 </View>
               </View>
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Email</Text>
+                <Text style={styles.label}>Select parliament </Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
-                    ref={emailRef}
                     style={styles.input}
-                    placeholder="Email"
-                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                    onChangeText={setEmail}
-                    returnKeyType="next"
-                    onSubmitEditing={() => districtRef.current.focus()}
-                    onFocus={() => {
-                      setShowDistrictList(false);
-                      setShowConstituencyList(false);
-                      setShowExpertiseList(false);
-                      setShowExperienceList(false);
-                    }}
-                  />
-                  <MaterialIcons
-                    name="email"
-                    size={20}
-                    color="#E82E5F"
-                    style={styles.icon}
-                  />
-                </View>
-              </View>
-            </View>
-
-            {/* Row 2 */}
-            <View style={styles.inputRow}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select District</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    ref={districtRef}
-                    style={styles.input}
-                    placeholder="Search District"
+                    placeholder="Search parliament"
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
                     value={districtSearch}
                     onChangeText={(text) => {
                       setDistrictSearch(text);
                       setShowDistrictList(true);
                     }}
-                    onFocus={() => setShowDistrictList(true)}
+                    onFocus={() => {
+                      closeAllDropdowns();
+                      setShowDistrictList(true);
+                    }}
                   />
                   {showDistrictList && (
                     <View style={styles.dropdownContainer}>
                       <ScrollView style={styles.scrollView}>
                         {filteredDistricts.map((item) => (
                           <TouchableOpacity
-                            key={item.parliament}
+                            key={item._id}
                             style={styles.listItem}
                             onPress={() => {
                               setDistrict(item.parliament);
                               setDistrictSearch(item.parliament);
                               setShowDistrictList(false);
+                              setConstituencySearch(""); // Reset constituency search
+                              setConstituency(""); // Reset selected constituency
                             }}
                           >
                             <Text>{item.parliament}</Text>
@@ -332,12 +279,16 @@ const Register = ({ closeModal }) => {
                   )}
                 </View>
               </View>
+            </View>
+
+            {/* Row 2 */}
+            <View style={styles.inputRow}>
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select Constituency</Text>
+                <Text style={styles.label}>Select Assemblie</Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Search Constituency"
+                    placeholder="Select Assemblie"
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
                     value={constituencySearch}
                     onChangeText={(text) => {
@@ -345,8 +296,8 @@ const Register = ({ closeModal }) => {
                       setShowConstituencyList(true);
                     }}
                     onFocus={() => {
+                      closeAllDropdowns();
                       setShowConstituencyList(true);
-                      setShowDistrictList(false);
                     }}
                   />
                   {showConstituencyList && (
@@ -371,94 +322,39 @@ const Register = ({ closeModal }) => {
                 </View>
               </View>
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select Experience</Text>
+                <Text style={styles.label}>Select Occupation</Text>
                 <View style={styles.inputWrapper}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Select Experience"
+                    placeholder="Select Occupation"
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                    value={experienceSearch}
+                    value={occupationSearch}
                     onChangeText={(text) => {
-                      setExperienceSearch(text);
-                      setShowExperienceList(true);
+                      setOccupationSearch(text);
+                      setShowOccupationList(true);
                     }}
                     onFocus={() => {
-                      setShowExperienceList(true);
-                      setShowDistrictList(false);
-                      setShowConstituencyList(false);
+                      closeAllDropdowns();
+                      setShowOccupationList(true);
                     }}
                   />
-                  {showExperienceList && (
+                  {showOccupationList && (
                     <View style={styles.dropdownContainer}>
                       <ScrollView style={styles.scrollView}>
-                        {experienceOptions
-                          .filter((item) =>
-                            item.name
-                              .toLowerCase()
-                              .includes(experienceSearch.toLowerCase())
-                          )
-                          .map((item) => (
-                            <TouchableOpacity
-                              key={item.code}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setExperience(item.name);
-                                setExperienceSearch(item.name);
-                                setShowExperienceList(false);
-                              }}
-                            >
-                              <Text>{item.name}</Text>
-                            </TouchableOpacity>
-                          ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            {/* Row 3 */}
-            <View style={styles.inputRow}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select Expertise</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Select Expertise"
-                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                    value={expertiseSearch}
-                    onChangeText={(text) => {
-                      setExpertiseSearch(text);
-                      setShowExpertiseList(true);
-                    }}
-                    onFocus={() => {
-                      setShowExpertiseList(true);
-                      setShowDistrictList(false);
-                      setShowConstituencyList(false);
-                      setShowExperienceList(false);
-                    }}
-                  />
-                  {showExpertiseList && (
-                    <View style={styles.dropdownContainer}>
-                      {expertiseOptions
-                        .filter((item) =>
-                          item.name
-                            .toLowerCase()
-                            .includes(expertiseSearch.toLowerCase())
-                        )
-                        .map((item) => (
+                        {occupationOptions.map((item) => (
                           <TouchableOpacity
                             key={item.code}
                             style={styles.listItem}
                             onPress={() => {
-                              setExpertise(item.name);
-                              setExpertiseSearch(item.name);
-                              setShowExpertiseList(false);
+                              setOccupation(item.name);
+                              setOccupationSearch(item.name);
+                              setShowOccupationList(false);
                             }}
                           >
                             <Text>{item.name}</Text>
                           </TouchableOpacity>
                         ))}
+                      </ScrollView>
                     </View>
                   )}
                 </View>
@@ -470,13 +366,9 @@ const Register = ({ closeModal }) => {
                     style={styles.input}
                     placeholder="Location"
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={location}
                     onChangeText={setLocation}
-                    onFocus={() => {
-                      setShowDistrictList(false);
-                      setShowConstituencyList(false);
-                      setShowExpertiseList(false);
-                      setShowExperienceList(false);
-                    }}
+                    onFocus={closeAllDropdowns}
                   />
                   <MaterialIcons
                     name="location-on"
@@ -486,6 +378,16 @@ const Register = ({ closeModal }) => {
                   />
                 </View>
               </View>
+            </View>
+
+            {/* Row 3 */}
+            <View
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Referral Code</Text>
                 <View style={styles.inputWrapper}>
@@ -493,14 +395,11 @@ const Register = ({ closeModal }) => {
                     style={styles.input}
                     placeholder="Referral Code"
                     placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    // value={referralCode}
                     onChangeText={setReferralCode}
-                    onFocus={() => {
-                      setShowDistrictList(false);
-                      setShowConstituencyList(false);
-                      setShowExpertiseList(false);
-                      setShowExperienceList(false);
-                    }}
-                    value={referralCode}
+                    onFocus={closeAllDropdowns}
+                    defaultValue="WA0000000001"
+                    editable={false}
                   />
                   <MaterialIcons
                     name="card-giftcard"
@@ -523,8 +422,8 @@ const Register = ({ closeModal }) => {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.cancelButton}
+              onPress={() => navigation.navigate("Starting Screen")}
               disabled={isLoading}
-              onPress={() => navigation.goBack()}
             >
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
@@ -549,47 +448,27 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9FAFB",
   },
   scrollContainer: {
-    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 20,
-    backgroundColor: "#fff",
-    // borderRadius: 30,
-  },
-  register_main: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#E82E5F",
-    width: Platform.OS === "web" ? "100%" : "100%",
-    height: 50,
-    borderRadius: 20,
-  },
-  register_text: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    alignContent: "center",
-    fontSize: 20,
-    color: "#ccc",
   },
   card: {
-    top: -20,
     display: "flex",
     justifyContent: "center",
-    width: Platform.OS === "web" ? (width > 1024 ? "100%" : "100%") : "100%",
+    width: Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
+    marginTop: Platform.OS === "web" ? "3%" : 0,
     backgroundColor: "#FFFFFF",
-    padding: 10,
-    // borderRadius: 25,
+    padding: 20,
+    borderRadius: 25,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
     alignItems: "center",
+    margin: 20,
+    marginTop: 20,
     borderWidth: Platform.OS === "web" ? 0 : 1,
     borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
-    paddingBottom: 30,
   },
   webInputWrapper: {
     width: "100%",
@@ -602,12 +481,13 @@ const styles = StyleSheet.create({
     maxHeight: 200,
   },
   inputRow: {
-    flexDirection: Platform.OS === "android" ? "column" : "row",
+    flexDirection:
+      Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
     justifyContent: "space-between",
     gap: 5,
   },
   inputContainer: {
-    width: Platform.OS === "android" ? "100%" : "30%",
+    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "30%",
     position: "relative",
     zIndex: 1,
   },
@@ -629,6 +509,10 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     borderWidth: 1,
     borderColor: "#ccc",
+  },
+  logo: {
+    width: Platform.OS === "android" ? 200 : 200,
+    height: Platform.OS === "android" ? 200 : 200,
   },
   icon: {
     position: "absolute",
@@ -662,14 +546,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "400",
   },
-  loginText: {
-    marginTop: 20,
-    fontSize: 16,
-    color: "#E82E5F",
-  },
-  loginLink: {
-    fontWeight: "bold",
-  },
   loadingIndicator: {
     marginTop: 20,
   },
@@ -685,20 +561,27 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
-    backgroundColor: "#e6708e",
+    backgroundColor: "#FFF",
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 5,
     marginBottom: 5,
-  },
-  list: {
-    maxHeight: 150,
+    backgroundColor: "#e6708e",
   },
   listItem: {
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
   },
+  tagline: {
+    marginTop: -30,
+    marginBottom: 15,
+  },
+  title: {
+    fontWeight: "700",
+    fontSize: 23,
+    marginBottom: -10,
+  },
 });
 
-export default Register;
+export default RegisterCustomer;

@@ -9,6 +9,7 @@ import {
   Image,
   Linking,
   Modal,
+  Alert,
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -78,7 +79,7 @@ const RegularPropertiesScreen = () => {
     return id ? id.slice(-4) : "N/A";
   };
 
-  const handlePropertyPress = (property) => {
+  const handlePropertyPress = async (property) => {
     if (!property?._id) {
       console.error("Property ID is missing");
       return;
@@ -103,14 +104,30 @@ const RegularPropertiesScreen = () => {
       imageSource = require("../../../assets/logo.png");
     }
 
-    navigation.navigate("PropertyDetails", {
-      property: {
-        ...property,
-        id: property._id,
-        price: formattedPrice,
-        image: imageSource,
-      },
-    });
+    try {
+      // Store the property in AsyncStorage before navigating
+      await AsyncStorage.setItem(
+        "currentProperty",
+        JSON.stringify({
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          image: imageSource,
+        })
+      );
+
+      navigation.navigate("PropertyDetails", {
+        property: {
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          image: imageSource,
+        },
+      });
+    } catch (error) {
+      console.error("Error storing property:", error);
+      Alert.alert("Error", "Failed to navigate to property details");
+    }
   };
 
   const handleEnquiryNow = (property) => {
@@ -118,17 +135,29 @@ const RegularPropertiesScreen = () => {
     setPropertyModalVisible(true);
   };
 
-  const handleShare = (property) => {
-    navigation.navigate("PropertyCard", {
-      property: {
+  const handleShare = async (property) => {
+    try {
+      if (!property) {
+        Alert.alert("Error", "No property data to share");
+        return;
+      }
+
+      const shareData = {
         photo: property.photo ? `${API_URL}${property.photo}` : null,
         location: property.location || "Location not specified",
-        price: property.price || "Price not available",
+        price: property.price ? property.price : "Price not available",
         propertyType: property.propertyType || "Property",
         PostedBy: property.PostedBy || "",
         fullName: property.fullName || "Wealth Associate",
-      },
-    });
+        mobile: property.mobile || property.MobileNumber || "",
+      };
+
+      await AsyncStorage.setItem("sharedProperty", JSON.stringify(shareData));
+      navigation.navigate("PropertyCard", { property: shareData });
+    } catch (error) {
+      console.error("Sharing error:", error);
+      Alert.alert("Error", "Failed to share property");
+    }
   };
 
   if (loading) {

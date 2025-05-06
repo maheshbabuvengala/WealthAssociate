@@ -10,9 +10,10 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Alert,
+  Image,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_URL } from "../../data/ApiUrl";
+import { API_URL } from "../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
 
 const Rskill = ({ closeModal }) => {
@@ -31,61 +32,23 @@ const Rskill = ({ closeModal }) => {
   const [skillSearch, setSkillSearch] = useState("");
   const [filteredSkills, setFilteredSkills] = useState([]);
   const [filteredConstituencies, setFilteredConstituencies] = useState([]);
-  const [userType, setUserType] = useState("");
-
   const navigation = useNavigation();
-
   const getDetails = async () => {
     try {
-      const [token, storedUserType] = await Promise.all([
-        AsyncStorage.getItem("authToken"),
-        AsyncStorage.getItem("userType"),
-      ]);
-
-      if (!token) return;
-
-      setUserType(storedUserType || "");
-
-      let endpoint = "";
-      switch (storedUserType) {
-        case "WealthAssociate":
-        case "ReferralAssociate":
-          endpoint = `${API_URL}/agent/AgentDetails`;
-          break;
-        case "Customer":
-          endpoint = `${API_URL}/customer/getcustomer`;
-          break;
-        case "CoreMember":
-          endpoint = `${API_URL}/core/getcore`;
-          break;
-        case "Investor":
-          endpoint = `${API_URL}/investors/getinvestor`;
-          break;
-        case "NRI":
-          endpoint = `${API_URL}/nri/getnri`;
-          break;
-        case "SkilledResource":
-          endpoint = `${API_URL}/skillLabour/getskilled`;
-          break;
-        case "CallCenter":
-          endpoint = `${API_URL}/callcenter/getcallcenter`;
-          break;
-        default:
-          endpoint = `${API_URL}/agent/AgentDetails`;
-      }
-
-      const response = await fetch(endpoint, {
-        headers: { token },
+      const token = await AsyncStorage.getItem("authToken");
+      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
+        method: "GET",
+        headers: {
+          token: `${token}` || "",
+        },
       });
-
-      if (!response.ok) throw new Error("Failed to fetch user details");
-
-      const data = await response.json();
-      setDetails(data);
+      const newDetails = await response.json();
+      setDetails(newDetails);
     } catch (error) {
-      console.error("Error fetching user details:", error);
+      console.error("Error fetching agent details:", error);
     }
   };
+
   useEffect(() => {
     getDetails();
   }, []);
@@ -155,21 +118,6 @@ const Rskill = ({ closeModal }) => {
 
     setLoading(true);
     try {
-      // Determine the AddedBy value with fallbacks
-      const addedByValue =
-        Details?.MobileNumber ||
-        Details?.MobileIN ||
-        Details?.Number ||
-        "Wealthassociate";
-
-      // Determine the RegisteredBy value based on user type
-      const registeredByValue = [
-        "WealthAssociate",
-        "ReferralAssociate",
-      ].includes(userType)
-        ? userType
-        : "WealthAssociate";
-
       const response = await fetch(`${API_URL}/skillLabour/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -178,11 +126,10 @@ const Rskill = ({ closeModal }) => {
           SelectSkill: skill,
           Location: location,
           MobileNumber: mobileNumber,
-          AddedBy: addedByValue,
-          RegisteredBy: registeredByValue,
+          AddedBy: "WA0000000001",
+          RegisteredBy: "WealthAssociate",
         }),
       });
-
       const data = await response.json();
       if (response.ok) {
         Alert.alert("Success", "Registration successful");
@@ -190,7 +137,7 @@ const Rskill = ({ closeModal }) => {
         setSkill("");
         setLocation("");
         setMobileNumber("");
-        closeModal();
+        navigation.navigate("Starting Screen");
       } else {
         Alert.alert("Error", data.message || "Registration failed");
       }
@@ -206,8 +153,16 @@ const Rskill = ({ closeModal }) => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
     >
-      <ScrollView>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.container}>
+          <Image
+            source={require("../assets/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <View style={styles.header}>
             <Text style={styles.headerText}>Register Skilled Resource</Text>
           </View>
@@ -375,7 +330,7 @@ const Rskill = ({ closeModal }) => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => navigation.goBack()}
+                onPress={() => navigation.navigate("RegisterAS")}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
@@ -391,16 +346,24 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: "center",
     backgroundColor: "#fff",
-    // borderRadius: 10,
+    borderRadius: 10,
     width: "100%",
     maxWidth: 400,
-    // marginTop: "40%",
+    // marginTop: "20%",
     // alignItems:"center",justifyContent:"center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
     elevation: 5,
+    marginTop: 20,
+  },
+  logo: {
+    width: 150,
+    height: 120,
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 10,
   },
   header: {
     backgroundColor: "#E91E63",

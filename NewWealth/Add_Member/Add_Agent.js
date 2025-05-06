@@ -45,12 +45,29 @@ const Add_Agent = ({ closeModal }) => {
   const [constituencies, setConstituencies] = useState([]);
   const [expertiseOptions, setExpertiseOptions] = useState([]);
   const [Details, setDetails] = useState({});
+  const [userType, setUserType] = useState("");
 
   const mobileRef = useRef(null);
   const emailRef = useRef(null);
   const districtRef = useRef(null);
 
   const navigation = useNavigation();
+
+  // Fetch user type from AsyncStorage
+  useEffect(() => {
+    const fetchData = async () => {
+      const storedUserType = await AsyncStorage.getItem("userType");
+      console.log("Stored userType:", storedUserType); // Debug log
+      setUserType(storedUserType);
+      
+      if (storedUserType) {
+        console.log("Fetching details for userType:", storedUserType); // Debug log
+        await getDetails();
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   // Fetch all districts and constituencies from the API
   const fetchDistrictsAndConstituencies = async () => {
@@ -75,6 +92,7 @@ const Add_Agent = ({ closeModal }) => {
   };
 
   useEffect(() => {
+    fetchUserType();
     fetchDistrictsAndConstituencies();
     fetchExpertise();
   }, []);
@@ -112,30 +130,50 @@ const Add_Agent = ({ closeModal }) => {
     item.name.toLowerCase().includes(experienceSearch.toLowerCase())
   );
 
-  // Fetch agent details
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
+      let endpoint = "";
+
+      // Fix: Check for "CoreMember" (exact string match)
+      if (userType === "CoreMember") {
+        endpoint = `${API_URL}/core/getcore`;
+      } else {
+        endpoint = `${API_URL}/agent/AgentDetails`;
+      }
+
+      const response = await fetch(endpoint, {
         method: "GET",
         headers: {
           token: `${token}` || "",
         },
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const newDetails = await response.json();
       setDetails(newDetails);
     } catch (error) {
-      console.error("Error fetching agent details:", error);
+      console.error("Error fetching user details:", error);
+      // Handle the error appropriately
+      if (error.message.includes("404")) {
+        console.log("Endpoint not found - check userType and API routes");
+      }
     }
   };
 
   useEffect(() => {
-    getDetails();
-  }, []);
+    if (userType) {
+      getDetails();
+    }
+  }, [userType]);
 
   useEffect(() => {
-    if (Details.MyRefferalCode) {
-      setReferralCode(Details.MyRefferalCode);
+    if (Details.MyRefferalCode || Details.ReferralCode) {
+      setReferralCode(Details.MyRefferalCode || Details.ReferralCode);
+      console.log(Details.MyRefferalCode);
     }
   }, [Details]);
 
@@ -534,12 +572,11 @@ const Add_Agent = ({ closeModal }) => {
               <TouchableOpacity
                 style={styles.cancelButton}
                 disabled={isLoading}
-                onPress={() => navigation.goBack()}
+                onPress={() => navigation.navigate("addmember")}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
-
             {isLoading && (
               <ActivityIndicator
                 size="large"
@@ -549,7 +586,6 @@ const Add_Agent = ({ closeModal }) => {
             )}
           </View>
         </ScrollView>
-        <StatusBar style="auto" />
       </KeyboardAvoidingView>
     </View>
   );
@@ -575,7 +611,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#E82E5F",
     width: Platform.OS === "web" ? "100%" : "100%",
     height: 40,
-    // borderRadius: 20,
   },
   register_text: {
     display: "flex",

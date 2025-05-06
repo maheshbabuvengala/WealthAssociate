@@ -262,7 +262,7 @@ const Modify_Details = ({ closeModal, onDetailsUpdate, onDetailsUpdated }) => {
           )}
         </View>
       </ScrollView>
-      <StatusBar style="auto" />
+      {/* <StatusBar style="auto" /> */}
     </KeyboardAvoidingView>
     </View>
   );

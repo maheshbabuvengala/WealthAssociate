@@ -8,10 +8,14 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
+  TouchableOpacity,
+  Alert,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import agentImage from "../../assets/man.png";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
@@ -71,6 +75,57 @@ export default function ViewAgents() {
     fetchData();
   }, []);
 
+  const handleDeleteAgent = async (agentId) => {
+    const confirmDelete = async () => {
+      if (Platform.OS === "web") {
+        return window.confirm("Are you sure you want to delete this agent?");
+      } else {
+        return new Promise((resolve) => {
+          Alert.alert(
+            "Confirm Delete",
+            "Are you sure you want to delete this agent?",
+            [
+              {
+                text: "Cancel",
+                onPress: () => resolve(false),
+                style: "cancel",
+              },
+              { text: "Delete", onPress: () => resolve(true) },
+            ]
+          );
+        });
+      }
+    };
+
+    try {
+      const confirmed = await confirmDelete();
+      if (!confirmed) return;
+
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        console.error("Token not found in AsyncStorage");
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/agent/deleteagent/${agentId}`, {
+        method: "DELETE",
+        headers: {
+          token: `${token}` || "",
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to delete agent");
+
+      setAgents((prevAgents) =>
+        prevAgents.filter((agent) => agent._id !== agentId)
+      );
+      Alert.alert("Success", "Agent deleted successfully");
+    } catch (error) {
+      console.error("Delete error:", error);
+      Alert.alert("Error", "Failed to delete agent");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -117,6 +172,12 @@ export default function ViewAgents() {
                     </View>
                   )}
                 </View>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeleteAgent(agent._id)}
+                >
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -139,6 +200,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f2f2f2",
     paddingHorizontal: 10,
+    paddingBottom: 30,
   },
   scrollContainer: {
     width: "100%",
@@ -203,5 +265,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     width: "100%",
+  },
+  deleteButton: {
+    marginTop: 10,
+    backgroundColor: "#ff4444",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    alignSelf: "flex-end",
+  },
+  deleteButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });

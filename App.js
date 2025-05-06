@@ -15,8 +15,6 @@ import * as Device from "expo-device";
 import * as Updates from "expo-updates";
 import Constants from "expo-constants";
 import { NavigationIndependentTree } from "@react-navigation/native";
-
-// Screens
 import MainScreen from "./Screens/MainScreen";
 import RegisterAsScreen from "./Screens/Register_change";
 import ForgotPassword from "./Screens/ForgetPassword";
@@ -70,6 +68,8 @@ import regicuss from "./NewWealth/Add_Member/Regicus";
 import regnri from "./NewWealth/Add_Member/AddNri";
 import regskill from "./NewWealth/Add_Member/Rskill";
 import reginvestor from "./NewWealth/Add_Member/AddInvestors";
+import NriProfile from "./NewWealth/UsersProfiles/NriProfile";
+import Addexpert from "./NewWealth/ExpertPanel/AddExpert";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -84,7 +84,6 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Deep linking configuration
 const linking = {
   prefixes: ["https://www.wealthassociate.in"],
   config: {
@@ -274,6 +273,10 @@ export default function App() {
         <Stack.Screen name="skillreg" component={SkilledRegister} />
         <Stack.Screen name="addmember" component={Add_Member} />
         <Stack.Screen name="agentprofile" component={Agent_Profile} />
+        <Stack.Screen name="InvestorProfile" component={Investorprofile} />
+        <Stack.Screen name="CustomerProfile" component={Customerprofile} />
+        <Stack.Screen name="SkilledProfile" component={Skilledprofile} />
+        <Stack.Screen name="nriprofile" component={NriProfile} />
         <Stack.Screen name="CoreProfile" component={CoreProfile} />
         <Stack.Screen name="propertyhome" component={PropertyHome} />
         <Stack.Screen name="expertpanel" component={ExpertPanel} />
@@ -287,13 +290,13 @@ export default function App() {
         <Stack.Screen name="reginri" component={regnri} />
         <Stack.Screen name="regiskill" component={regskill} />
         <Stack.Screen name="regiinvestor" component={reginvestor} />
+        <Stack.Screen name="addexpert" component={Addexpert} />
         <Stack.Screen
           name="PropertyDetails"
           component={PropertyDetailsScreen}
         />
         <Stack.Screen name="postproperty" component={PostProperty} />
         <Stack.Screen name="requestproperty" component={RequestedProperty} />
-        {/* <Stack.Screen name="agentprofile" component={Agent_Profile} /> */}
         <Stack.Screen
           name="addagent"
           component={Add_Agent}
@@ -447,7 +450,7 @@ export default function App() {
             component={MainStack}
             options={{ headerShown: false }}
           />
-          {/* <Stack.Screen
+          <Stack.Screen
             name="nrireg"
             component={NriRegister}
             options={{ headerShown: false }}
@@ -504,7 +507,7 @@ export default function App() {
           <Stack.Screen
             name="PropertyCard"
             component={PropertyCard}
-            options={{ presentation: "modal", headerShown: false }}
+            options={{ headerShown: false }}
           />
 
           <Stack.Screen
@@ -586,7 +589,7 @@ export default function App() {
                 <PropertyDetailsScreen {...props} />
               </PersistentLayout>
             )}
-          </Stack.Screen> */}
+          </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
     </NavigationIndependentTree>

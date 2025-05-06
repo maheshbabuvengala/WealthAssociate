@@ -10,11 +10,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from "react-native";
-import { API_URL } from "../../data/ApiUrl";
+import { API_URL } from "../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-
 const AddNRIMember = ({ closeModal }) => {
   const [name, setName] = useState("");
   const [country, setCountry] = useState("");
@@ -30,7 +30,6 @@ const AddNRIMember = ({ closeModal }) => {
   const [showLocationList, setShowLocationList] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
   const [showCountryList, setShowCountryList] = useState(false);
-
   const navigation = useNavigation();
   const countries = [
     { label: "United Arab Emirates", value: "uae" },
@@ -52,51 +51,17 @@ const AddNRIMember = ({ closeModal }) => {
 
   const getDetails = async () => {
     try {
-      const [token, userType] = await Promise.all([
-        AsyncStorage.getItem("authToken"),
-        AsyncStorage.getItem("userType"),
-      ]);
-
-      if (!token) return;
-
-      let endpoint = "";
-      switch (userType) {
-        case "WealthAssociate":
-        case "ReferralAssociate":
-          endpoint = `${API_URL}/agent/AgentDetails`;
-          break;
-        case "Customer":
-          endpoint = `${API_URL}/customer/getcustomer`;
-          break;
-        case "CoreMember":
-          endpoint = `${API_URL}/core/getcore`;
-          break;
-        case "Investor":
-          endpoint = `${API_URL}/investors/getinvestor`;
-          break;
-        case "NRI":
-          endpoint = `${API_URL}/nri/getnri`;
-          break;
-        case "SkilledResource":
-          endpoint = `${API_URL}/skillLabour/getskilled`;
-          break;
-        case "CallCenter":
-          endpoint = `${API_URL}/callcenter/getcallcenter`;
-          break;
-        default:
-          endpoint = `${API_URL}/agent/AgentDetails`;
-      }
-
-      const response = await fetch(endpoint, {
-        headers: { token },
+      const token = await AsyncStorage.getItem("authToken");
+      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
+        method: "GET",
+        headers: {
+          token: `${token}` || "",
+        },
       });
-
-      if (!response.ok) throw new Error("Failed to fetch user details");
-
-      const data = await response.json();
-      setDetails(data);
+      const newDetails = await response.json();
+      setDetails(newDetails);
     } catch (error) {
-      console.error("Error fetching user details:", error);
+      console.error("Error fetching agent details:", error);
     }
   };
 
@@ -135,23 +100,8 @@ const AddNRIMember = ({ closeModal }) => {
       Alert.alert("Error", "Please fill all the fields");
       return;
     }
-
     setLoading(true);
     try {
-      const addedByValue =
-        Details.MobileNumber ||
-        Details.MobileIN ||
-        Details.Number ||
-        "Wealthassociate";
-
-      // Determine the RegisteredBy value based on user type
-      const registeredByValue = [
-        "WealthAssociate",
-        "ReferralAssociate",
-      ].includes(userType)
-        ? userType
-        : "WealthAssociate";
-
       const response = await fetch(`${API_URL}/nri/register`, {
         method: "POST",
         headers: {
@@ -165,15 +115,15 @@ const AddNRIMember = ({ closeModal }) => {
           Occupation: occupation,
           MobileIN: mobileIN,
           MobileCountryNo: mobileCountryNo,
-          AddedBy: addedByValue,
-          RegisteredBy: registeredByValue,
+          AddedBy: "WA0000000001",
+          RegisteredBy: "WealthAssociate",
         }),
       });
 
       const data = await response.json();
       if (response.ok) {
         Alert.alert("Success", data.message);
-        closeModal();
+        navigation.navigate("Starting Screen");
       } else {
         Alert.alert("Error", data.message);
       }
@@ -191,6 +141,11 @@ const AddNRIMember = ({ closeModal }) => {
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View style={styles.container}>
+          <Image
+            source={require("../assets/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.header}>Add NRI Member</Text>
 
           <Text style={styles.label}>Name</Text>
@@ -314,7 +269,7 @@ const AddNRIMember = ({ closeModal }) => {
             )}
             <TouchableOpacity
               style={styles.cancelButton}
-              onPress={() => navigation.goBack()}
+              onPress={() => navigation.navigate("RegisterAS")}
             >
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
@@ -328,12 +283,19 @@ const AddNRIMember = ({ closeModal }) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#fff",
-    padding: 10,
+    padding: 20,
     borderRadius: 10,
     borderColor: "black",
-    width: "100%",
+    width: 320,
     alignSelf: "center",
     elevation: 4,
+  },
+  logo: {
+    width: 150,
+    height: 120,
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 10,
   },
   header: {
     backgroundColor: "#E91E63",
@@ -344,7 +306,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
-    marginBottom: 15,
+    // marginBottom: 15,
   },
   label: {
     fontSize: 14,

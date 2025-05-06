@@ -133,7 +133,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
       location,
       islocation,
       Budget: budget,
-      userType, // Include userType in the request
+      userType, 
     };
 
     // Add user identifier based on user type
