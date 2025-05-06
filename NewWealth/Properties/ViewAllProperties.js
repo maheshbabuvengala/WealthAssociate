@@ -18,14 +18,15 @@ import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import PropertyCards from "./PropertyCards";
 // import { Ionicons } from "@expo/vector-icons";
-import logo from "../../assets/man.png";
+// import logo from "../../assets/man.png";
 import logo1 from "../../assets/logo.png";
+import { useNavigation } from "@react-navigation/native";
 
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
-const ViewAllProperties = ({ navigation }) => {
+const ViewAllProperties = () => {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [Details, setDetails] = useState({ Contituency: "" });
@@ -45,6 +46,7 @@ const ViewAllProperties = ({ navigation }) => {
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [showPriceDropdown, setShowPriceDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const navigation = useNavigation();
 
   const getDetails = async () => {
     try {
@@ -254,6 +256,57 @@ const ViewAllProperties = ({ navigation }) => {
       )
     )
   );
+
+  const handlePropertyPress = async (property) => {
+    if (!property?._id) {
+      console.error("Property ID is missing");
+      return;
+    }
+
+    let formattedPrice = "Price not available";
+    try {
+      const priceValue = parseInt(property.price);
+      if (!isNaN(priceValue)) {
+        formattedPrice = `₹${priceValue.toLocaleString()}`;
+      }
+    } catch (e) {
+      console.error("Error formatting price:", e);
+    }
+
+    let imageSource;
+    if (property.photo) {
+      imageSource = property.photo.startsWith("http")
+        ? { uri: property.photo }
+        : { uri: `${API_URL}${property.photo}` };
+    } else {
+      imageSource = require("../../assets/logo.png");
+    }
+
+    try {
+      // Store the property in AsyncStorage before navigating
+      await AsyncStorage.setItem(
+        "currentProperty",
+        JSON.stringify({
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          image: imageSource,
+        })
+      );
+
+      navigation.navigate("PropertyDetails", {
+        property: {
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          image: imageSource,
+        },
+      });
+    } catch (error) {
+      console.error("Error storing property:", error);
+      Alert.alert("Error", "Failed to navigate to property details");
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -511,66 +564,73 @@ const ViewAllProperties = ({ navigation }) => {
                   const propertyId = getLastFourChars(property._id);
 
                   return (
-                    <View key={index} style={styles.propertyCard}>
-                      <Image source={imageUri} style={styles.propertyImage} />
-                      <View style={styles.approvedBadge}>
-                        <Text style={styles.badgeText}>(✓){propertyTag}</Text>
-                      </View>
-                      <View
-                        style={{
-                          alignItems: "flex-end",
-                          paddingRight: 5,
-                          top: 5,
-                        }}
-                      >
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => handlePropertyPress(property)}
+                      activeOpacity={0.8}
+                      style={styles.propertyCardContainer}
+                    >
+                      <View style={styles.propertyCard}>
+                        <Image source={imageUri} style={styles.propertyImage} />
+                        <View style={styles.approvedBadge}>
+                          <Text style={styles.badgeText}>(✓){propertyTag}</Text>
+                        </View>
                         <View
                           style={{
-                            backgroundColor: "green",
-                            borderRadius: 8,
-                            paddingHorizontal: 8,
-                            paddingVertical: 4,
+                            alignItems: "flex-end",
+                            paddingRight: 5,
+                            top: 5,
                           }}
                         >
-                          <Text
+                          <View
                             style={{
-                              color: "#fff",
-                              fontWeight: "600",
+                              backgroundColor: "green",
+                              borderRadius: 8,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
                             }}
                           >
-                            ID: {propertyId}
-                          </Text>
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontWeight: "600",
+                              }}
+                            >
+                              ID: {propertyId}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.propertyTitle}>
+                          {property.propertyType}
+                        </Text>
+                        <Text style={styles.propertyTitle}>
+                          {property.propertyDetails
+                            ? property.propertyDetails
+                            : "20 sqfeets"}
+                        </Text>
+                        <Text style={styles.propertyInfo}>
+                          Location: {property.location}
+                        </Text>
+                        <Text style={styles.propertyBudget}>
+                          ₹ {parseInt(property.price).toLocaleString()}
+                        </Text>
+                        <View style={styles.buttonContainer}>
+                          <TouchableOpacity
+                            style={styles.enquiryButton}
+                            onPress={() => handleEnquiryNow(property)}
+                          >
+                            <Text style={styles.buttonText}>Enquiry Now</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.shareButton}
+                            onPress={() => handleShare(property)}
+                          >
+                            <Text style={styles.buttonText}>Share</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
-
-                      <Text style={styles.propertyTitle}>
-                        {property.propertyType}
-                      </Text>
-                      <Text style={styles.propertyTitle}>
-                        {property.propertyDetails
-                          ? property.propertyDetails
-                          : "20 sqfeets"}
-                      </Text>
-                      <Text style={styles.propertyInfo}>
-                        Location: {property.location}
-                      </Text>
-                      <Text style={styles.propertyBudget}>
-                        ₹ {parseInt(property.price).toLocaleString()}
-                      </Text>
-                      <View style={styles.buttonContainer}>
-                        <TouchableOpacity
-                          style={styles.enquiryButton}
-                          onPress={() => handleEnquiryNow(property)}
-                        >
-                          <Text style={styles.buttonText}>Enquiry Now</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.shareButton}
-                          onPress={() => handleShare(property)}
-                        >
-                          <Text style={styles.buttonText}>Share</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -590,66 +650,73 @@ const ViewAllProperties = ({ navigation }) => {
                   const propertyId = getLastFourChars(property._id);
 
                   return (
-                    <View key={index} style={styles.propertyCard}>
-                      <Image source={imageUri} style={styles.propertyImage} />
-                      <View style={styles.approvedBadge}>
-                        <Text style={styles.badgeText}>(✓){propertyTag}</Text>
-                      </View>
-                      <View
-                        style={{
-                          alignItems: "flex-end",
-                          paddingRight: 5,
-                          top: 5,
-                        }}
-                      >
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => handlePropertyPress(property)}
+                      activeOpacity={0.8}
+                      style={styles.propertyCardContainer}
+                    >
+                      <View style={styles.propertyCard}>
+                        <Image source={imageUri} style={styles.propertyImage} />
+                        <View style={styles.approvedBadge}>
+                          <Text style={styles.badgeText}>(✓){propertyTag}</Text>
+                        </View>
                         <View
                           style={{
-                            backgroundColor: "green",
-                            borderRadius: 8,
-                            paddingHorizontal: 8,
-                            paddingVertical: 4,
+                            alignItems: "flex-end",
+                            paddingRight: 5,
+                            top: 5,
                           }}
                         >
-                          <Text
+                          <View
                             style={{
-                              color: "#fff",
-                              fontWeight: "600",
+                              backgroundColor: "green",
+                              borderRadius: 8,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
                             }}
                           >
-                            ID: {propertyId}
-                          </Text>
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontWeight: "600",
+                              }}
+                            >
+                              ID: {propertyId}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.propertyTitle}>
+                          {property.propertyType}
+                        </Text>
+                        <Text style={styles.propertyTitle}>
+                          {property.propertyDetails
+                            ? property.propertyDetails
+                            : "20 sqfeets"}
+                        </Text>
+                        <Text style={styles.propertyInfo}>
+                          Location: {property.location}
+                        </Text>
+                        <Text style={styles.propertyBudget}>
+                          ₹ {parseInt(property.price).toLocaleString()}
+                        </Text>
+                        <View style={styles.buttonContainer}>
+                          <TouchableOpacity
+                            style={styles.enquiryButton}
+                            onPress={() => handleEnquiryNow(property)}
+                          >
+                            <Text style={styles.buttonText}>Enquiry Now</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.shareButton}
+                            onPress={() => handleShare(property)}
+                          >
+                            <Text style={styles.buttonText}>Share</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
-
-                      <Text style={styles.propertyTitle}>
-                        {property.propertyType}
-                      </Text>
-                      <Text style={styles.propertyTitle}>
-                        {property.propertyDetails
-                          ? property.propertyDetails
-                          : "20 sqfeets"}
-                      </Text>
-                      <Text style={styles.propertyInfo}>
-                        Location: {property.location}
-                      </Text>
-                      <Text style={styles.propertyBudget}>
-                        ₹ {parseInt(property.price).toLocaleString()}
-                      </Text>
-                      <View style={styles.buttonContainer}>
-                        <TouchableOpacity
-                          style={styles.enquiryButton}
-                          onPress={() => handleEnquiryNow(property)}
-                        >
-                          <Text style={styles.buttonText}>Enquiry Now</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.shareButton}
-                          onPress={() => handleShare(property)}
-                        >
-                          <Text style={styles.buttonText}>Share</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -669,66 +736,73 @@ const ViewAllProperties = ({ navigation }) => {
                   const propertyId = getLastFourChars(property._id);
 
                   return (
-                    <View key={index} style={styles.propertyCard}>
-                      <Image source={imageUri} style={styles.propertyImage} />
-                      <View style={styles.approvedBadge}>
-                        <Text style={styles.badgeText}>(✓){propertyTag}</Text>
-                      </View>
-                      <View
-                        style={{
-                          alignItems: "flex-end",
-                          paddingRight: 5,
-                          top: 5,
-                        }}
-                      >
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => handlePropertyPress(property)}
+                      activeOpacity={0.8}
+                      style={styles.propertyCardContainer}
+                    >
+                      <View style={styles.propertyCard}>
+                        <Image source={imageUri} style={styles.propertyImage} />
+                        <View style={styles.approvedBadge}>
+                          <Text style={styles.badgeText}>(✓){propertyTag}</Text>
+                        </View>
                         <View
                           style={{
-                            backgroundColor: "green",
-                            borderRadius: 8,
-                            paddingHorizontal: 8,
-                            paddingVertical: 4,
+                            alignItems: "flex-end",
+                            paddingRight: 5,
+                            top: 5,
                           }}
                         >
-                          <Text
+                          <View
                             style={{
-                              color: "#fff",
-                              fontWeight: "600",
+                              backgroundColor: "green",
+                              borderRadius: 8,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
                             }}
                           >
-                            ID: {propertyId}
-                          </Text>
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontWeight: "600",
+                              }}
+                            >
+                              ID: {propertyId}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.propertyTitle}>
+                          {property.propertyType}
+                        </Text>
+                        <Text style={styles.propertyTitle}>
+                          {property.propertyDetails
+                            ? property.propertyDetails
+                            : "20 sqfeets"}
+                        </Text>
+                        <Text style={styles.propertyInfo}>
+                          Location: {property.location}
+                        </Text>
+                        <Text style={styles.propertyBudget}>
+                          ₹ {parseInt(property.price).toLocaleString()}
+                        </Text>
+                        <View style={styles.buttonContainer}>
+                          <TouchableOpacity
+                            style={styles.enquiryButton}
+                            onPress={() => handleEnquiryNow(property)}
+                          >
+                            <Text style={styles.buttonText}>Enquiry Now</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.shareButton}
+                            onPress={() => handleShare(property)}
+                          >
+                            <Text style={styles.buttonText}>Share</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
-
-                      <Text style={styles.propertyTitle}>
-                        {property.propertyType}
-                      </Text>
-                      <Text style={styles.propertyTitle}>
-                        {property.propertyDetails
-                          ? property.propertyDetails
-                          : "20 sqfeets"}
-                      </Text>
-                      <Text style={styles.propertyInfo}>
-                        Location: {property.location}
-                      </Text>
-                      <Text style={styles.propertyBudget}>
-                        ₹ {parseInt(property.price).toLocaleString()}
-                      </Text>
-                      <View style={styles.buttonContainer}>
-                        <TouchableOpacity
-                          style={styles.enquiryButton}
-                          onPress={() => handleEnquiryNow(property)}
-                        >
-                          <Text style={styles.buttonText}>Enquiry Now</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.shareButton}
-                          onPress={() => handleShare(property)}
-                        >
-                          <Text style={styles.buttonText}>Share</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -748,66 +822,73 @@ const ViewAllProperties = ({ navigation }) => {
                   const propertyId = getLastFourChars(property._id);
 
                   return (
-                    <View key={index} style={styles.propertyCard}>
-                      <Image source={imageUri} style={styles.propertyImage} />
-                      <View style={styles.approvedBadge}>
-                        <Text style={styles.badgeText}>(✓){propertyTag}</Text>
-                      </View>
-                      <View
-                        style={{
-                          alignItems: "flex-end",
-                          paddingRight: 5,
-                          top: 5,
-                        }}
-                      >
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => handlePropertyPress(property)}
+                      activeOpacity={0.8}
+                      style={styles.propertyCardContainer}
+                    >
+                      <View style={styles.propertyCard}>
+                        <Image source={imageUri} style={styles.propertyImage} />
+                        <View style={styles.approvedBadge}>
+                          <Text style={styles.badgeText}>(✓){propertyTag}</Text>
+                        </View>
                         <View
                           style={{
-                            backgroundColor: "green",
-                            borderRadius: 8,
-                            paddingHorizontal: 8,
-                            paddingVertical: 4,
+                            alignItems: "flex-end",
+                            paddingRight: 5,
+                            top: 5,
                           }}
                         >
-                          <Text
+                          <View
                             style={{
-                              color: "#fff",
-                              fontWeight: "600",
+                              backgroundColor: "green",
+                              borderRadius: 8,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
                             }}
                           >
-                            ID: {propertyId}
-                          </Text>
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontWeight: "600",
+                              }}
+                            >
+                              ID: {propertyId}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.propertyTitle}>
+                          {property.propertyType}
+                        </Text>
+                        <Text style={styles.propertyTitle}>
+                          {property.propertyDetails
+                            ? property.propertyDetails
+                            : "20 sqfeets"}
+                        </Text>
+                        <Text style={styles.propertyInfo}>
+                          Location: {property.location}
+                        </Text>
+                        <Text style={styles.propertyBudget}>
+                          ₹ {parseInt(property.price).toLocaleString()}
+                        </Text>
+                        <View style={styles.buttonContainer}>
+                          <TouchableOpacity
+                            style={styles.enquiryButton}
+                            onPress={() => handleEnquiryNow(property)}
+                          >
+                            <Text style={styles.buttonText}>Enquiry Now</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.shareButton}
+                            onPress={() => handleShare(property)}
+                          >
+                            <Text style={styles.buttonText}>Share</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
-
-                      <Text style={styles.propertyTitle}>
-                        {property.propertyType}
-                      </Text>
-                      <Text style={styles.propertyTitle}>
-                        {property.propertyDetails
-                          ? property.propertyDetails
-                          : "20 sqfeets"}
-                      </Text>
-                      <Text style={styles.propertyInfo}>
-                        Location: {property.location}
-                      </Text>
-                      <Text style={styles.propertyBudget}>
-                        ₹ {parseInt(property.price).toLocaleString()}
-                      </Text>
-                      <View style={styles.buttonContainer}>
-                        <TouchableOpacity
-                          style={styles.enquiryButton}
-                          onPress={() => handleEnquiryNow(property)}
-                        >
-                          <Text style={styles.buttonText}>Enquiry Now</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.shareButton}
-                          onPress={() => handleShare(property)}
-                        >
-                          <Text style={styles.buttonText}>Share</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -882,6 +963,9 @@ const ViewAllProperties = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  propertyCardContainer: {
+    marginBottom: 15,
+  },
   container: {
     flex: 1,
     backgroundColor: "#fff",

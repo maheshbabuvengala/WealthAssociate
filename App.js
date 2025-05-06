@@ -268,7 +268,6 @@ export default function App() {
         }}
       >
         <Stack.Screen name="newhome" component={HomeScreen} />
-
         <Stack.Screen name="nrireg" component={NriRegister} />
         <Stack.Screen name="invreg" component={InvestorRegister} />
         <Stack.Screen name="skillreg" component={SkilledRegister} />
@@ -290,6 +289,7 @@ export default function App() {
         <Stack.Screen
           name="PropertyDetails"
           component={PropertyDetailsScreen}
+          options={{headerShown:false}}
         />
         <Stack.Screen name="postproperty" component={PostProperty} />
         <Stack.Screen name="requestproperty" component={RequestedProperty} />
@@ -329,6 +329,7 @@ export default function App() {
           component={RegisterCustomer}
           options={{ headerShown: false }}
         />
+        {/* <Stack.Screen name="ViewAllProperties" component={ViewAllProperties} /> */}
       </Stack.Navigator>
     </PersistentLayout>
   );
