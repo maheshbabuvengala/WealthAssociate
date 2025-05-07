@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { API_URL } from "../../data/ApiUrl";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import PropertyCard from "./PropertyCard";
+import { FlatList } from "react-native-gesture-handler";
 
 const { width } = Dimensions.get("window");
 
@@ -31,11 +32,13 @@ const HomeScreen = () => {
   const [coreProjects, setCoreProjects] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
-  const [property,setProperty]=useState(null)
+  const [property, setProperty] = useState(null);
   const [referredInfo, setReferredInfo] = useState({
     name: "",
     mobileNumber: "",
   });
+
+  const SCREEN_WIDTH = Dimensions.get("window").width;
 
   const navigation = useNavigation();
   const [postedProperty, setPostedProperty] = useState(null);
@@ -146,7 +149,6 @@ const HomeScreen = () => {
       );
       const data = await response.json();
 
-      // Filter properties to only include those with status "Done"
       const doneProperties = data.filter((item) => item.Approved === "Done");
 
       const formattedProperties = doneProperties.map((item) => ({
@@ -204,7 +206,7 @@ const HomeScreen = () => {
       case "commercial land":
         return require("../../assets/commland.jpeg");
       default:
-        return require("../../assets/house.png"); // Default house image
+        return require("../../assets/house.png");
     }
   };
 
@@ -245,9 +247,22 @@ const HomeScreen = () => {
   };
 
   const handleShare = (property) => {
+    let shareImage;
+    if (Array.isArray(property.photo) && property.photo.length > 0) {
+      shareImage = property.photo[0].startsWith("http")
+        ? property.photo[0]
+        : `${API_URL}${property.photo[0]}`;
+    } else if (property.photo) {
+      shareImage = property.photo.startsWith("http")
+        ? property.photo
+        : `${API_URL}${property.photo}`;
+    } else {
+      shareImage = null;
+    }
+
     navigation.navigate("PropertyCard", {
       property: {
-        photo: property.photo ? `${API_URL}${property.photo}` : null,
+        photo: shareImage,
         location: property.location || "Location not specified",
         price: property.price || "Price not available",
         propertyType: property.propertyType || "Property",
@@ -314,23 +329,48 @@ const HomeScreen = () => {
     loadReferredInfoFromStorage();
   }, []);
 
-  // const renderModalContent = () => {
-  //   if (!referredInfo) {
-  //     return (
-  //       <View style={styles.noReferredInfo}>
-  //         <Text style={styles.noReferredInfoText}>
-  //           No referral information available
-  //         </Text>
-  //         <TouchableOpacity
-  //           style={styles.closeButton}
-  //           onPress={() => setPropertyModalVisible(false)}
-  //         >
-  //           <Text style={styles.closeButtonText}>Close</Text>
-  //         </TouchableOpacity>
-  //       </View>
-  //     );
-  //   }
-  // };
+  const handlePropertyPress = (property) => {
+    if (!property?._id) {
+      console.error("Property ID is missing");
+      return;
+    }
+
+    let images = [];
+    if (Array.isArray(property.photo)) {
+      images = property.photo.map((photo) => ({
+        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
+      }));
+    } else if (property.photo) {
+      images = [
+        {
+          uri: property.photo.startsWith("http")
+            ? property.photo
+            : `${API_URL}${property.photo}`,
+        },
+      ];
+    } else {
+      images = [require("../../assets/logo.png")];
+    }
+
+    let formattedPrice = "Price not available";
+    try {
+      const priceValue = parseInt(property.price);
+      if (!isNaN(priceValue)) {
+        formattedPrice = `₹${priceValue.toLocaleString()}`;
+      }
+    } catch (e) {
+      console.error("Error formatting price:", e);
+    }
+
+    navigation.navigate("PropertyDetails", {
+      property: {
+        ...property,
+        id: property._id,
+        price: formattedPrice,
+        images: images,
+      },
+    });
+  };
 
   const regularProperties = properties.filter(
     (property) => getPropertyTag(property.createdAt) === "Regular Property"
@@ -360,47 +400,115 @@ const HomeScreen = () => {
     );
   }
 
-  const handlePropertyPress = (property) => {
-    if (!property?._id) {
-      console.error("Property ID is missing");
-      return;
+  const renderPropertyImage = (property) => {
+    const scrollRef = useRef(null);
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const images = Array.isArray(property.photo) ? property.photo : [];
+
+    // Auto-scroll every 3 seconds
+    useEffect(() => {
+      if (!images.length) return;
+
+      const interval = setInterval(() => {
+        const nextIndex = (currentIndex + 1) % images.length;
+        setCurrentIndex(nextIndex);
+        scrollRef.current?.scrollTo({
+          x: nextIndex * (SCREEN_WIDTH - 40),
+          animated: true,
+        });
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }, [currentIndex, images.length]);
+
+    // Handle horizontal scroll view with swiping
+    if (images.length > 0) {
+      return (
+        <View style={{ marginBottom: 10 }}>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            style={{ marginBottom: 10 }}
+            onMomentumScrollEnd={(e) => {
+              const offsetX = e.nativeEvent.contentOffset.x;
+              const newIndex = Math.round(offsetX / (SCREEN_WIDTH - 40));
+              setCurrentIndex(newIndex);
+            }}
+            onScrollBeginDrag={() => {
+              // Clear interval when user starts scrolling manually
+              clearInterval(interval);
+            }}
+          >
+            {images.map((item, index) => (
+              <Image
+                key={index}
+                source={{
+                  uri: item.startsWith("http") ? item : `${API_URL}${item}`,
+                }}
+                style={{
+                  width: SCREEN_WIDTH - 40,
+                  height: 200,
+                  borderRadius: 10,
+                }}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+
+          {/* Pagination dots */}
+          <View style={styles.pagination}>
+            {images.map((_, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.dot,
+                  index === currentIndex ? styles.activeDot : null,
+                ]}
+                onPress={() => {
+                  setCurrentIndex(index);
+                  scrollRef.current?.scrollTo({
+                    x: index * (SCREEN_WIDTH - 40),
+                    animated: true,
+                  });
+                }}
+              />
+            ))}
+          </View>
+        </View>
+      );
     }
 
-    // Safely format the price
-    let formattedPrice = "Price not available";
-    try {
-      const priceValue = parseInt(property.price);
-      if (!isNaN(priceValue)) {
-        formattedPrice = `₹${priceValue.toLocaleString()}`;
-      }
-    } catch (e) {
-      console.error("Error formatting price:", e);
+    // Single image
+    else if (typeof property.photo === "string") {
+      return (
+        <Image
+          source={{
+            uri: property.photo.startsWith("http")
+              ? property.photo
+              : `${API_URL}${property.photo}`,
+          }}
+          style={{ width: 260, height: 200, borderRadius: 10 }}
+          resizeMode="cover"
+        />
+      );
     }
 
-    // Handle image URI
-    let imageSource;
-    if (property.photo) {
-      imageSource = property.photo.startsWith("http")
-        ? { uri: property.photo }
-        : { uri: `${API_URL}${property.photo}` };
-    } else {
-      imageSource = require("../../assets/logo.png");
+    // Fallback image
+    else {
+      return (
+        <Image
+          source={require("../../assets/logo.png")}
+          style={{ width: SCREEN_WIDTH - 40, height: 200, borderRadius: 10 }}
+          resizeMode="contain"
+        />
+      );
     }
-
-    navigation.navigate("PropertyDetails", {
-      property: {
-        ...property,
-        id: property._id,
-        price: formattedPrice,
-        image: imageSource,
-      },
-    });
   };
 
   const RenderPropertyCard = ({ property }) => {
-    const imageUri = property.photo
-      ? { uri: `${API_URL}${property.photo}` }
-      : require("../../assets/logo.png");
     const propertyTag = getPropertyTag(property.createdAt);
     const propertyId = getLastFourChars(property._id);
 
@@ -410,7 +518,8 @@ const HomeScreen = () => {
         activeOpacity={0.8}
       >
         <View style={styles.propertyCard}>
-          <Image source={imageUri} style={styles.propertyImage} />
+          {renderPropertyImage(property)}
+
           <View
             style={[
               styles.statusTag,
@@ -422,9 +531,11 @@ const HomeScreen = () => {
           >
             <Text style={styles.statusText}>{propertyTag}</Text>
           </View>
+
           <View style={styles.propertyIdContainer}>
             <Text style={styles.propertyId}>ID: {propertyId}</Text>
           </View>
+
           <Text style={styles.cardTitle}>{property.propertyType}</Text>
           <Text style={styles.cardSubtitle}>
             {property.propertyDetails || "20 sqft"}
@@ -433,6 +544,7 @@ const HomeScreen = () => {
           <Text style={styles.cardPrice}>
             ₹ {parseInt(property.price).toLocaleString()}
           </Text>
+
           <View style={styles.cardButtons}>
             <TouchableOpacity
               style={styles.enquiryBtn}
@@ -445,6 +557,7 @@ const HomeScreen = () => {
                 Enquiry Now
               </Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.shareBtn}
               onPress={(e) => {
@@ -464,7 +577,6 @@ const HomeScreen = () => {
       </TouchableOpacity>
     );
   };
-
   const RequestedPropertyCard = ({ item }) => {
     const propertyTag = getPropertyTag(item.createdAt);
     const propertyId = getLastFourCharss(item.id);
@@ -502,8 +614,6 @@ const HomeScreen = () => {
       </TouchableOpacity>
     </View>
   );
-
-  // Then in your HomeScreen component, update the section headers like this:
 
   const actionButton = (
     iconName,
@@ -550,7 +660,6 @@ const HomeScreen = () => {
           )}
         </View>
 
-        {/* Regular Properties */}
         {regularProperties.length > 0 && (
           <>
             <SectionHeader
@@ -569,7 +678,6 @@ const HomeScreen = () => {
           </>
         )}
 
-        {/* Approved Properties */}
         {approvedProperties.length > 0 && (
           <>
             <SectionHeader
@@ -588,7 +696,6 @@ const HomeScreen = () => {
           </>
         )}
 
-        {/* Wealth Properties */}
         {wealthProperties.length > 0 && (
           <>
             <SectionHeader
@@ -607,7 +714,6 @@ const HomeScreen = () => {
           </>
         )}
 
-        {/* Listed Properties */}
         {listedProperties.length > 0 && (
           <>
             <SectionHeader
@@ -626,8 +732,10 @@ const HomeScreen = () => {
           </>
         )}
 
-        {/* Requested Properties */}
-        <SectionHeader title="Requested Properties" />
+        <SectionHeader
+          title="Listed Properties"
+          onViewAll={() => navigation.navigate("allreqprop")}
+        />
         {loading ? (
           <ActivityIndicator size="large" color="#D81B60" />
         ) : (
@@ -642,7 +750,6 @@ const HomeScreen = () => {
           </ScrollView>
         )}
 
-        {/* Core Clients */}
         {coreClients.length > 0 && (
           <>
             <SectionHeader title="Core Clients" />
@@ -667,7 +774,6 @@ const HomeScreen = () => {
           </>
         )}
 
-        {/* Core Projects */}
         {coreProjects.length > 0 && (
           <>
             <SectionHeader title="Core Projects" />
@@ -759,16 +865,6 @@ const styles = StyleSheet.create({
   horizontalScroll: {
     paddingVertical: 10,
   },
-  // noReferredInfo: {
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  //   padding: 20,
-  // },
-  // noReferredInfoText: {
-  //   fontSize: 16,
-  //   color: "#666",
-  //   marginBottom: 20,
-  // },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -799,9 +895,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   propertyImage: {
-    width: "100%",
-    height: 150,
-    borderRadius: 8,
+    width: Dimensions.get("window").width - 35,
+    height: 200,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+
+  imageScrollContainer: {
     marginBottom: 10,
   },
   statusTag: {
@@ -820,7 +920,8 @@ const styles = StyleSheet.create({
   propertyIdContainer: {
     alignItems: "flex-end",
     paddingRight: 5,
-    marginBottom: 5,
+    // marginBottom: 5,
+    marginTop: 5,
   },
   propertyId: {
     backgroundColor: "green",
@@ -960,6 +1061,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
     elevation: 5,
+  },
+  pagination: {
+    flexDirection: "row",
+    position: "absolute",
+    bottom: 10,
+    alignSelf: "center",
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ccc",
+    margin: 5,
+  },
+  activeDot: {
+    backgroundColor: "#000",
   },
   agentLogo: {
     width: 80,

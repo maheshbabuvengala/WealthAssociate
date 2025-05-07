@@ -70,6 +70,7 @@ import regskill from "./NewWealth/Add_Member/Rskill";
 import reginvestor from "./NewWealth/Add_Member/AddInvestors";
 import NriProfile from "./NewWealth/UsersProfiles/NriProfile";
 import Addexpert from "./NewWealth/ExpertPanel/AddExpert";
+import ViewAllRequestedProperties from "./NewWealth/Properties/AllrequestedProperties";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -291,6 +292,10 @@ export default function App() {
         <Stack.Screen name="regiskill" component={regskill} />
         <Stack.Screen name="regiinvestor" component={reginvestor} />
         <Stack.Screen name="addexpert" component={Addexpert} />
+        <Stack.Screen
+          name="allreqprop"
+          component={ViewAllRequestedProperties}
+        />
         <Stack.Screen
           name="PropertyDetails"
           component={PropertyDetailsScreen}

@@ -12,6 +12,7 @@ import {
   TextInput,
   Modal,
   Alert,
+  Linking,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
@@ -38,17 +39,32 @@ const ViewAllRequestedProperties = ({ navigation }) => {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [referredInfo, setReferredInfo] = useState(null);
+  const [userType, setUserType] = useState("");
 
+  // Enhanced property type image mapping
   const getImageByPropertyType = (propertyType) => {
-    switch (propertyType.toLowerCase()) {
+    if (!propertyType) return logo10;
+
+    const type = propertyType.toLowerCase();
+    switch (type) {
       case "land":
+      case "land(opensite)":
         return logo6;
       case "residential":
+      case "house(individual)":
+      case "house":
         return logo7;
       case "commercial":
+      case "commercial property":
+      case "commercial land":
         return logo8;
       case "villa":
         return logo9;
+      case "flat(apartment)":
+      case "apartment":
+        return require("../../assets/download.jpeg");
+      case "agriculture land":
+        return require("../../assets/agriculture.jpeg");
       default:
         return logo10;
     }
@@ -57,16 +73,59 @@ const ViewAllRequestedProperties = ({ navigation }) => {
   const getAgentDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
+      const type = await AsyncStorage.getItem("userType");
+      setUserType(type);
+
+      let endpoint = "";
+      switch (type) {
+        case "WealthAssociate":
+        case "ReferralAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Customer":
+          endpoint = `${API_URL}/customer/getcustomer`;
+          break;
+        case "CoreMember":
+          endpoint = `${API_URL}/core/getcore`;
+          break;
+        case "Investor":
+          endpoint = `${API_URL}/investors/getinvestor`;
+          break;
+        case "NRI":
+          endpoint = `${API_URL}/nri/getnri`;
+          break;
+        case "SkilledResource":
+          endpoint = `${API_URL}/skillLabour/getskilled`;
+          break;
+        default:
+          endpoint = `${API_URL}/agent/AgentDetails`;
+      }
+
+      const response = await fetch(endpoint, {
         method: "GET",
         headers: {
           token: `${token}` || "",
         },
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      setAgentLocation(data.Contituency || "");
-      if (data.ReferredBy) {
-        fetchReferredDetails(data.ReferredBy);
+
+      // Handle different response structures based on user type
+      if (type === "WealthAssociate" || type === "ReferralAssociate") {
+        setAgentLocation(data.Contituency || "");
+        if (data.ReferredBy) {
+          fetchReferredDetails(data.ReferredBy);
+        }
+      } else if (type === "Customer") {
+        setAgentLocation(data.location || "");
+      } else if (type === "CoreMember") {
+        setAgentLocation(data.city || "");
+      } else if (type === "Investor" || type === "NRI") {
+        setAgentLocation(data.preferredLocation || "");
       }
     } catch (error) {
       console.error("Error fetching agent details:", error);
@@ -90,12 +149,17 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         }
       );
 
-      if (!response.ok)
+      if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const data = await response.json();
       if (data.status === "success") {
-        setReferredInfo(data.referredByDetails);
+        setReferredInfo({
+          name: data.referredByDetails.name || "N/A",
+          mobileNumber: data.referredByDetails.Number || "N/A",
+          email: data.referredByDetails.email || "N/A",
+        });
       }
     } catch (error) {
       console.error("Error fetching referredBy info:", error);
@@ -111,6 +175,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         setLoading(false);
         return;
       }
+
       const response = await fetch(
         `${API_URL}/requestProperty/getallrequestProperty`,
         {
@@ -120,8 +185,12 @@ const ViewAllRequestedProperties = ({ navigation }) => {
           },
         }
       );
-      const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
       const doneProperties = data.filter((item) => item.Approved === "Done");
 
       const formattedProperties = doneProperties.map((item) => ({
@@ -129,7 +198,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         title: item.propertyTitle,
         type: item.propertyType,
         location: item.location,
-        budget: `₹${item.Budget.toLocaleString()}`,
+        budget: `₹${item.Budget?.toLocaleString() || "0"}`,
         image: getImageByPropertyType(item.propertyType),
         createdAt: item.createdAt,
         contactNumber: item.contactNumber,
@@ -137,7 +206,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         additionalDetails: item.additionalDetails,
         isInMyLocation:
           agentLocation &&
-          item.location.toLowerCase().includes(agentLocation.toLowerCase()),
+          item.location?.toLowerCase().includes(agentLocation.toLowerCase()),
       }));
 
       // Sort with agent's location first
@@ -151,6 +220,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
       setFilteredProperties(sortedProperties);
     } catch (error) {
       console.error("Error fetching properties:", error);
+      Alert.alert("Error", "Failed to fetch properties");
     } finally {
       setLoading(false);
     }
@@ -268,11 +338,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
 
   const renderPropertyCard = (item) => (
     <View style={styles.requestcard}>
-      <Image
-        source={item.image}
-        style={styles.images}
-        defaultSource={logo11} // Fallback image
-      />
+      <Image source={item.image} style={styles.images} defaultSource={logo11} />
       <View style={styles.idContainer}>
         <Text style={styles.idText}>ID: {getLastFourCharss(item.id)}</Text>
       </View>
@@ -284,6 +350,15 @@ const ViewAllRequestedProperties = ({ navigation }) => {
           <Text style={styles.locationTag}>(Your Area)</Text>
         )}
         <Text style={styles.text}>Budget: {item.budget}</Text>
+        {userType === "WealthAssociate" && item.contactNumber && (
+          <TouchableOpacity
+            style={styles.callButton}
+            onPress={() => Linking.openURL(`tel:${item.contactNumber}`)}
+          >
+            <Ionicons name="call" size={16} color="white" />
+            <Text style={styles.callButtonText}>Call Client</Text>
+          </TouchableOpacity>
+        )}
       </View>
       <TouchableOpacity
         style={styles.iHaveButton}
@@ -323,6 +398,20 @@ const ViewAllRequestedProperties = ({ navigation }) => {
             onChangeText={handleSearch}
           />
         </View>
+        <View style={styles.filterContainer}>
+          <Picker
+            selectedValue={filterType}
+            style={styles.filterPicker}
+            onValueChange={handleFilterChange}
+          >
+            <Picker.Item label="All Types" value="all" />
+            <Picker.Item label="Land" value="land" />
+            <Picker.Item label="Residential" value="residential" />
+            <Picker.Item label="Commercial" value="commercial" />
+            <Picker.Item label="Villa" value="villa" />
+            <Picker.Item label="Apartment" value="apartment" />
+          </Picker>
+        </View>
       </View>
 
       {loading ? (
@@ -334,6 +423,9 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         <View style={styles.noResultsContainer}>
           <Icon name="alert-circle-outline" size={50} color="#E91E63" />
           <Text style={styles.noResultsText}>No properties found</Text>
+          <Text style={styles.noResultsSubText}>
+            Try adjusting your search or filters
+          </Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.propertiesContainer}>
@@ -341,7 +433,6 @@ const ViewAllRequestedProperties = ({ navigation }) => {
         </ScrollView>
       )}
 
-      {/* Confirmation Modal */}
       <Modal
         visible={isModalVisible}
         transparent={true}
@@ -356,11 +447,16 @@ const ViewAllRequestedProperties = ({ navigation }) => {
                 <Text style={styles.modalTitle}>Referred By</Text>
                 <Text style={styles.modalText}>Name: {referredInfo.name}</Text>
                 <Text style={styles.modalText}>
-                  Mobile: {referredInfo.Number}
+                  Mobile: {referredInfo.mobileNumber}
                 </Text>
+                {/* <Text style={styles.modalText}>
+                  Email: {referredInfo.email}
+                </Text> */}
                 <TouchableOpacity
                   style={styles.callButton}
-                  onPress={() => Linking.openURL(`tel:${referredInfo.Number}`)}
+                  onPress={() =>
+                    Linking.openURL(`tel:${referredInfo.mobileNumber}`)
+                  }
                 >
                   <Ionicons name="call" size={20} color="white" />
                   <Text style={styles.callButtonText}>Call Now</Text>
@@ -375,6 +471,28 @@ const ViewAllRequestedProperties = ({ navigation }) => {
                 <Text style={styles.modalPropertyText}>
                   {selectedProperty?.title} ({selectedProperty?.type})
                 </Text>
+                {selectedProperty?.contactNumber && (
+                  <TouchableOpacity
+                    style={styles.callButton}
+                    onPress={() =>
+                      Linking.openURL(`tel:${selectedProperty.contactNumber}`)
+                    }
+                  >
+                    <Ionicons name="call" size={20} color="white" />
+                    <Text style={styles.callButtonText}>Contact Client</Text>
+                  </TouchableOpacity>
+                )}
+                {selectedProperty?.email && (
+                  <TouchableOpacity
+                    style={styles.emailButton}
+                    onPress={() =>
+                      Linking.openURL(`mailto:${selectedProperty.email}`)
+                    }
+                  >
+                    <Ionicons name="mail" size={20} color="white" />
+                    <Text style={styles.callButtonText}>Email Client</Text>
+                  </TouchableOpacity>
+                )}
               </>
             )}
             <View style={styles.modalButtonContainer}>
@@ -384,7 +502,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
               >
                 <Text style={styles.modalButtonText}>Cancel</Text>
               </TouchableOpacity>
-              {/* <TouchableOpacity
+              <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={() => {
                   if (selectedProperty) {
@@ -394,7 +512,7 @@ const ViewAllRequestedProperties = ({ navigation }) => {
                 }}
               >
                 <Text style={styles.modalButtonText}>Confirm</Text>
-              </TouchableOpacity> */}
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -448,6 +566,13 @@ const styles = StyleSheet.create({
     height: 40,
     fontSize: 16,
   },
+  filterContainer: {
+    width: isWeb ? 200 : "100%",
+  },
+  filterPicker: {
+    height: 60,
+    width: "100%",
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -470,6 +595,12 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
   },
+  noResultsSubText: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
+    marginTop: 5,
+  },
   propertiesContainer: {
     padding: isWeb ? 20 : 15,
   },
@@ -478,13 +609,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 20,
   },
+  propertyCardWeb: {
+    width: "32%",
+  },
   requestcard: {
     backgroundColor: "white",
     borderRadius: 10,
     overflow: "hidden",
     elevation: 3,
     margin: 8,
-    width: isWeb ? 300 : "100%",
+    width: isWeb ? "100%" : "100%",
+  },
+  propertyCard: {
+    marginBottom: 15,
   },
   images: {
     width: "100%",
@@ -498,10 +635,14 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     alignSelf: "flex-end",
     margin: 5,
+    position: "absolute",
+    right: 5,
+    top: 5,
   },
   idText: {
     color: "#fff",
     fontWeight: "600",
+    fontSize: 12,
   },
   details: {
     padding: 10,
@@ -514,10 +655,36 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 12,
     color: "#666",
+    marginBottom: 3,
   },
   locationTag: {
     color: "#FF9800",
     fontSize: 12,
+    fontWeight: "bold",
+    marginBottom: 3,
+  },
+  callButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2196F3",
+    padding: 8,
+    borderRadius: 5,
+    marginTop: 5,
+  },
+  emailButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FF5722",
+    padding: 8,
+    borderRadius: 5,
+    marginTop: 5,
+  },
+  callButtonText: {
+    color: "white",
+    fontSize: 14,
+    marginLeft: 5,
     fontWeight: "bold",
   },
   iHaveButton: {
@@ -526,7 +693,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignSelf: "center",
     margin: 10,
-    width: 80,
+    width: "90%",
     alignItems: "center",
   },
   buttonText: {
@@ -575,20 +742,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     color: "#2196F3",
     textAlign: "center",
-  },
-  callButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#28a745",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 15,
-  },
-  callButtonText: {
-    color: "white",
-    fontSize: 16,
-    marginLeft: 8,
   },
   modalButtonContainer: {
     flexDirection: "row",

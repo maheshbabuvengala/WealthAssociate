@@ -117,7 +117,7 @@ export default function Login_screen() {
           userType = "SkilledResource";
           break;
         case "CallCenter":
-          endpoint = `${API_URL}/callcenter/callcenterlogin`;
+          endpoint = `${API_URL}/callexe/logincall-executives`;
           userType = "CallCenter";
           break;
         default:
@@ -144,9 +144,15 @@ export default function Login_screen() {
         await AsyncStorage.setItem("authToken", token);
         await AsyncStorage.setItem("userType", userType);
         console.log("Token stored in AsyncStorage:", token);
-
-        navigation.navigate("Main");
-      } else {
+      
+        if (userType === "CallCenter") {
+          navigation.navigate("CallCenterDashboard");
+        } else {
+          navigation.navigate("Main");
+        }
+      }
+      
+       else {
         setErrorMessage(
           data.message || "Mobile number or password is incorrect."
         );
