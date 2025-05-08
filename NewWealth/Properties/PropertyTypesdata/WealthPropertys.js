@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,11 +9,15 @@ import {
   Image,
   Linking,
   Modal,
+  Alert,
+  Dimensions,
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
+
+const { width } = Dimensions.get("window");
 
 const WealthPropertiesScreen = () => {
   const [properties, setProperties] = useState([]);
@@ -47,13 +51,44 @@ const WealthPropertiesScreen = () => {
         const wealthProps = data.filter(
           (property) => getPropertyTag(property.createdAt) === "Wealth Property"
         );
-        setProperties(wealthProps);
+        setProperties(
+          wealthProps.map((property) => ({
+            ...property,
+            images: formatImages(property),
+          }))
+        );
       }
     } catch (error) {
       console.error("Error fetching properties:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Format images for display (handles both array and single image)
+  const formatImages = (property) => {
+    if (!property) return [];
+
+    // Handle array of photos
+    if (Array.isArray(property.photo) && property.photo.length > 0) {
+      return property.photo.map((photo) => ({
+        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
+      }));
+    }
+
+    // Handle single photo string
+    if (typeof property.photo === "string") {
+      return [
+        {
+          uri: property.photo.startsWith("http")
+            ? property.photo
+            : `${API_URL}${property.photo}`,
+        },
+      ];
+    }
+
+    // Fallback to default image
+    return [require("../../../assets/logo.png")];
   };
 
   const getPropertyTag = (createdAt) => {
@@ -77,7 +112,7 @@ const WealthPropertiesScreen = () => {
     return id ? id.slice(-4) : "N/A";
   };
 
-  const handlePropertyPress = (property) => {
+  const handlePropertyPress = async (property) => {
     if (!property?._id) {
       console.error("Property ID is missing");
       return;
@@ -93,23 +128,30 @@ const WealthPropertiesScreen = () => {
       console.error("Error formatting price:", e);
     }
 
-    let imageSource;
-    if (property.photo) {
-      imageSource = property.photo.startsWith("http")
-        ? { uri: property.photo }
-        : { uri: `${API_URL}${property.photo}` };
-    } else {
-      imageSource = require("../../../assets/logo.png");
-    }
+    try {
+      // Store the property in AsyncStorage before navigating
+      await AsyncStorage.setItem(
+        "currentProperty",
+        JSON.stringify({
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          images: property.images,
+        })
+      );
 
-    navigation.navigate("PropertyDetails", {
-      property: {
-        ...property,
-        id: property._id,
-        price: formattedPrice,
-        image: imageSource,
-      },
-    });
+      navigation.navigate("PropertyDetails", {
+        property: {
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          images: property.images,
+        },
+      });
+    } catch (error) {
+      console.error("Error storing property:", error);
+      Alert.alert("Error", "Failed to navigate to property details");
+    }
   };
 
   const handleEnquiryNow = (property) => {
@@ -117,17 +159,98 @@ const WealthPropertiesScreen = () => {
     setPropertyModalVisible(true);
   };
 
-  const handleShare = (property) => {
-    navigation.navigate("PropertyCard", {
-      property: {
-        photo: property.photo ? `${API_URL}${property.photo}` : null,
+  const handleShare = async (property) => {
+    try {
+      if (!property) {
+        Alert.alert("Error", "No property data to share");
+        return;
+      }
+
+      const shareData = {
+        photo: property.images?.[0]?.uri || null,
         location: property.location || "Location not specified",
         price: property.price || "Price not available",
         propertyType: property.propertyType || "Property",
         PostedBy: property.PostedBy || "",
         fullName: property.fullName || "Wealth Associate",
-      },
-    });
+        mobile: property.mobile || property.MobileNumber || "",
+      };
+
+      await AsyncStorage.setItem("sharedProperty", JSON.stringify(shareData));
+      navigation.navigate("PropertyCard", { property: shareData });
+    } catch (error) {
+      console.error("Sharing error:", error);
+      Alert.alert("Error", "Failed to share property");
+    }
+  };
+
+  const PropertyImageSlider = ({ images }) => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const scrollRef = useRef(null);
+
+    useEffect(() => {
+      if (images.length <= 1) return;
+
+      const interval = setInterval(() => {
+        const nextIndex = (currentImageIndex + 1) % images.length;
+        setCurrentImageIndex(nextIndex);
+        scrollRef.current?.scrollTo({
+          x: nextIndex * width,
+          animated: true,
+        });
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }, [currentImageIndex, images.length]);
+
+    if (images.length === 0) {
+      return (
+        <Image
+          source={require("../../../assets/logo.png")}
+          style={styles.propertyImage}
+          resizeMode="contain"
+        />
+      );
+    }
+
+    return (
+      <View style={styles.imageSliderContainer}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const offsetX = e.nativeEvent.contentOffset.x;
+            const newIndex = Math.round(offsetX / width);
+            setCurrentImageIndex(newIndex);
+          }}
+        >
+          {images.map((image, index) => (
+            <Image
+              key={index}
+              source={image}
+              style={styles.propertyImage}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+
+        {images.length > 1 && (
+          <View style={styles.pagination}>
+            {images.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  index === currentImageIndex && styles.activeDot,
+                ]}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    );
   };
 
   if (loading) {
@@ -154,14 +277,8 @@ const WealthPropertiesScreen = () => {
               style={styles.propertyCardContainer}
             >
               <View style={styles.propertyCard}>
-                <Image
-                  source={
-                    property.photo
-                      ? { uri: `${API_URL}${property.photo}` }
-                      : require("../../../assets/logo.png")
-                  }
-                  style={styles.propertyImage}
-                />
+                <PropertyImageSlider images={property.images} />
+
                 <View
                   style={[
                     styles.statusTag,
@@ -312,12 +429,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    position: "relative",
+  },
+  imageSliderContainer: {
+    position: "relative",
+    marginBottom: 10,
   },
   propertyImage: {
-    width: "100%",
-    height: 150,
+    width: width - 40,
+    height: 200,
     borderRadius: 8,
-    marginBottom: 10,
+  },
+  pagination: {
+    position: "absolute",
+    bottom: 10,
+    flexDirection: "row",
+    alignSelf: "center",
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    margin: 5,
+  },
+  activeDot: {
+    backgroundColor: "#fff",
   },
   statusTag: {
     position: "absolute",
@@ -326,6 +463,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
+    zIndex: 1,
   },
   statusText: {
     color: "white",

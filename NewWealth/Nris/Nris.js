@@ -61,6 +61,49 @@ export default function ViewNri() {
     }
   };
 
+
+  // const handleDelete = (id) => {
+  //   if (Platform.OS === "web") {
+  //     const isConfirmed = window.confirm(
+  //       "Are you sure you want to delete this member?"
+  //     );
+  //     if (isConfirmed) {
+  //       fetch(`${API_URL}/nri/deletenri/${id}`, {
+  //         method: "DELETE",
+  //       })
+  //         .then(() => {
+  //           setNriMembers(nriMembers.filter((member) => member._id !== id));
+  //         })
+  //         .catch((error) => console.error("Error deleting member:", error));
+  //     }
+  //   } else {
+  //     Alert.alert(
+  //       "Confirm Delete",
+  //       "Are you sure you want to delete this member?",
+  //       [
+  //         { text: "Cancel", style: "cancel" },
+  //         {
+  //           text: "Delete",
+  //           onPress: () => {
+  //             fetch(`${API_URL}/nri/deletenri/${id}`, {
+  //               method: "DELETE",
+  //             })
+  //               .then(() => {
+  //                 setNriMembers(
+  //                   nriMembers.filter((member) => member._id !== id)
+  //                 );
+  //               })
+  //               .catch((error) =>
+  //                 console.error("Error deleting member:", error)
+  //               );
+  //           },
+  //           style: "destructive",
+  //         },
+  //       ]
+  //     );
+  //   }
+  // };
+
   const handleDelete = async (id) => {
     try {
       setDeletingId(id);
@@ -70,7 +113,7 @@ export default function ViewNri() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/nri/referred-members/${id}`, {
+      const response = await fetch(`${API_URL}/nri/deletenri/${id}`, {
         method: "DELETE",
       });
 

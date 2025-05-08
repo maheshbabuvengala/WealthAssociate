@@ -15,32 +15,42 @@ import {
 } from "react-native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
 
 const screenHeight = Dimensions.get("window").height;
 const { width } = Dimensions.get("window");
 const isSmallScreen = width < 600;
 
 const RegisterExecute = ({ closeModal }) => {
-  const [fullname, setFullname] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [email, setEmail] = useState("");
-  const [district, setDistrict] = useState("");
-  const [constituency, setConstituency] = useState("");
-  const [occupation, setOccupation] = useState("");
+  const [formData, setFormData] = useState({
+    fullname: "",
+    mobile: "",
+    email: "",
+    district: "",
+    constituency: "",
+    occupation: "",
+    location: "",
+  });
   const [referralCode, setReferralCode] = useState("");
-  const [location, setLocation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [districtSearch, setDistrictSearch] = useState("");
-  const [constituencySearch, setConstituencySearch] = useState("");
-  const [occupationSearch, setOccupationSearch] = useState("");
-  const [showDistrictList, setShowDistrictList] = useState(false);
-  const [showConstituencyList, setShowConstituencyList] = useState(false);
-  const [showOccupationList, setShowOccupationList] = useState(false);
+  const [searchTerms, setSearchTerms] = useState({
+    district: "",
+    constituency: "",
+    occupation: "",
+  });
+  const [dropdownVisibility, setDropdownVisibility] = useState({
+    district: false,
+    constituency: false,
+    occupation: false,
+  });
   const [districts, setDistricts] = useState([]);
   const [occupationOptions, setOccupationOptions] = useState([]);
-  const [Details, setDetails] = useState({});
+  const [userDetails, setUserDetails] = useState({});
   const [errorMessage, setErrorMessage] = useState("");
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [userType, setUserType] = useState("");
+
+  const navigation = useNavigation();
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -58,14 +68,155 @@ const RegisterExecute = ({ closeModal }) => {
     };
   }, []);
 
-  // Fetch all districts and constituencies from the API
+  const fetchUserDetails = async () => {
+    try {
+      const [token, storedUserType] = await Promise.all([
+        AsyncStorage.getItem("authToken"),
+        AsyncStorage.getItem("userType"),
+      ]);
+
+      if (!token || !storedUserType) return;
+
+      setUserType(storedUserType);
+
+      let endpoint = "";
+      switch (storedUserType) {
+        case "WealthAssociate":
+        case "ReferralAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Customer":
+          endpoint = `${API_URL}/customer/getcustomer`;
+          break;
+        case "CoreMember":
+          endpoint = `${API_URL}/core/getcore`;
+          break;
+        case "Investor":
+          endpoint = `${API_URL}/investors/getinvestor`;
+          break;
+        case "NRI":
+          endpoint = `${API_URL}/nri/getnri`;
+          break;
+        case "SkilledResource":
+          endpoint = `${API_URL}/skillLabour/getskilled`;
+          break;
+        case "CallCenter":
+          endpoint = `${API_URL}/callcenter/getcallcenter`;
+          break;
+        default:
+          endpoint = `${API_URL}/agent/AgentDetails`;
+      }
+
+      const response = await fetch(endpoint, {
+        headers: { token },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch user details");
+
+      const data = await response.json();
+      setUserDetails(data);
+
+      // Set referral code or fallback to mobile number
+      if (data.MyRefferalCode) {
+        setReferralCode(data.MyRefferalCode);
+      } else {
+        // Fallback to MobileNumber or MobileIN based on user type
+        const mobileFallback =
+          data.MobileNumber || data.MobileIN || "WA0000000001";
+        setReferralCode(mobileFallback);
+      }
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+      setReferralCode("WA0000000001"); // Default fallback
+    }
+  };
+
+  // Updated handleRegister function
+  const handleRegister = async () => {
+    const { fullname, mobile, district, constituency, location, occupation } =
+      formData;
+
+    if (
+      !fullname ||
+      !mobile ||
+      !district ||
+      !constituency ||
+      !location ||
+      !occupation
+    ) {
+      Alert.alert("Error", "Please fill in all required fields.");
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage("");
+
+    const selectedDistrict = districts.find((d) => d.parliament === district);
+    const selectedAssembly = selectedDistrict?.assemblies.find(
+      (a) => a.name === constituency
+    );
+
+    if (!selectedDistrict || !selectedAssembly) {
+      Alert.alert("Error", "Invalid district or constituency selected.");
+      setIsLoading(false);
+      return;
+    }
+
+    const referenceId = `${selectedDistrict.parliamentCode}${selectedAssembly.code}`;
+    const registeredBy = getRegisteredByValue();
+
+    // Determine the ReferredBy value
+    const referredByValue =
+      referralCode ||
+      userDetails.MobileNumber ||
+      userDetails.MobileIN ||
+      "WA0000000001";
+
+    const userData = {
+      FullName: fullname,
+      MobileNumber: mobile,
+      District: district,
+      Contituency: constituency,
+      Locations: location,
+      Occupation: occupation,
+      ReferredBy: referredByValue, // Updated to use fallback values
+      Password: "Wealth",
+      MyRefferalCode: referenceId,
+      RegisteredBY: registeredBy,
+    };
+
+    try {
+      const response = await fetch(`${API_URL}/customer/CustomerRegister`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        Alert.alert("Success", "Registration successful!");
+        closeModal();
+      } else {
+        setErrorMessage(
+          result.message || "Registration failed. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      setErrorMessage("Network error. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  // Fetch all districts and constituencies
   const fetchDistrictsAndConstituencies = async () => {
     try {
       const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
       const data = await response.json();
-      setDistricts(data); // Set the fetched data to districts
+      setDistricts(data);
     } catch (error) {
-      console.error("Error fetching districts and constituencies:", error);
+      console.error("Error fetching districts:", error);
     }
   };
 
@@ -81,155 +232,80 @@ const RegisterExecute = ({ closeModal }) => {
   };
 
   useEffect(() => {
+    fetchUserDetails();
     fetchDistrictsAndConstituencies();
     fetchOccupations();
   }, []);
 
-  // Filter districts based on search input
+  // Filter functions
   const filteredDistricts = districts.filter((item) =>
-    item.parliament.toLowerCase().includes(districtSearch.toLowerCase())
+    item.parliament.toLowerCase().includes(searchTerms.district.toLowerCase())
   );
 
-  // Filter constituencies based on the selected district
   const filteredConstituencies =
     districts
-      .find((item) => item.parliament === district)
+      .find((item) => item.parliament === formData.district)
       ?.assemblies.filter((assembly) =>
-        assembly.name.toLowerCase().includes(constituencySearch.toLowerCase())
+        assembly.name
+          .toLowerCase()
+          .includes(searchTerms.constituency.toLowerCase())
       ) || [];
 
-  // Fetch agent details
-  const getDetails = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
-        method: "GET",
-        headers: {
-          token: `${token}` || "",
-        },
-      });
-      const newDetails = await response.json();
-      setDetails(newDetails);
-    } catch (error) {
-      console.error("Error fetching agent details:", error);
-    }
+  const filteredOccupations = occupationOptions.filter((item) =>
+    item.name.toLowerCase().includes(searchTerms.occupation.toLowerCase())
+  );
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  useEffect(() => {
-    getDetails();
-  }, []);
-
-  useEffect(() => {
-    if (Details.MyRefferalCode) {
-      setReferralCode(Details.MyRefferalCode);
-    }
-  }, [Details]);
+  const handleSearchChange = (field, value) => {
+    setSearchTerms((prev) => ({ ...prev, [field]: value }));
+    setDropdownVisibility((prev) => ({ ...prev, [field]: true }));
+  };
 
   const closeAllDropdowns = () => {
-    setShowDistrictList(false);
-    setShowConstituencyList(false);
-    setShowOccupationList(false);
+    setDropdownVisibility({
+      district: false,
+      constituency: false,
+      occupation: false,
+    });
   };
 
-  const handleRegister = async () => {
-    if (
-      !fullname.trim() ||
-      !mobile.trim() ||
-      !district.trim() ||
-      !constituency.trim() ||
-      !location.trim() ||
-      !occupation.trim()
-    ) {
-      Alert.alert("Error", "Please fill in all required fields.");
-      return;
-    }
+  const handleSelectItem = (field, value) => {
+    handleInputChange(field, value);
+    setSearchTerms((prev) => ({ ...prev, [field]: value }));
+    closeAllDropdowns();
+  };
 
-    setIsLoading(true);
-    setErrorMessage(""); // Clear any previous error message
-
-    const selectedDistrict = districts.find((d) => d.parliament === district);
-    const selectedAssembly = selectedDistrict?.assemblies.find(
-      (a) => a.name === constituency
-    );
-
-    if (!selectedDistrict || !selectedAssembly) {
-      Alert.alert("Error", "Invalid district or constituency selected.");
-      setIsLoading(false);
-      return;
-    }
-
-    const referenceId = `${selectedDistrict.parliamentCode}${selectedAssembly.code}`;
-
-    const userData = {
-      FullName: fullname,
-      MobileNumber: mobile,
-      District: district,
-      Contituency: constituency,
-      Locations: location,
-      Occupation: occupation,
-      ReferredBy: referralCode || "WA0000000001",
-      Password: "Wealth",
-      MyRefferalCode: referenceId,
-      RegisteredBY: "WealthAssociate",
-    };
-
-    try {
-      const response = await fetch(`${API_URL}/customer/CustomerRegister`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userData),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        Alert.alert("Success", "Registration successful!");
-        closeModal();
-      } else if (response.status === 400) {
-        const errorData = await response.json();
-        setErrorMessage(errorData.message || "Mobile number already exists."); // Set the error message
-      } else {
-        const errorData = await response.json();
-        setErrorMessage(errorData.message || "Something went wrong."); // Set the error message
-      }
-    } catch (error) {
-      console.error("Error during registration:", error);
-      setErrorMessage(
-        "Failed to connect to the server. Please try again later."
-      ); // Set the error message
-    } finally {
-      setIsLoading(false);
+  const getRegisteredByValue = () => {
+    switch (userType) {
+      case "WealthAssociate":
+        return "WealthAssociate";
+      case "ReferralAssociate":
+        return "ReferralAssociate";
+      case "CallCenter":
+        return "CallCenter";
+      case "CoreMember":
+        return "CoreMember";
+      default:
+        return "WealthAssociate";
     }
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0} // Adjust if needed
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
       style={{ flex: 1 }}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        keyboardDismissMode="interactive"
-        resetScrollToCoords={{ x: 0, y: 0 }} 
-            >
-        <View
-          style={[
-            styles.container,
-            isSmallScreen && styles.smallScreenContainer,
-            {
-              minHeight: isKeyboardVisible
-                ? screenHeight * 0.6
-                : screenHeight * 0.1, // Adjust minHeight dynamically
-              justifyContent: "flex-start",
-            },
-          ]}
-        >
+      >
+        <View style={styles.container}>
           <Text style={styles.title}>Register Customer</Text>
-          {/* Display the error message above the input fields */}
+
           {errorMessage ? (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{errorMessage}</Text>
@@ -242,8 +318,8 @@ const RegisterExecute = ({ closeModal }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Ex. John Doe"
-                value={fullname}
-                onChangeText={setFullname}
+                value={formData.fullname}
+                onChangeText={(text) => handleInputChange("fullname", text)}
               />
             </View>
             <View style={styles.inputContainer}>
@@ -252,8 +328,8 @@ const RegisterExecute = ({ closeModal }) => {
                 style={styles.input}
                 placeholder="Ex. 9063 392872"
                 keyboardType="phone-pad"
-                value={mobile}
-                onChangeText={setMobile}
+                value={formData.mobile}
+                onChangeText={(text) => handleInputChange("mobile", text)}
               />
             </View>
           </View>
@@ -264,29 +340,27 @@ const RegisterExecute = ({ closeModal }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Search Parliament"
-                value={districtSearch}
-                onChangeText={(text) => {
-                  setDistrictSearch(text);
-                  closeAllDropdowns();
-                  setShowDistrictList(true);
-                }}
-                onFocus={() => {
-                  closeAllDropdowns();
-                  setShowDistrictList(true);
-                }}
+                value={searchTerms.district}
+                onChangeText={(text) => handleSearchChange("district", text)}
+                onFocus={() =>
+                  setDropdownVisibility({
+                    ...dropdownVisibility,
+                    district: true,
+                    constituency: false,
+                    occupation: false,
+                  })
+                }
               />
-              {showDistrictList && (
+              {dropdownVisibility.district && (
                 <View style={styles.dropdownContainer}>
                   <ScrollView style={styles.scrollView}>
                     {filteredDistricts.map((item) => (
                       <TouchableOpacity
                         key={item.parliament}
                         style={styles.listItem}
-                        onPress={() => {
-                          setDistrict(item.parliament);
-                          setDistrictSearch(item.parliament);
-                          closeAllDropdowns();
-                        }}
+                        onPress={() =>
+                          handleSelectItem("district", item.parliament)
+                        }
                       >
                         <Text>{item.parliament}</Text>
                       </TouchableOpacity>
@@ -300,29 +374,30 @@ const RegisterExecute = ({ closeModal }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Search Assembly"
-                value={constituencySearch}
-                onChangeText={(text) => {
-                  setConstituencySearch(text);
-                  closeAllDropdowns();
-                  setShowConstituencyList(true);
-                }}
-                onFocus={() => {
-                  closeAllDropdowns();
-                  setShowConstituencyList(true);
-                }}
+                value={searchTerms.constituency}
+                onChangeText={(text) =>
+                  handleSearchChange("constituency", text)
+                }
+                onFocus={() =>
+                  setDropdownVisibility({
+                    ...dropdownVisibility,
+                    constituency: true,
+                    district: false,
+                    occupation: false,
+                  })
+                }
+                editable={!!formData.district}
               />
-              {showConstituencyList && (
+              {dropdownVisibility.constituency && (
                 <View style={styles.dropdownContainer}>
                   <ScrollView style={styles.scrollView}>
                     {filteredConstituencies.map((item, index) => (
                       <TouchableOpacity
                         key={index}
                         style={styles.listItem}
-                        onPress={() => {
-                          setConstituency(item.name);
-                          setConstituencySearch(item.name);
-                          closeAllDropdowns();
-                        }}
+                        onPress={() =>
+                          handleSelectItem("constituency", item.name)
+                        }
                       >
                         <Text>{item.name}</Text>
                       </TouchableOpacity>
@@ -339,29 +414,27 @@ const RegisterExecute = ({ closeModal }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Select Occupation"
-                value={occupationSearch}
-                onChangeText={(text) => {
-                  setOccupationSearch(text);
-                  closeAllDropdowns();
-                  setShowOccupationList(true);
-                }}
-                onFocus={() => {
-                  closeAllDropdowns();
-                  setShowOccupationList(true);
-                }}
+                value={searchTerms.occupation}
+                onChangeText={(text) => handleSearchChange("occupation", text)}
+                onFocus={() =>
+                  setDropdownVisibility({
+                    ...dropdownVisibility,
+                    occupation: true,
+                    district: false,
+                    constituency: false,
+                  })
+                }
               />
-              {showOccupationList && (
+              {dropdownVisibility.occupation && (
                 <View style={styles.dropdownContainer}>
                   <ScrollView style={styles.scrollView}>
-                    {occupationOptions.map((item) => (
+                    {filteredOccupations.map((item) => (
                       <TouchableOpacity
                         key={item.code}
                         style={styles.listItem}
-                        onPress={() => {
-                          setOccupation(item.name);
-                          setOccupationSearch(item.name);
-                          closeAllDropdowns();
-                        }}
+                        onPress={() =>
+                          handleSelectItem("occupation", item.name)
+                        }
                       >
                         <Text>{item.name}</Text>
                       </TouchableOpacity>
@@ -375,8 +448,8 @@ const RegisterExecute = ({ closeModal }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Ex. Vijayawada"
-                value={location}
-                onChangeText={setLocation}
+                value={formData.location}
+                onChangeText={(text) => handleInputChange("location", text)}
               />
             </View>
           </View>
@@ -387,10 +460,8 @@ const RegisterExecute = ({ closeModal }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Referral Code"
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                onChangeText={setReferralCode}
-                editable={false}
                 value={referralCode}
+                editable={false}
               />
             </View>
           </View>
@@ -401,27 +472,20 @@ const RegisterExecute = ({ closeModal }) => {
               onPress={handleRegister}
               disabled={isLoading}
             >
-              <Text style={styles.buttonText}>Register</Text>
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.buttonText}>Register</Text>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.cancelButton}
-              onPress={() => {
-                console.log("Cancel button clicked");
-                closeModal && closeModal();
-              }}
+              onPress={() => navigation.goBack()}
               disabled={isLoading}
             >
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-
-          {isLoading && (
-            <ActivityIndicator
-              size="large"
-              color="#E82E5F"
-              style={styles.loadingIndicator}
-            />
-          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -432,12 +496,12 @@ const styles = StyleSheet.create({
   scrollContainer: {
     justifyContent: "center",
     alignItems: "center",
-    display:"flex",
+    display: "flex",
     // left:10
   },
   errorText: {
     color: "red",
-    fontSize:20
+    fontSize: 20,
   },
   container: {
     backgroundColor: "white",

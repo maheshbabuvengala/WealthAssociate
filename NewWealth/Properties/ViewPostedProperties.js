@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -11,19 +11,21 @@ import {
   Platform,
   TouchableOpacity,
   ScrollView,
+  Linking,
+  Alert,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
 import logo1 from "../../assets/logo.png";
-
-import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 const numColumns = 3;
 
 const ViewPostedProperties = () => {
+  const navigation = useNavigation();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState("");
@@ -35,6 +37,7 @@ const ViewPostedProperties = () => {
     price: "",
   });
   const [showFilterList, setShowFilterList] = useState(false);
+  const [referredInfo, setReferredInfo] = useState(null);
 
   const filterOptions = [
     { label: "All Properties", value: "" },
@@ -44,7 +47,61 @@ const ViewPostedProperties = () => {
 
   useEffect(() => {
     fetchProperties();
+    loadReferredInfoFromStorage();
   }, []);
+
+  const loadReferredInfoFromStorage = async () => {
+    try {
+      const storedInfo = await AsyncStorage.getItem("referredAddedByInfo");
+      if (storedInfo) {
+        setReferredInfo(JSON.parse(storedInfo));
+      }
+    } catch (error) {
+      console.error("Error loading referred info from storage:", error);
+    }
+  };
+
+  const handlePropertyPress = async (property) => {
+    if (!property?._id) {
+      console.error("Property ID is missing");
+      return;
+    }
+
+    let formattedPrice = "Price not available";
+    try {
+      const priceValue = parseInt(property.price);
+      if (!isNaN(priceValue)) {
+        formattedPrice = `₹${priceValue.toLocaleString()}`;
+      }
+    } catch (e) {
+      console.error("Error formatting price:", e);
+    }
+
+    try {
+      // Store the property in AsyncStorage before navigating
+      await AsyncStorage.setItem(
+        "currentProperty",
+        JSON.stringify({
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          images: property.images,
+        })
+      );
+
+      navigation.navigate("PropertyDetails", {
+        property: {
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          images: property.images,
+        },
+      });
+    } catch (error) {
+      console.error("Error storing property:", error);
+      Alert.alert("Error", "Failed to navigate to property details");
+    }
+  };
 
   const fetchProperties = async () => {
     try {
@@ -70,7 +127,12 @@ const ViewPostedProperties = () => {
       const data = await response.json();
 
       if (Array.isArray(data)) {
-        setProperties(data);
+        setProperties(
+          data.map((property) => ({
+            ...property,
+            images: formatImages(property),
+          }))
+        );
       } else {
         setProperties([]);
         console.error("Unexpected API response:", data);
@@ -81,6 +143,28 @@ const ViewPostedProperties = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatImages = (property) => {
+    if (!property) return [];
+
+    if (Array.isArray(property.photo) && property.photo.length > 0) {
+      return property.photo.map((photo) => ({
+        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
+      }));
+    }
+
+    if (typeof property.photo === "string") {
+      return [
+        {
+          uri: property.photo.startsWith("http")
+            ? property.photo
+            : `${API_URL}${property.photo}`,
+        },
+      ];
+    }
+
+    return [logo1];
   };
 
   const handleFilterChange = (value) => {
@@ -153,6 +237,75 @@ const ViewPostedProperties = () => {
     return id.length > 4 ? id.slice(-4) : id;
   };
 
+  const PropertyImageSlider = ({ images }) => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const scrollRef = useRef(null);
+
+    useEffect(() => {
+      if (images.length <= 1) return;
+
+      const interval = setInterval(() => {
+        const nextIndex = (currentImageIndex + 1) % images.length;
+        setCurrentImageIndex(nextIndex);
+        scrollRef.current?.scrollTo({
+          x: nextIndex * width,
+          animated: true,
+        });
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }, [currentImageIndex, images.length]);
+
+    if (images.length === 0) {
+      return (
+        <Image
+          source={logo1}
+          style={styles.propertyImage}
+          resizeMode="contain"
+        />
+      );
+    }
+
+    return (
+      <View style={styles.imageSliderContainer}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const offsetX = e.nativeEvent.contentOffset.x;
+            const newIndex = Math.round(offsetX / width);
+            setCurrentImageIndex(newIndex);
+          }}
+        >
+          {images.map((image, index) => (
+            <Image
+              key={index}
+              source={image}
+              style={styles.propertyImage}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+
+        {images.length > 1 && (
+          <View style={styles.pagination}>
+            {images.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  index === currentImageIndex && styles.activeDot,
+                ]}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
@@ -204,35 +357,37 @@ const ViewPostedProperties = () => {
         <Text>No properties available.</Text>
       ) : (
         <View style={styles.grid}>
-          {properties.map((item) => {
-            const imageUri = item.photo
-              ? { uri: `${API_URL}${item.photo}` }
-              : logo1;
-
-            return (
-              <View key={item._id} style={styles.card}>
-                <Image source={imageUri} style={styles.image} />
-                <View style={styles.details}>
-                  <View style={styles.idContainer}>
-                    <Text style={styles.idText}>
-                      ID: {getLastFourCharss(item._id)}
-                    </Text>
-                  </View>
-                  <Text style={styles.title}>{item.propertyType}</Text>
-                  <Text style={styles.info}>Location: {item.location}</Text>
-                  <Text style={styles.budget}>
-                    ₹ {parseInt(item.price).toLocaleString()}
+          {properties.map((item) => (
+            <TouchableOpacity
+              key={item._id}
+              style={styles.card}
+              onPress={() => handlePropertyPress(item)}
+              activeOpacity={0.8}
+            >
+              <PropertyImageSlider images={item.images} />
+              <View style={styles.details}>
+                <View style={styles.idContainer}>
+                  <Text style={styles.idText}>
+                    ID: {getLastFourCharss(item._id)}
                   </Text>
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => handleEditPress(item)}
-                  >
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </TouchableOpacity>
                 </View>
+                <Text style={styles.title}>{item.propertyType}</Text>
+                <Text style={styles.info}>Location: {item.location}</Text>
+                <Text style={styles.budget}>
+                  ₹ {parseInt(item.price).toLocaleString()}
+                </Text>
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleEditPress(item);
+                  }}
+                >
+                  <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
               </View>
-            );
-          })}
+            </TouchableOpacity>
+          ))}
         </View>
       )}
 
@@ -386,7 +541,6 @@ const styles = StyleSheet.create({
     marginTop: 50,
   },
   grid: {
-    // flexDirection: "column",
     width: "100%",
     alignItems: "center",
   },
@@ -395,8 +549,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     marginVertical: 8,
-    width: "90%",
-
     width: Platform.OS === "android" || Platform.OS === "ios" ? "90%" : 300,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
@@ -404,10 +556,30 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  image: {
-    width: "100%",
-    height: 150,
+  imageSliderContainer: {
+    position: "relative",
+    marginBottom: 10,
+  },
+  propertyImage: {
+    width: width - 40,
+    height: 200,
     borderRadius: 8,
+  },
+  pagination: {
+    position: "absolute",
+    bottom: 10,
+    flexDirection: "row",
+    alignSelf: "center",
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    margin: 5,
+  },
+  activeDot: {
+    backgroundColor: "#fff",
   },
   details: {
     marginTop: 10,
@@ -461,6 +633,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: "#191919",
     textAlign: "center",
+  },
+  input: {
+    height: 40,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 5,
+    marginBottom: 10,
+    paddingHorizontal: 10,
   },
   registerButton: {
     backgroundColor: "#E82E5F",

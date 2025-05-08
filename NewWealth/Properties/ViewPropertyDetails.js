@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -26,50 +26,173 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
   const [loadingReferral, setLoadingReferral] = useState(false);
   const [referralError, setReferralError] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
+  const [userType, setUserType] = useState("");
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const scrollRef = useRef(null);
 
+  // Handle image auto-scroll
   useEffect(() => {
-    const loadProperty = async () => {
-      try {
-        // First try to get from route.params
-        if (route?.params?.property) {
-          setProperty(route.params.property);
-          setLoading(false);
-          return;
-        }
+    if (!property?.images || property.images.length <= 1) return;
 
-        // If not in route.params, try to load from AsyncStorage
-        const storedProperty = await AsyncStorage.getItem("currentProperty");
-        if (storedProperty) {
-          setProperty(JSON.parse(storedProperty));
-        }
-      } catch (error) {
-        console.error("Error loading property:", error);
-        Alert.alert("Error", "Failed to load property details");
-      } finally {
-        setLoading(false);
-      }
-    };
+    const interval = setInterval(() => {
+      const nextIndex = (currentImageIndex + 1) % property.images.length;
+      setCurrentImageIndex(nextIndex);
+      scrollRef.current?.scrollTo({
+        x: nextIndex * width,
+        animated: true,
+      });
+    }, 3000);
 
-    const fetchUserDetails = async () => {
-      try {
-        const token = await AsyncStorage.getItem("authToken");
-        const response = await fetch(`${API_URL}/agent/AgentDetails`, {
+    return () => clearInterval(interval);
+  }, [currentImageIndex, property?.images]);
+
+  const fetchPropertyDetails = async (propertyId) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const response = await fetch(
+        `${API_URL}/properties/getProperty/${propertyId}`,
+        {
           method: "GET",
           headers: {
             token: token || "",
           },
-        });
+        }
+      );
 
-        if (!response.ok)
-          throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
 
-        const data = await response.json();
-        setUserDetails(data);
-      } catch (error) {
-        console.error("Error fetching user details:", error);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching property details:", error);
+      throw error;
+    }
+  };
+
+  const loadProperty = async () => {
+    try {
+      // First try to get from route.params
+      if (route?.params?.property) {
+        const propertyFromRoute = route.params.property;
+
+        // If we don't have full details, fetch them
+        if (!propertyFromRoute._id && propertyFromRoute.id) {
+          const fullDetails = await fetchPropertyDetails(propertyFromRoute.id);
+          setProperty({
+            ...propertyFromRoute,
+            ...fullDetails,
+            images: formatImages(fullDetails),
+          });
+        } else {
+          setProperty({
+            ...propertyFromRoute,
+            images: formatImages(propertyFromRoute),
+          });
+        }
+        setLoading(false);
+        return;
       }
-    };
 
+      // If not in route.params, try to load from AsyncStorage
+      const storedProperty = await AsyncStorage.getItem("currentProperty");
+      if (storedProperty) {
+        const parsedProperty = JSON.parse(storedProperty);
+        setProperty({
+          ...parsedProperty,
+          images: formatImages(parsedProperty),
+        });
+      }
+    } catch (error) {
+      console.error("Error loading property:", error);
+      Alert.alert("Error", "Failed to load property details");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format images for display (handles both array and single image)
+  const formatImages = (property) => {
+    if (!property) return [];
+
+    // Handle array of photos
+    if (Array.isArray(property.photo) && property.photo.length > 0) {
+      return property.photo.map((photo) => ({
+        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
+      }));
+    }
+
+    // Handle single photo string
+    if (typeof property.photo === "string") {
+      return [
+        {
+          uri: property.photo.startsWith("http")
+            ? property.photo
+            : `${API_URL}${property.photo}`,
+        },
+      ];
+    }
+
+    // Handle images array if passed directly
+    if (Array.isArray(property.images)) {
+      return property.images;
+    }
+
+    // Fallback to default image
+    return [require("../../assets/logo.png")];
+  };
+
+  const fetchUserDetails = async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const type = await AsyncStorage.getItem("userType");
+      setUserType(type);
+
+      let endpoint = "";
+      switch (type) {
+        case "WealthAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Customer":
+          endpoint = `${API_URL}/customer/getcustomer`;
+          break;
+        case "CoreMember":
+          endpoint = `${API_URL}/core/getcore`;
+          break;
+        case "ReferralAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Investor":
+          endpoint = `${API_URL}/investors/getinvestor`;
+          break;
+        case "NRI":
+          endpoint = `${API_URL}/nri/getnri`;
+          break;
+        case "SkilledResource":
+          endpoint = `${API_URL}/skillLabour/getskilled`;
+          break;
+        default:
+          endpoint = `${API_URL}/agent/AgentDetails`;
+      }
+
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          token: token || "",
+        },
+      });
+
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
+
+      const data = await response.json();
+      setUserDetails(data);
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    }
+  };
+
+  useEffect(() => {
     loadProperty();
     fetchUserDetails();
   }, [route.params]);
@@ -90,7 +213,7 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
       }
 
       const shareData = {
-        photo: property.photo ? `${API_URL}${property.photo}` : null,
+        photo: property.images?.[0]?.uri || null,
         location: property.location || "Location not specified",
         price: property.price || "Price not available",
         propertyType: property.propertyType || "Property",
@@ -200,6 +323,57 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
     return <Text style={styles.dynamicDataValue}>{value.toString()}</Text>;
   };
 
+  const renderImageSlider = () => {
+    if (!property?.images || property.images.length === 0) {
+      return (
+        <Image
+          source={require("../../assets/logo.png")}
+          style={styles.image}
+          resizeMode="contain"
+        />
+      );
+    }
+
+    return (
+      <View style={styles.imageSliderContainer}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const offsetX = e.nativeEvent.contentOffset.x;
+            const newIndex = Math.round(offsetX / width);
+            setCurrentImageIndex(newIndex);
+          }}
+        >
+          {property.images.map((image, index) => (
+            <Image
+              key={index}
+              source={image}
+              style={styles.image}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+
+        {property.images.length > 1 && (
+          <View style={styles.pagination}>
+            {property.images.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  index === currentImageIndex && styles.activeDot,
+                ]}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -230,11 +404,7 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
           <View style={{ width: 24 }} />
         </View>
 
-        <Image
-          source={property?.image || require("../../assets/logo.png")}
-          style={styles.image}
-          resizeMode="cover"
-        />
+        {renderImageSlider()}
 
         <View style={styles.contentContainer}>
           <View style={styles.titleRow}>
@@ -399,9 +569,28 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
+  imageSliderContainer: {
+    position: "relative",
+  },
   image: {
     width: width,
-    height: 200,
+    height: 250,
+  },
+  pagination: {
+    position: "absolute",
+    bottom: 10,
+    flexDirection: "row",
+    alignSelf: "center",
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    margin: 5,
+  },
+  activeDot: {
+    backgroundColor: "#fff",
   },
   contentContainer: {
     padding: 15,

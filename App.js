@@ -15,8 +15,6 @@ import * as Device from "expo-device";
 import * as Updates from "expo-updates";
 import Constants from "expo-constants";
 import { NavigationIndependentTree } from "@react-navigation/native";
-
-// Screens
 import MainScreen from "./Screens/MainScreen";
 import RegisterAsScreen from "./Screens/Register_change";
 import ForgotPassword from "./Screens/ForgetPassword";
@@ -70,7 +68,9 @@ import regicuss from "./NewWealth/Add_Member/Regicus";
 import regnri from "./NewWealth/Add_Member/AddNri";
 import regskill from "./NewWealth/Add_Member/Rskill";
 import reginvestor from "./NewWealth/Add_Member/AddInvestors";
-import SkilledProfile from "./NewWealth/UsersProfiles/SkilledProfile";
+import NriProfile from "./NewWealth/UsersProfiles/NriProfile";
+import Addexpert from "./NewWealth/ExpertPanel/AddExpert";
+import ViewAllRequestedProperties from "./NewWealth/Properties/AllrequestedProperties";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -85,16 +85,15 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Deep linking configuration
-// const linking = {
-//   prefixes: ["https://www.wealthassociate.in"],
-//   config: {
-//     screens: {
-//       "Main Screen": "",
-//       PrivacyPolicy: "privacy_policy",
-//     },
-//   },
-// };
+const linking = {
+  prefixes: ["https://www.wealthassociate.in"],
+  config: {
+    screens: {
+      "Main Screen": "",
+      PrivacyPolicy: "privacy_policy",
+    },
+  },
+};
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -263,6 +262,7 @@ export default function App() {
   const MainStack = () => (
     <PersistentLayout>
       <Stack.Navigator
+      initialRouteName="newhome"  
         screenOptions={{
           headerShown: false,
           animationEnabled: true,
@@ -274,6 +274,10 @@ export default function App() {
         <Stack.Screen name="skillreg" component={SkilledRegister} />
         <Stack.Screen name="addmember" component={Add_Member} />
         <Stack.Screen name="agentprofile" component={Agent_Profile} />
+        <Stack.Screen name="InvestorProfile" component={Investorprofile} />
+        <Stack.Screen name="CustomerProfile" component={Customerprofile} />
+        <Stack.Screen name="SkilledProfile" component={Skilledprofile} />
+        <Stack.Screen name="nriprofile" component={NriProfile} />
         <Stack.Screen name="CoreProfile" component={CoreProfile} />
         <Stack.Screen name="propertyhome" component={PropertyHome} />
         <Stack.Screen name="expertpanel" component={ExpertPanel} />
@@ -287,6 +291,11 @@ export default function App() {
         <Stack.Screen name="reginri" component={regnri} />
         <Stack.Screen name="regiskill" component={regskill} />
         <Stack.Screen name="regiinvestor" component={reginvestor} />
+        <Stack.Screen name="addexpert" component={Addexpert} />
+        <Stack.Screen
+          name="allreqprop"
+          component={ViewAllRequestedProperties}
+        />
         <Stack.Screen
           name="PropertyDetails"
           component={PropertyDetailsScreen}
@@ -294,7 +303,6 @@ export default function App() {
         />
         <Stack.Screen name="postproperty" component={PostProperty} />
         <Stack.Screen name="requestproperty" component={RequestedProperty} />
-        {/* <Stack.Screen name="agentprofile" component={Agent_Profile} /> */}
         <Stack.Screen
           name="addagent"
           component={Add_Agent}
@@ -384,17 +392,11 @@ export default function App() {
             component={RegisterCustomer}
             options={{ headerShown: false }}
           />
-          {/* <Stack.Screen
-            name="CustomerDashboard"
-            component={CustomerDashboard}
-            options={{ headerShown: false }}
-          /> */}
           <Stack.Screen
             name="Login"
             component={Login_screen}
             options={{ headerShown: false }}
           />
-
           <Stack.Screen
             name="Home"
             component={Admin_panel}
@@ -595,7 +597,7 @@ export default function App() {
               </PersistentLayout>
             )}
           </Stack.Screen>
-          <Stack.Screen name="PropertyDetails">
+          <Stack.Screen name="PropertyDetails" options={{ headerShown: false }}>
             {(props) => (
               <PersistentLayout>
                 <PropertyDetailsScreen {...props} />

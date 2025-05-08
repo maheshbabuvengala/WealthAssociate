@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -13,23 +13,21 @@ import {
   Modal,
   Linking,
   TextInput,
+  FlatList,
 } from "react-native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import PropertyCards from "./PropertyCards";
-// import { Ionicons } from "@expo/vector-icons";
-// import logo from "../../assets/man.png";
-import logo1 from "../../assets/logo.png";
+import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-
 const { width } = Dimensions.get("window");
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const ViewAllProperties = () => {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [Details, setDetails] = useState({ Contituency: "" });
+  const [details, setDetails] = useState({ Contituency: "" });
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
@@ -46,21 +44,56 @@ const ViewAllProperties = () => {
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [showPriceDropdown, setShowPriceDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const navigation = useNavigation();
+  const [userType, setUserType] = useState("");
+  const navigations=useNavigation()
 
+  
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/agent/AgentDetails`, {
+      const type = await AsyncStorage.getItem("userType");
+      setUserType(type);
+
+      let endpoint = "";
+      switch (type) {
+        case "WealthAssociate":
+        case "ReferralAssociate":
+          endpoint = `${API_URL}/agent/AgentDetails`;
+          break;
+        case "Customer":
+          endpoint = `${API_URL}/customer/getcustomer`;
+          break;
+        case "CoreMember":
+          endpoint = `${API_URL}/core/getcore`;
+          break;
+        case "Investor":
+          endpoint = `${API_URL}/investors/getinvestor`;
+          break;
+        case "NRI":
+          endpoint = `${API_URL}/nri/getnri`;
+          break;
+        case "SkilledResource":
+          endpoint = `${API_URL}/skillLabour/getskilled`;
+          break;
+        default:
+          endpoint = `${API_URL}/agent/AgentDetails`;
+      }
+
+      const response = await fetch(endpoint, {
         method: "GET",
         headers: {
           token: `${token}` || "",
         },
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const newDetails = await response.json();
       setDetails(newDetails);
     } catch (error) {
-      console.error("Error fetching agent details:", error);
+      console.error("Error fetching user details:", error);
     } finally {
       setLoadingDetails(false);
     }
@@ -101,11 +134,11 @@ const ViewAllProperties = () => {
   };
 
   const sortPropertiesByConstituency = (properties) => {
-    if (!Details.Contituency) return properties;
+    if (!details.Contituency) return properties;
 
     return [...properties].sort((a, b) => {
-      const aInConstituency = a.location?.includes(Details.Contituency);
-      const bInConstituency = b.location?.includes(Details.Contituency);
+      const aInConstituency = a.location?.includes(details.Contituency);
+      const bInConstituency = b.location?.includes(details.Contituency);
 
       if (aInConstituency && !bInConstituency) return -1;
       if (!aInConstituency && bInConstituency) return 1;
@@ -114,19 +147,34 @@ const ViewAllProperties = () => {
   };
 
   const handleEnquiryNow = (property) => {
+    setSelectedProperty(property);
     setPropertyModalVisible(true);
   };
 
-  const handleShare = (property, closeModal) => {
-    const fullImageUri = property.photo ? `${API_URL}${property.photo}` : null;
+  const handleShare = (property) => {
+    let shareImage;
+    if (Array.isArray(property.photo) && property.photo.length > 0) {
+      shareImage = property.photo[0].startsWith("http")
+        ? property.photo[0]
+        : `${API_URL}${property.photo[0]}`;
+    } else if (property.photo) {
+      shareImage = property.photo.startsWith("http")
+        ? property.photo
+        : `${API_URL}${property.photo}`;
+    } else {
+      shareImage = null;
+    }
+
     setPostedProperty({
       propertyType: property.propertyType,
-      photo: fullImageUri,
+      photo: shareImage,
       location: property.location,
       price: property.price,
+      PostedBy: property.PostedBy || details?.Number || "",
+      fullName: property.fullName || details?.name || "Wealth Associate",
     });
-    if (closeModal) closeModal();
   };
+
   const getLastFourChars = (id) => {
     return id ? id.slice(-4) : "N/A";
   };
@@ -142,9 +190,26 @@ const ViewAllProperties = () => {
     });
   };
 
+  const loadReferredInfoFromStorage = async () => {
+    try {
+      const data = await AsyncStorage.getItem("referredAddedByInfo");
+      if (data) {
+        setReferredInfo(JSON.parse(data));
+      }
+    } catch (error) {
+      console.error("Failed to load referred info:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (isPropertyModalVisible) {
+      loadReferredInfoFromStorage();
+    }
+  }, [isPropertyModalVisible]);
+
   useEffect(() => {
     const fetchReferredDetails = async () => {
-      if (!Details?.ReferredBy) return;
+      if (!details?.ReferredBy) return;
 
       try {
         const response = await fetch(
@@ -156,7 +221,7 @@ const ViewAllProperties = () => {
               token: (await AsyncStorage.getItem("authToken")) || "",
             },
             body: JSON.stringify({
-              referredBy: Details.ReferredBy,
+              referredBy: details.ReferredBy,
             }),
           }
         );
@@ -178,7 +243,7 @@ const ViewAllProperties = () => {
     };
 
     fetchReferredDetails();
-  }, [Details?.ReferredBy]);
+  }, [details?.ReferredBy]);
 
   useEffect(() => {
     getDetails();
@@ -257,10 +322,131 @@ const ViewAllProperties = () => {
     )
   );
 
-  const handlePropertyPress = async (property) => {
+  const renderPropertyImage = (property) => {
+    const scrollRef = useRef(null);
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const images = Array.isArray(property.photo) ? property.photo : [];
+
+    // Auto-scroll every 3 seconds
+    useEffect(() => {
+      if (!images.length) return;
+
+      const interval = setInterval(() => {
+        const nextIndex = (currentIndex + 1) % images.length;
+        setCurrentIndex(nextIndex);
+        scrollRef.current?.scrollTo({
+          x: nextIndex * (SCREEN_WIDTH - 40),
+          animated: true,
+        });
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }, [currentIndex, images.length]);
+
+    // Handle horizontal scroll view with swiping
+    if (images.length > 0) {
+      return (
+        <View style={{ marginBottom: 10 }}>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            style={{ marginBottom: 10 }}
+            onMomentumScrollEnd={(e) => {
+              const offsetX = e.nativeEvent.contentOffset.x;
+              const newIndex = Math.round(offsetX / (SCREEN_WIDTH - 40));
+              setCurrentIndex(newIndex);
+            }}
+          >
+            {images.map((item, index) => (
+              <Image
+                key={index}
+                source={{
+                  uri: item.startsWith("http") ? item : `${API_URL}${item}`,
+                }}
+                style={{
+                  width: SCREEN_WIDTH - 40,
+                  height: 200,
+                  borderRadius: 10,
+                }}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+
+          {/* Pagination dots */}
+          <View style={styles.pagination}>
+            {images.map((_, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.dot,
+                  index === currentIndex ? styles.activeDot : null,
+                ]}
+                onPress={() => {
+                  setCurrentIndex(index);
+                  scrollRef.current?.scrollTo({
+                    x: index * (SCREEN_WIDTH - 40),
+                    animated: true,
+                  });
+                }}
+              />
+            ))}
+          </View>
+        </View>
+      );
+    }
+
+    // Single image
+    else if (typeof property.photo === "string") {
+      return (
+        <Image
+          source={{
+            uri: property.photo.startsWith("http")
+              ? property.photo
+              : `${API_URL}${property.photo}`,
+          }}
+          style={{ width: SCREEN_WIDTH - 40, height: 200, borderRadius: 10 }}
+          resizeMode="cover"
+        />
+      );
+    }
+
+    // Fallback image
+    else {
+      return (
+        <Image
+          source={require("../../assets/logo.png")}
+          style={{ width: SCREEN_WIDTH - 40, height: 200, borderRadius: 10 }}
+          resizeMode="contain"
+        />
+      );
+    }
+  };
+
+  const handlePropertyPress = (property) => {
     if (!property?._id) {
       console.error("Property ID is missing");
       return;
+    }
+
+    let images = [];
+    if (Array.isArray(property.photo)) {
+      images = property.photo.map((photo) => ({
+        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
+      }));
+    } else if (property.photo) {
+      images = [
+        {
+          uri: property.photo.startsWith("http")
+            ? property.photo
+            : `${API_URL}${property.photo}`,
+        },
+      ];
+    } else {
+      images = [require("../../assets/logo.png")];
     }
 
     let formattedPrice = "Price not available";
@@ -273,691 +459,444 @@ const ViewAllProperties = () => {
       console.error("Error formatting price:", e);
     }
 
-    let imageSource;
-    if (property.photo) {
-      imageSource = property.photo.startsWith("http")
-        ? { uri: property.photo }
-        : { uri: `${API_URL}${property.photo}` };
-    } else {
-      imageSource = require("../../assets/logo.png");
-    }
-
-    try {
-      // Store the property in AsyncStorage before navigating
-      await AsyncStorage.setItem(
-        "currentProperty",
-        JSON.stringify({
-          ...property,
-          id: property._id,
-          price: formattedPrice,
-          image: imageSource,
-        })
-      );
-
-      navigation.navigate("PropertyDetails", {
-        property: {
-          ...property,
-          id: property._id,
-          price: formattedPrice,
-          image: imageSource,
-        },
-      });
-    } catch (error) {
-      console.error("Error storing property:", error);
-      Alert.alert("Error", "Failed to navigate to property details");
-    }
+    navigations.navigate("PropertyDetails", {
+      property: {
+        ...property,
+        id: property._id,
+        price: formattedPrice,
+        images: images,
+      },
+    });
   };
+
+  const RenderPropertyCard = ({ property }) => {
+    const propertyTag = getPropertyTag(property.createdAt);
+    const propertyId = getLastFourChars(property._id);
+
+    return (
+      <TouchableOpacity
+        onPress={() => handlePropertyPress(property)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.propertyCard}>
+          {renderPropertyImage(property)}
+
+          <View
+            style={[
+              styles.statusTag,
+              {
+                backgroundColor:
+                  propertyTag === "Approved Property" ? "#4CAF50" : "#FF9800",
+              },
+            ]}
+          >
+            <Text style={styles.statusText}>{propertyTag}</Text>
+          </View>
+
+          <View style={styles.propertyIdContainer}>
+            <Text style={styles.propertyId}>ID: {propertyId}</Text>
+          </View>
+
+          <Text style={styles.cardTitle}>{property.propertyType}</Text>
+          <Text style={styles.cardSubtitle}>
+            {property.propertyDetails || "20 sqft"}
+          </Text>
+          <Text style={styles.cardSubtitle}>Location: {property.location}</Text>
+          <Text style={styles.cardPrice}>
+            ₹ {parseInt(property.price).toLocaleString()}
+          </Text>
+
+          <View style={styles.cardButtons}>
+            <TouchableOpacity
+              style={styles.enquiryBtn}
+              onPress={() => handleEnquiryNow(property)}
+            >
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                Enquiry Now
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.shareBtn}
+              onPress={() => handleShare(property)}
+            >
+              <FontAwesome name="share" size={16} color="white" />
+              <Text
+                style={{ color: "white", marginLeft: 5, fontWeight: "bold" }}
+              >
+                Share
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const SectionHeader = ({ title }) => (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#D81B60" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {loading ? (
-        <ActivityIndicator size="large" color="#E91E63" style={styles.loader} />
-      ) : (
-        <>
-          <View style={styles.header}>
-            <Text style={styles.heading}>All Properties</Text>
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => setFilterModalVisible(true)}
-            >
-              <Text style={styles.filterButtonText}>Filter</Text>
-            </TouchableOpacity>
-          </View>
+      <View style={styles.header}>
+        <Text style={styles.heading}>All Properties</Text>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setFilterModalVisible(true)}
+        >
+          <Text style={styles.filterButtonText}>Filter</Text>
+        </TouchableOpacity>
+      </View>
 
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by Property ID..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor="#999"
-            />
-          </View>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by Property ID..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor="#999"
+        />
+      </View>
 
-          {/* Filter Modal */}
-          <Modal
-            visible={isFilterModalVisible}
-            transparent={true}
-            animationType="slide"
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalHeading}>Filter Properties</Text>
+      {/* Filter Modal */}
+      <Modal
+        visible={isFilterModalVisible}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalHeading}>Filter Properties</Text>
 
-                {/* Property Type Filter */}
-                <View style={styles.filterGroup}>
-                  <Text style={styles.filterLabel}>Property Type</Text>
-                  <View style={styles.inputContainer}>
-                    <View style={styles.inputWrapper}>
-                      <TouchableOpacity
-                        style={styles.filterButtonDropdown}
-                        onPress={() =>
-                          setShowPropertyTypeDropdown(!showPropertyTypeDropdown)
-                        }
-                      >
-                        <Text style={styles.filterButtonText}>
-                          {filterCriteria.propertyType ||
-                            "-- Select Property Type --"}
-                        </Text>
-                        <MaterialIcons
-                          name={
-                            showPropertyTypeDropdown
-                              ? "arrow-drop-up"
-                              : "arrow-drop-down"
-                          }
-                          size={24}
-                          color="#E82E5F"
-                          style={styles.icon}
-                        />
-                      </TouchableOpacity>
-                      {showPropertyTypeDropdown && (
-                        <View style={styles.dropdownContainer}>
-                          <ScrollView style={styles.scrollView}>
-                            <TouchableOpacity
-                              style={styles.listItem}
-                              onPress={() => {
-                                setFilterCriteria({
-                                  ...filterCriteria,
-                                  propertyType: "",
-                                });
-                                setShowPropertyTypeDropdown(false);
-                              }}
-                            >
-                              <Text>-- Select Property Type --</Text>
-                            </TouchableOpacity>
-                            {uniquePropertyTypes.map((type, index) => (
-                              <TouchableOpacity
-                                key={index}
-                                style={styles.listItem}
-                                onPress={() => {
-                                  setFilterCriteria({
-                                    ...filterCriteria,
-                                    propertyType: type,
-                                  });
-                                  setShowPropertyTypeDropdown(false);
-                                }}
-                              >
-                                <Text>{type}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </View>
-
-                {/* Location Filter */}
-                <View style={styles.filterGroup}>
-                  <Text style={styles.filterLabel}>Location</Text>
-                  <View style={styles.inputContainer}>
-                    <View style={styles.inputWrapper}>
-                      <TouchableOpacity
-                        style={styles.filterButtonDropdown}
-                        onPress={() =>
-                          setShowLocationDropdown(!showLocationDropdown)
-                        }
-                      >
-                        <Text style={styles.filterButtonText}>
-                          {filterCriteria.location || "-- Select Location --"}
-                        </Text>
-                        <MaterialIcons
-                          name={
-                            showLocationDropdown
-                              ? "arrow-drop-up"
-                              : "arrow-drop-down"
-                          }
-                          size={24}
-                          color="#E82E5F"
-                          style={styles.icon}
-                        />
-                      </TouchableOpacity>
-                      {showLocationDropdown && (
-                        <View style={styles.dropdownContainer}>
-                          <ScrollView style={styles.scrollView}>
-                            <TouchableOpacity
-                              style={styles.listItem}
-                              onPress={() => {
-                                setFilterCriteria({
-                                  ...filterCriteria,
-                                  location: "",
-                                });
-                                setShowLocationDropdown(false);
-                              }}
-                            >
-                              <Text>-- Select Location --</Text>
-                            </TouchableOpacity>
-                            {uniqueLocations.map((location, index) => (
-                              <TouchableOpacity
-                                key={index}
-                                style={styles.listItem}
-                                onPress={() => {
-                                  setFilterCriteria({
-                                    ...filterCriteria,
-                                    location: location,
-                                  });
-                                  setShowLocationDropdown(false);
-                                }}
-                              >
-                                <Text>{location}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </View>
-
-                {/* Price Filter */}
-                <View style={styles.filterGroup}>
-                  <Text style={styles.filterLabel}>Price (in lakhs)</Text>
-                  <View style={styles.inputContainer}>
-                    <View style={styles.inputWrapper}>
-                      <TouchableOpacity
-                        style={styles.filterButtonDropdown}
-                        onPress={() => setShowPriceDropdown(!showPriceDropdown)}
-                      >
-                        <Text style={styles.filterButtonText}>
-                          {filterCriteria.price
-                            ? `${filterCriteria.price} Lakh`
-                            : "-- Select Price --"}
-                        </Text>
-                        <MaterialIcons
-                          name={
-                            showPriceDropdown
-                              ? "arrow-drop-up"
-                              : "arrow-drop-down"
-                          }
-                          size={24}
-                          color="#E82E5F"
-                          style={styles.icon}
-                        />
-                      </TouchableOpacity>
-                      {showPriceDropdown && (
-                        <View style={styles.dropdownContainer}>
-                          <ScrollView style={styles.scrollView}>
-                            <TouchableOpacity
-                              style={styles.listItem}
-                              onPress={() => {
-                                setFilterCriteria({
-                                  ...filterCriteria,
-                                  price: "",
-                                });
-                                setShowPriceDropdown(false);
-                              }}
-                            >
-                              <Text>-- Select Price --</Text>
-                            </TouchableOpacity>
-                            {uniquePrices.map((price, index) => (
-                              <TouchableOpacity
-                                key={index}
-                                style={styles.listItem}
-                                onPress={() => {
-                                  setFilterCriteria({
-                                    ...filterCriteria,
-                                    price: price,
-                                  });
-                                  setShowPriceDropdown(false);
-                                }}
-                              >
-                                <Text>{price} Lakh</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </View>
-
-                {/* Apply and Reset Buttons */}
-                <View style={styles.modalButtonContainer}>
+            {/* Property Type Filter */}
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterLabel}>Property Type</Text>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputWrapper}>
                   <TouchableOpacity
-                    style={[styles.modalButton, styles.applyButton]}
-                    onPress={applyFilters}
+                    style={styles.filterButtonDropdown}
+                    onPress={() =>
+                      setShowPropertyTypeDropdown(!showPropertyTypeDropdown)
+                    }
                   >
-                    <Text style={styles.modalButtonText}>Apply</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.resetButton]}
-                    onPress={resetFilters}
-                  >
-                    <Text style={styles.modalButtonText}>Reset</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </Modal>
-
-          {/* Regular Properties */}
-          {regularProperties.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Regular Properties</Text>
-              <View style={styles.propertiesContainer}>
-                {regularProperties.map((property, index) => {
-                  const imageUri = property.photo
-                    ? { uri: `${API_URL}${property.photo}` }
-                    : logo1;
-                  const propertyTag = getPropertyTag(property.createdAt);
-                  const propertyId = getLastFourChars(property._id);
-
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => handlePropertyPress(property)}
-                      activeOpacity={0.8}
-                      style={styles.propertyCardContainer}
-                    >
-                      <View style={styles.propertyCard}>
-                        <Image source={imageUri} style={styles.propertyImage} />
-                        <View style={styles.approvedBadge}>
-                          <Text style={styles.badgeText}>(✓){propertyTag}</Text>
-                        </View>
-                        <View
-                          style={{
-                            alignItems: "flex-end",
-                            paddingRight: 5,
-                            top: 5,
-                          }}
-                        >
-                          <View
-                            style={{
-                              backgroundColor: "green",
-                              borderRadius: 8,
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: "#fff",
-                                fontWeight: "600",
-                              }}
-                            >
-                              ID: {propertyId}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <Text style={styles.propertyTitle}>
-                          {property.propertyType}
-                        </Text>
-                        <Text style={styles.propertyTitle}>
-                          {property.propertyDetails
-                            ? property.propertyDetails
-                            : "20 sqfeets"}
-                        </Text>
-                        <Text style={styles.propertyInfo}>
-                          Location: {property.location}
-                        </Text>
-                        <Text style={styles.propertyBudget}>
-                          ₹ {parseInt(property.price).toLocaleString()}
-                        </Text>
-                        <View style={styles.buttonContainer}>
-                          <TouchableOpacity
-                            style={styles.enquiryButton}
-                            onPress={() => handleEnquiryNow(property)}
-                          >
-                            <Text style={styles.buttonText}>Enquiry Now</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.shareButton}
-                            onPress={() => handleShare(property)}
-                          >
-                            <Text style={styles.buttonText}>Share</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </>
-          )}
-
-          {/* Approved Properties */}
-          {approvedProperties.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Approved Properties</Text>
-              <View style={styles.propertiesContainer}>
-                {approvedProperties.map((property, index) => {
-                  const imageUri = property.photo
-                    ? { uri: `${API_URL}${property.photo}` }
-                    : logo1;
-                  const propertyTag = getPropertyTag(property.createdAt);
-                  const propertyId = getLastFourChars(property._id);
-
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => handlePropertyPress(property)}
-                      activeOpacity={0.8}
-                      style={styles.propertyCardContainer}
-                    >
-                      <View style={styles.propertyCard}>
-                        <Image source={imageUri} style={styles.propertyImage} />
-                        <View style={styles.approvedBadge}>
-                          <Text style={styles.badgeText}>(✓){propertyTag}</Text>
-                        </View>
-                        <View
-                          style={{
-                            alignItems: "flex-end",
-                            paddingRight: 5,
-                            top: 5,
-                          }}
-                        >
-                          <View
-                            style={{
-                              backgroundColor: "green",
-                              borderRadius: 8,
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: "#fff",
-                                fontWeight: "600",
-                              }}
-                            >
-                              ID: {propertyId}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <Text style={styles.propertyTitle}>
-                          {property.propertyType}
-                        </Text>
-                        <Text style={styles.propertyTitle}>
-                          {property.propertyDetails
-                            ? property.propertyDetails
-                            : "20 sqfeets"}
-                        </Text>
-                        <Text style={styles.propertyInfo}>
-                          Location: {property.location}
-                        </Text>
-                        <Text style={styles.propertyBudget}>
-                          ₹ {parseInt(property.price).toLocaleString()}
-                        </Text>
-                        <View style={styles.buttonContainer}>
-                          <TouchableOpacity
-                            style={styles.enquiryButton}
-                            onPress={() => handleEnquiryNow(property)}
-                          >
-                            <Text style={styles.buttonText}>Enquiry Now</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.shareButton}
-                            onPress={() => handleShare(property)}
-                          >
-                            <Text style={styles.buttonText}>Share</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </>
-          )}
-
-          {/* Wealth Properties */}
-          {wealthProperties.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Wealth Properties</Text>
-              <View style={styles.propertiesContainer}>
-                {wealthProperties.map((property, index) => {
-                  const imageUri = property.photo
-                    ? { uri: `${API_URL}${property.photo}` }
-                    : logo1;
-                  const propertyTag = getPropertyTag(property.createdAt);
-                  const propertyId = getLastFourChars(property._id);
-
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => handlePropertyPress(property)}
-                      activeOpacity={0.8}
-                      style={styles.propertyCardContainer}
-                    >
-                      <View style={styles.propertyCard}>
-                        <Image source={imageUri} style={styles.propertyImage} />
-                        <View style={styles.approvedBadge}>
-                          <Text style={styles.badgeText}>(✓){propertyTag}</Text>
-                        </View>
-                        <View
-                          style={{
-                            alignItems: "flex-end",
-                            paddingRight: 5,
-                            top: 5,
-                          }}
-                        >
-                          <View
-                            style={{
-                              backgroundColor: "green",
-                              borderRadius: 8,
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: "#fff",
-                                fontWeight: "600",
-                              }}
-                            >
-                              ID: {propertyId}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <Text style={styles.propertyTitle}>
-                          {property.propertyType}
-                        </Text>
-                        <Text style={styles.propertyTitle}>
-                          {property.propertyDetails
-                            ? property.propertyDetails
-                            : "20 sqfeets"}
-                        </Text>
-                        <Text style={styles.propertyInfo}>
-                          Location: {property.location}
-                        </Text>
-                        <Text style={styles.propertyBudget}>
-                          ₹ {parseInt(property.price).toLocaleString()}
-                        </Text>
-                        <View style={styles.buttonContainer}>
-                          <TouchableOpacity
-                            style={styles.enquiryButton}
-                            onPress={() => handleEnquiryNow(property)}
-                          >
-                            <Text style={styles.buttonText}>Enquiry Now</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.shareButton}
-                            onPress={() => handleShare(property)}
-                          >
-                            <Text style={styles.buttonText}>Share</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </>
-          )}
-
-          {/* Listed Properties */}
-          {listedProperties.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Listed Properties</Text>
-              <View style={styles.propertiesContainer}>
-                {listedProperties.map((property, index) => {
-                  const imageUri = property.photo
-                    ? { uri: `${API_URL}${property.photo}` }
-                    : logo1;
-                  const propertyTag = getPropertyTag(property.createdAt);
-                  const propertyId = getLastFourChars(property._id);
-
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => handlePropertyPress(property)}
-                      activeOpacity={0.8}
-                      style={styles.propertyCardContainer}
-                    >
-                      <View style={styles.propertyCard}>
-                        <Image source={imageUri} style={styles.propertyImage} />
-                        <View style={styles.approvedBadge}>
-                          <Text style={styles.badgeText}>(✓){propertyTag}</Text>
-                        </View>
-                        <View
-                          style={{
-                            alignItems: "flex-end",
-                            paddingRight: 5,
-                            top: 5,
-                          }}
-                        >
-                          <View
-                            style={{
-                              backgroundColor: "green",
-                              borderRadius: 8,
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: "#fff",
-                                fontWeight: "600",
-                              }}
-                            >
-                              ID: {propertyId}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <Text style={styles.propertyTitle}>
-                          {property.propertyType}
-                        </Text>
-                        <Text style={styles.propertyTitle}>
-                          {property.propertyDetails
-                            ? property.propertyDetails
-                            : "20 sqfeets"}
-                        </Text>
-                        <Text style={styles.propertyInfo}>
-                          Location: {property.location}
-                        </Text>
-                        <Text style={styles.propertyBudget}>
-                          ₹ {parseInt(property.price).toLocaleString()}
-                        </Text>
-                        <View style={styles.buttonContainer}>
-                          <TouchableOpacity
-                            style={styles.enquiryButton}
-                            onPress={() => handleEnquiryNow(property)}
-                          >
-                            <Text style={styles.buttonText}>Enquiry Now</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.shareButton}
-                            onPress={() => handleShare(property)}
-                          >
-                            <Text style={styles.buttonText}>Share</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </>
-          )}
-
-          {/* Property Modal */}
-          <Modal
-            visible={isPropertyModalVisible}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setPropertyModalVisible(false)}
-          >
-            <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
-                {!referredInfo ? (
-                  <ActivityIndicator size="large" color="#007bff" />
-                ) : (
-                  <>
-                    <Image
-                      source={require("../../assets/man.png")}
-                      style={styles.agentLogo}
-                    />
-                    <Text style={styles.modalTitle}>Referred By</Text>
-                    <Text style={styles.modalText}>
-                      Name: {referredInfo.name}
+                    <Text style={styles.filterButtonText}>
+                      {filterCriteria.propertyType ||
+                        "-- Select Property Type --"}
                     </Text>
-                    <Text style={styles.modalText}>
-                      Mobile: {referredInfo.Number}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.callButton}
-                      onPress={() =>
-                        Linking.openURL(`tel:${referredInfo.Number}`)
+                    <MaterialIcons
+                      name={
+                        showPropertyTypeDropdown
+                          ? "arrow-drop-up"
+                          : "arrow-drop-down"
                       }
-                    >
-                      <Ionicons name="call" size={20} color="white" />
-                      <Text style={styles.callButtonText}>Call Now</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.closeButton}
-                      onPress={() => setPropertyModalVisible(false)}
-                    >
-                      <Text style={styles.closeButtonText}>Close</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
+                      size={24}
+                      color="#E82E5F"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
+                  {showPropertyTypeDropdown && (
+                    <View style={styles.dropdownContainer}>
+                      <ScrollView style={styles.scrollView}>
+                        <TouchableOpacity
+                          style={styles.listItem}
+                          onPress={() => {
+                            setFilterCriteria({
+                              ...filterCriteria,
+                              propertyType: "",
+                            });
+                            setShowPropertyTypeDropdown(false);
+                          }}
+                        >
+                          <Text>-- Select Property Type --</Text>
+                        </TouchableOpacity>
+                        {uniquePropertyTypes.map((type, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.listItem}
+                            onPress={() => {
+                              setFilterCriteria({
+                                ...filterCriteria,
+                                propertyType: type,
+                              });
+                              setShowPropertyTypeDropdown(false);
+                            }}
+                          >
+                            <Text>{type}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
               </View>
             </View>
-          </Modal>
 
-          {/* Share Property Modal */}
-          <Modal
-            visible={!!postedProperty}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setPostedProperty(null)}
-          >
-            <View style={styles.modalContainer}>
-              {postedProperty && ( // Only render PropertyCard if postedProperty exists
-                <PropertyCards
-                  property={postedProperty}
-                  closeModal={() => setPostedProperty(null)}
-                />
-              )}
+            {/* Location Filter */}
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterLabel}>Location</Text>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputWrapper}>
+                  <TouchableOpacity
+                    style={styles.filterButtonDropdown}
+                    onPress={() =>
+                      setShowLocationDropdown(!showLocationDropdown)
+                    }
+                  >
+                    <Text style={styles.filterButtonText}>
+                      {filterCriteria.location || "-- Select Location --"}
+                    </Text>
+                    <MaterialIcons
+                      name={
+                        showLocationDropdown
+                          ? "arrow-drop-up"
+                          : "arrow-drop-down"
+                      }
+                      size={24}
+                      color="#E82E5F"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
+                  {showLocationDropdown && (
+                    <View style={styles.dropdownContainer}>
+                      <ScrollView style={styles.scrollView}>
+                        <TouchableOpacity
+                          style={styles.listItem}
+                          onPress={() => {
+                            setFilterCriteria({
+                              ...filterCriteria,
+                              location: "",
+                            });
+                            setShowLocationDropdown(false);
+                          }}
+                        >
+                          <Text>-- Select Location --</Text>
+                        </TouchableOpacity>
+                        {uniqueLocations.map((location, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.listItem}
+                            onPress={() => {
+                              setFilterCriteria({
+                                ...filterCriteria,
+                                location: location,
+                              });
+                              setShowLocationDropdown(false);
+                            }}
+                          >
+                            <Text>{location}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              </View>
             </View>
-          </Modal>
+
+            {/* Price Filter */}
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterLabel}>Price (in lakhs)</Text>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputWrapper}>
+                  <TouchableOpacity
+                    style={styles.filterButtonDropdown}
+                    onPress={() => setShowPriceDropdown(!showPriceDropdown)}
+                  >
+                    <Text style={styles.filterButtonText}>
+                      {filterCriteria.price
+                        ? `${filterCriteria.price} Lakh`
+                        : "-- Select Price --"}
+                    </Text>
+                    <MaterialIcons
+                      name={
+                        showPriceDropdown ? "arrow-drop-up" : "arrow-drop-down"
+                      }
+                      size={24}
+                      color="#E82E5F"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
+                  {showPriceDropdown && (
+                    <View style={styles.dropdownContainer}>
+                      <ScrollView style={styles.scrollView}>
+                        <TouchableOpacity
+                          style={styles.listItem}
+                          onPress={() => {
+                            setFilterCriteria({
+                              ...filterCriteria,
+                              price: "",
+                            });
+                            setShowPriceDropdown(false);
+                          }}
+                        >
+                          <Text>-- Select Price --</Text>
+                        </TouchableOpacity>
+                        {uniquePrices.map((price, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.listItem}
+                            onPress={() => {
+                              setFilterCriteria({
+                                ...filterCriteria,
+                                price: price,
+                              });
+                              setShowPriceDropdown(false);
+                            }}
+                          >
+                            <Text>{price} Lakh</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            {/* Apply and Reset Buttons */}
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.applyButton]}
+                onPress={applyFilters}
+              >
+                <Text style={styles.modalButtonText}>Apply</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.resetButton]}
+                onPress={resetFilters}
+              >
+                <Text style={styles.modalButtonText}>Reset</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Regular Properties */}
+      {regularProperties.length > 0 && (
+        <>
+          <SectionHeader title="Regular Properties" />
+          <FlatList
+            data={regularProperties}
+            renderItem={({ item }) => <RenderPropertyCard property={item} />}
+            keyExtractor={(item) => item._id}
+            scrollEnabled={false}
+          />
         </>
       )}
+
+      {/* Approved Properties */}
+      {approvedProperties.length > 0 && (
+        <>
+          <SectionHeader title="Approved Properties" />
+          <FlatList
+            data={approvedProperties}
+            renderItem={({ item }) => <RenderPropertyCard property={item} />}
+            keyExtractor={(item) => item._id}
+            scrollEnabled={false}
+          />
+        </>
+      )}
+
+      {/* Wealth Properties */}
+      {wealthProperties.length > 0 && (
+        <>
+          <SectionHeader title="Wealth Properties" />
+          <FlatList
+            data={wealthProperties}
+            renderItem={({ item }) => <RenderPropertyCard property={item} />}
+            keyExtractor={(item) => item._id}
+            scrollEnabled={false}
+          />
+        </>
+      )}
+
+      {/* Listed Properties */}
+      {listedProperties.length > 0 && (
+        <>
+          <SectionHeader title="Listed Properties" />
+          <FlatList
+            data={listedProperties}
+            renderItem={({ item }) => <RenderPropertyCard property={item} />}
+            keyExtractor={(item) => item._id}
+            scrollEnabled={false}
+          />
+        </>
+      )}
+
+      {/* Property Modal */}
+      <Modal
+        visible={isPropertyModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setPropertyModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            {!referredInfo ? (
+              <ActivityIndicator size="large" color="#007bff" />
+            ) : (
+              <>
+                <Image
+                  source={require("../../assets/man.png")}
+                  style={styles.agentLogo}
+                />
+                <Text style={styles.modalTitle}>Referred By</Text>
+                <Text style={styles.modalText}>Name: {referredInfo.name}</Text>
+                <Text style={styles.modalText}>
+                  Mobile: {referredInfo.mobileNumber || referredInfo.Number}
+                </Text>
+                <TouchableOpacity
+                  style={styles.callButton}
+                  onPress={() =>
+                    Linking.openURL(
+                      `tel:${referredInfo.mobileNumber || referredInfo.Number}`
+                    )
+                  }
+                >
+                  <Ionicons name="call" size={20} color="white" />
+                  <Text style={styles.callButtonText}>Call Now</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setPropertyModalVisible(false)}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Share Property Modal */}
+      <Modal
+        visible={!!postedProperty}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setPostedProperty(null)}
+      >
+        <View style={styles.modalContainer}>
+          {postedProperty && (
+            <PropertyCards
+              property={postedProperty}
+              closeModal={() => setPostedProperty(null)}
+            />
+          )}
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -968,8 +907,13 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#f1f1f1",
     padding: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     flexDirection: "row",
@@ -988,7 +932,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   filterButtonText: {
-    // color: "#ffffff",
+    color: "#ffffff",
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -1003,92 +947,93 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: "#fff",
   },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 10,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    marginVertical: 10,
     color: "#333",
-  },
-  propertiesContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
   },
   propertyCard: {
-    width: Platform.OS === "web" ? "48%" : "100%",
-    backgroundColor: "#fff",
+    width: "100%",
+    backgroundColor: "white",
     borderRadius: 10,
     marginBottom: 15,
-    paddingBottom: 10,
+    padding: 12,
     shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  propertyImage: {
-    width: "100%",
-    height: 150,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-  },
-  approvedBadge: {
+  statusTag: {
     position: "absolute",
-    top: 10,
-    right: 10,
-    backgroundColor: "green",
-    paddingHorizontal: 10,
+    top: 20,
+    left: 20,
+    paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 5,
+    borderRadius: 4,
   },
-  badgeText: {
-    color: "#fff",
+  statusText: {
+    color: "white",
     fontSize: 12,
-  },
-  propertyTitle: {
-    fontSize: 16,
     fontWeight: "bold",
-    margin: 5,
+  },
+  propertyIdContainer: {
+    alignItems: "flex-end",
+    marginBottom: 5,
+  },
+  propertyId: {
+    backgroundColor: "green",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    color: "#fff",
+    fontWeight: "600",
+  },
+  cardTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
     color: "#333",
+    marginBottom: 4,
   },
-  propertyInfo: {
-    fontSize: 14,
-    marginLeft: 5,
-    color: "#555",
+  cardSubtitle: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 2,
   },
-  propertyBudget: {
+  cardPrice: {
     fontSize: 16,
     fontWeight: "bold",
-    marginLeft: 5,
-    color: "green",
+    color: "#4CAF50",
+    marginVertical: 8,
   },
-  buttonContainer: {
+  cardButtons: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 10,
+    justifyContent: "space-between",
+    marginTop: 5,
   },
-  enquiryButton: {
-    backgroundColor: "#E91E63",
+  enquiryBtn: {
+    backgroundColor: "#D81B60",
     padding: 10,
     borderRadius: 5,
-    width: "45%",
+    width: "48%",
     alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
   },
-  shareButton: {
+  shareBtn: {
     backgroundColor: "#2196F3",
     padding: 10,
     borderRadius: 5,
-    width: "45%",
+    width: "48%",
     alignItems: "center",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  loader: {
-    flex: 1,
     justifyContent: "center",
-    alignItems: "center",
+    flexDirection: "row",
   },
   modalContainer: {
     flex: 1,
@@ -1235,6 +1180,22 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
+  },
+  pagination: {
+    flexDirection: "row",
+    position: "absolute",
+    bottom: 10,
+    alignSelf: "center",
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ccc",
+    margin: 5,
+  },
+  activeDot: {
+    backgroundColor: "#000",
   },
 });
 

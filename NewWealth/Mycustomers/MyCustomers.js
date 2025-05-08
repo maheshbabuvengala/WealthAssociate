@@ -58,7 +58,7 @@ export default function ViewCustomers() {
           token: `${token}` || "",
         },
       });
-    
+
       const data = await response.json();
 
       if (userType === "WealthAssociate" || userType === "ReferralAssociate") {
@@ -135,8 +135,6 @@ export default function ViewCustomers() {
   }
 
   const renderCustomerCard = (item) => {
-    const isDeletable = !["WealthAssociate", "ReferralAssociate", "CoreMember"].includes(userType);
-    
     return (
       <View key={item._id} style={styles.card}>
         <Image source={logo1} style={styles.avatar} />
@@ -157,36 +155,37 @@ export default function ViewCustomers() {
             <Text style={styles.label}>Referral Code</Text>
             <Text style={styles.value}>: {item.MyRefferalCode}</Text>
           </View>
-          {userType !== "WealthAssociate" && userType !== "ReferralAssociate" && userType !== "CoreMember" && (
-            <>
-              <View style={styles.row}>
-                <Text style={styles.label}>District</Text>
-                <Text style={styles.value}>: {item.District}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Constituency</Text>
-                <Text style={styles.value}>: {item.Contituency}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Location</Text>
-                <Text style={styles.value}>: {item.Locations}</Text>
-              </View>
-            </>
-          )}
-        </View>
-        {isDeletable && (
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => confirmDelete(item._id, item.FullName)}
-            disabled={deletingId === item._id}
-          >
-            {deletingId === item._id ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.deleteButtonText}>Delete</Text>
+          {userType !== "WealthAssociate" &&
+            userType !== "ReferralAssociate" &&
+            userType !== "CoreMember" && (
+              <>
+                <View style={styles.row}>
+                  <Text style={styles.label}>District</Text>
+                  <Text style={styles.value}>: {item.District}</Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Constituency</Text>
+                  <Text style={styles.value}>: {item.Contituency}</Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Location</Text>
+                  <Text style={styles.value}>: {item.Locations}</Text>
+                </View>
+              </>
             )}
-          </TouchableOpacity>
-        )}
+        </View>
+
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => confirmDelete(item._id, item.FullName)}
+          disabled={deletingId === item._id}
+        >
+          {deletingId === item._id ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          )}
+        </TouchableOpacity>
       </View>
     );
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,11 +9,14 @@ import {
   Image,
   Linking,
   Modal,
+  Dimensions,
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
+
+const { width } = Dimensions.get("window");
 
 const ApprovedPropertiesScreen = () => {
   const [properties, setProperties] = useState([]);
@@ -48,13 +51,43 @@ const ApprovedPropertiesScreen = () => {
           (property) =>
             getPropertyTag(property.createdAt) === "Approved Property"
         );
-        setProperties(approvedProps);
+        setProperties(
+          approvedProps.map((property) => ({
+            ...property,
+            images: formatImages(property),
+          }))
+        );
       }
     } catch (error) {
       console.error("Error fetching properties:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Format images for display (handles both array and single image)
+  const formatImages = (property) => {
+    if (!property) return [];
+
+    // Handle array of photos
+    if (Array.isArray(property.photo) && property.photo.length > 0) {
+      return property.photo.map((photo) => ({
+        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
+      }));
+    }
+
+
+    if (typeof property.photo === "string") {
+      return [
+        {
+          uri: property.photo.startsWith("http")
+            ? property.photo
+            : `${API_URL}${property.photo}`,
+        },
+      ];
+    }
+
+    return [require("../../../assets/logo.png")];
   };
 
   const getPropertyTag = (createdAt) => {
@@ -94,21 +127,12 @@ const ApprovedPropertiesScreen = () => {
       console.error("Error formatting price:", e);
     }
 
-    let imageSource;
-    if (property.photo) {
-      imageSource = property.photo.startsWith("http")
-        ? { uri: property.photo }
-        : { uri: `${API_URL}${property.photo}` };
-    } else {
-      imageSource = require("../../../assets/logo.png");
-    }
-
     navigation.navigate("PropertyDetails", {
       property: {
         ...property,
         id: property._id,
         price: formattedPrice,
-        image: imageSource,
+        images: property.images,
       },
     });
   };
@@ -121,7 +145,7 @@ const ApprovedPropertiesScreen = () => {
   const handleShare = (property) => {
     navigation.navigate("PropertyCard", {
       property: {
-        photo: property.photo ? `${API_URL}${property.photo}` : null,
+        photo: property.images?.[0]?.uri || null,
         location: property.location || "Location not specified",
         price: property.price || "Price not available",
         propertyType: property.propertyType || "Property",
@@ -129,6 +153,75 @@ const ApprovedPropertiesScreen = () => {
         fullName: property.fullName || "Wealth Associate",
       },
     });
+  };
+
+  const PropertyImageSlider = ({ images }) => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const scrollRef = useRef(null);
+
+    useEffect(() => {
+      if (images.length <= 1) return;
+
+      const interval = setInterval(() => {
+        const nextIndex = (currentImageIndex + 1) % images.length;
+        setCurrentImageIndex(nextIndex);
+        scrollRef.current?.scrollTo({
+          x: nextIndex * width,
+          animated: true,
+        });
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }, [currentImageIndex, images.length]);
+
+    if (images.length === 0) {
+      return (
+        <Image
+          source={require("../../../assets/logo.png")}
+          style={styles.propertyImage}
+          resizeMode="contain"
+        />
+      );
+    }
+
+    return (
+      <View style={styles.imageSliderContainer}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const offsetX = e.nativeEvent.contentOffset.x;
+            const newIndex = Math.round(offsetX / width);
+            setCurrentImageIndex(newIndex);
+          }}
+        >
+          {images.map((image, index) => (
+            <Image
+              key={index}
+              source={image}
+              style={styles.propertyImage}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+
+        {images.length > 1 && (
+          <View style={styles.pagination}>
+            {images.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  index === currentImageIndex && styles.activeDot,
+                ]}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    );
   };
 
   if (loading) {
@@ -155,14 +248,8 @@ const ApprovedPropertiesScreen = () => {
               style={styles.propertyCardContainer}
             >
               <View style={styles.propertyCard}>
-                <Image
-                  source={
-                    property.photo
-                      ? { uri: `${API_URL}${property.photo}` }
-                      : require("../../../assets/logo.png")
-                  }
-                  style={styles.propertyImage}
-                />
+                <PropertyImageSlider images={property.images} />
+
                 <View
                   style={[
                     styles.statusTag,
@@ -285,7 +372,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f1f1f1",
     paddingHorizontal: 15,
-    paddingBottom:"15%"
+    paddingBottom: "15%",
   },
   loadingContainer: {
     flex: 1,
@@ -313,12 +400,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    position: "relative",
+  },
+  imageSliderContainer: {
+    position: "relative",
+    marginBottom: 10,
   },
   propertyImage: {
-    width: "100%",
-    height: 150,
+    width: width - 40,
+    height: 200,
     borderRadius: 8,
-    marginBottom: 10,
+  },
+  pagination: {
+    position: "absolute",
+    bottom: 10,
+    flexDirection: "row",
+    alignSelf: "center",
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    margin: 5,
+  },
+  activeDot: {
+    backgroundColor: "#fff",
   },
   statusTag: {
     position: "absolute",
@@ -327,6 +434,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
+    zIndex: 1,
   },
   statusText: {
     color: "white",

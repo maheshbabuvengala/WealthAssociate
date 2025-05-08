@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState,useEffect } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const data = [
   {
@@ -74,6 +75,7 @@ const data = [
 ];
 
 const ExpertPanel = ({ onSwitch, userType }) => {
+  const [isCoreMember, setIsCoreMember] = useState(false);
   const { width } = useWindowDimensions();
   const numColumns = width > 600 ? 4 : width > 300 ? 3 : 2;
   const spacing = 8;
@@ -81,13 +83,24 @@ const ExpertPanel = ({ onSwitch, userType }) => {
 
   const navigation = useNavigation();
 
-  const isCoreMember = userType === "CoreMember";
+  useEffect(() => {
+    const checkUserType = async () => {
+      try {
+        const storedUserType = await AsyncStorage.getItem("userType");
+        setIsCoreMember(storedUserType === "CoreMember");
+      } catch (error) {
+        console.error("Error reading userType from AsyncStorage:", error);
+      }
+    };
+
+    checkUserType();
+  }, []);
 
   const handleRequestExpert = () => {
-    console.log("Attempting to navigate to requestexpert"); 
+    console.log("Attempting to navigate to requestexpert");
     try {
       navigation.navigate("requestexpert");
-      console.log("Navigation successful"); 
+      console.log("Navigation successful");
     } catch (error) {
       console.error("Navigation error:", error);
       Alert.alert(
@@ -96,10 +109,25 @@ const ExpertPanel = ({ onSwitch, userType }) => {
       );
     }
   };
+
+  const handleAddExpert = () => {
+    console.log("Attempting to navigate to addexpert");
+    try {
+      navigation.navigate("addexpert");
+      console.log("Navigation successful");
+    } catch (error) {
+      console.error("Navigation error:", error);
+      Alert.alert(
+        "Navigation Error",
+        `Failed to open add expert screen: ${error.message}`
+      );
+    }
+  };
+
   return (
     <ScrollView>
       <View style={styles.mainContainer}>
-        <View style={{ display: "flex", flexDirection: "row" }}>
+        <View style={{ display: "flex", flexDirection: "column" }}>
           <Text style={styles.header}>Expert Panel</Text>
 
           {/* Buttons Container */}
@@ -116,7 +144,7 @@ const ExpertPanel = ({ onSwitch, userType }) => {
             {isCoreMember && (
               <TouchableOpacity
                 style={[styles.button, styles.addExpertButton]}
-                onPress={() => console.log("Add Expert pressed")}
+                onPress={handleAddExpert}
               >
                 <Text style={styles.buttonText}>Add Expert</Text>
               </TouchableOpacity>
@@ -163,6 +191,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     marginBottom: 20,
+    marginTop:10,
     paddingHorizontal: 10,
   },
   button: {

@@ -67,7 +67,7 @@ const StartingScreen = () => {
       icon: <FontAwesome5 name="user-tie" size={hp("4%")} color="white" />,
       loginType: "SkilledResource",
     },
-    // Call Center Login - Visible only on web
+
     ...(Platform.OS === "web"
       ? [
           {

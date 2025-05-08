@@ -19,7 +19,7 @@ import { useNavigationState } from "@react-navigation/native";
 // Cache for user data
 let userDataCache = null;
 let lastFetchTime = 0;
-const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes cache
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000;
 
 export const clearHeaderCache = () => {
   userDataCache = null;
