@@ -70,6 +70,7 @@ import regicuss from "./NewWealth/Add_Member/Regicus";
 import regnri from "./NewWealth/Add_Member/AddNri";
 import regskill from "./NewWealth/Add_Member/Rskill";
 import reginvestor from "./NewWealth/Add_Member/AddInvestors";
+import SkilledProfile from "./NewWealth/UsersProfiles/SkilledProfile";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -289,7 +290,7 @@ export default function App() {
         <Stack.Screen
           name="PropertyDetails"
           component={PropertyDetailsScreen}
-          options={{headerShown:false}}
+          options={{ headerShown: false }}
         />
         <Stack.Screen name="postproperty" component={PostProperty} />
         <Stack.Screen name="requestproperty" component={RequestedProperty} />
@@ -549,6 +550,13 @@ export default function App() {
             {() => (
               <PersistentLayout>
                 <NRI_Profile />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="SkilledProfile">
+            {() => (
+              <PersistentLayout>
+                <SkilledProfile />
               </PersistentLayout>
             )}
           </Stack.Screen>
