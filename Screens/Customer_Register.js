@@ -20,7 +20,7 @@ import { useNavigation } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
-const RegisterCustomer = ({ closeModal }) => {
+const RegisterCustomer = () => {
   const [fullname, setFullname] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
@@ -169,7 +169,7 @@ const RegisterCustomer = ({ closeModal }) => {
       if (response.ok) {
         const result = await response.json();
         Alert.alert("Success", "Registration successful!");
-        closeModal();
+        navigation.navigate("Login");
       } else if (response.status === 400) {
         const errorData = await response.json();
         setErrorMessage(errorData.message || "Mobile number already exists.");

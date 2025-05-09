@@ -25,6 +25,7 @@ import AddNri from "./AddNri";
 import AddInvestor from "./AddInvestors";
 import Rskill from "./Rskill";
 import Add_Agent from "./Add_Agent";
+import ViewSkilledLabours from "../MySkilled/ViewSkilledLabours";
 
 export default function Add_Member() {
   const navigation = useNavigation();
@@ -195,6 +196,7 @@ export default function Add_Member() {
     const tabs = [
       { id: "My Customers", label: "My Customers" },
       { id: "Skilled Resource", label: "Skilled Resource" },
+      { id: "My Skilled Resource", label: "My Skilled Resource" },
       { id: "My Investors", label: "My Investors" },
       { id: "My NRIs", label: "My NRIs" },
     ];
@@ -259,6 +261,8 @@ export default function Add_Member() {
         return <MyCustomersScreen data={data} />;
       case "Skilled Resource":
         return <SkilledResourceScreen data={data} />;
+      case "My Skilled Resource":
+        return <ViewSkilledLabours data={data} />;
       case "My Investors":
         return <MyInvestorsScreen data={data} />;
       case "My NRIs":

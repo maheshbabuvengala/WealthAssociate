@@ -21,9 +21,9 @@ export default function PropertiesScreen() {
   const handleMyPropertiesPress = () => {
     setViewMode("my");
     setActiveTab("myProperties");
-    if (navigation) {
-      navigation.navigate("MyProperties");
-    }
+    // if (navigation) {
+    //   navigation.navigate("MyProperties");
+    // }
   };
 
   const handleBackToAllProperties = () => {

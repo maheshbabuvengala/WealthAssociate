@@ -133,22 +133,22 @@ const RequestedPropertyForm = ({ closeModal }) => {
       location,
       islocation,
       Budget: budget,
-      userType, 
+      userType,
     };
 
     // Add user identifier based on user type
     if (userType === "WealthAssociate" || userType === "ReferralAssociate") {
       requestData.PostedBy = Details.MobileNumber;
     } else if (userType === "Customer") {
-      requestData.CustomerId = Details.MobileNumber;
+      requestData.PostedBy = Details.MobileNumber;
     } else if (userType === "CoreMember") {
-      requestData.CoreMemberId = Details.MobileNumber;
+      requestData.PostedBy = Details.MobileNumber;  
     } else if (userType === "Investor") {
-      requestData.InvestorId = Details.MobileNumber;
+      requestData.PostedBy = Details.MobileNumber;
     } else if (userType === "NRI") {
-      requestData.NRIId = Details.MobileIN;
+      requestData.PostedBy = Details.MobileIN;
     } else if (userType === "SkilledResource") {
-      requestData.SkilledId = Details.MobileNumber;
+      requestData.PostedBy = Details.MobileNumber;
     }
 
     setLoading(true);
@@ -167,7 +167,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
       const result = await response.json();
       if (response.ok) {
         Alert.alert("Success", result.message);
-        closeModal();
+        navigation.goBack();
       } else {
         Alert.alert("Error", result.message || "Failed to request property.");
       }
@@ -407,7 +407,6 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: "rgba(0, 0, 0, 0.5)",
   },
- 
 });
 
 export default RequestedPropertyForm;

@@ -23,14 +23,8 @@ import RegisterScreen from "./Screens/Register_screen";
 import RegisterCustomer from "./Screens/Customer_Register";
 import Login_screen from "./Screens/Login_screen";
 import Admin_panel from "./Screens/Admin_panel";
-import CustomerDashboard from "./CustomerDashboard/CustomerDashboard";
-import CoreDashboard from "./CoreDashboard/CoreDashboard";
-import RLogin_screen from "./Refferal/Screens/Login_screen";
 import PrivacyPolicy from "./Screens/PrivacyPolicy";
 import Admin from "./Admin_Pan/AdminDashboard";
-import SkillDasboard from "./SkillDashboard/SkillDashboard";
-import NriDashboard from "./NriDashboard/NriDashboard";
-import InvestorDashboard from "./InvestorDashboard/InvestorDashboard";
 import StartingScreen from "./StartingScreen";
 import CallCenterDashboard from "./CallCenterDash/CallCenterDashboard";
 import CallCenterLogin from "./CallCenterDash/Login_screen";
@@ -281,13 +275,13 @@ export default function App() {
   const MainStack = () => (
     <PersistentLayout>
       <Stack.Navigator
+        initialRouteName="newhome"
         screenOptions={{
           headerShown: false,
           animationEnabled: true,
         }}
       >
         <Stack.Screen name="newhome" component={HomeScreen} />
-
         <Stack.Screen name="nrireg" component={NriRegister} />
         <Stack.Screen name="invreg" component={InvestorRegister} />
         <Stack.Screen name="skillreg" component={SkilledRegister} />
@@ -318,6 +312,7 @@ export default function App() {
         <Stack.Screen
           name="PropertyDetails"
           component={PropertyDetailsScreen}
+          options={{ headerShown: false }}
         />
         <Stack.Screen name="postproperty" component={PostProperty} />
         <Stack.Screen name="requestproperty" component={RequestedProperty} />
@@ -356,6 +351,7 @@ export default function App() {
           component={RegisterCustomer}
           options={{ headerShown: false }}
         />
+        {/* <Stack.Screen name="ViewAllProperties" component={ViewAllProperties} /> */}
       </Stack.Navigator>
     </PersistentLayout>
   );
@@ -419,21 +415,7 @@ export default function App() {
             component={Admin_panel}
             options={{ headerShown: false }}
           />
-          <Stack.Screen
-            name="CustomerDashboard"
-            component={CustomerDashboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="CoreDashboard"
-            component={CoreDashboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="RefferalDashboard"
-            component={RLogin_screen}
-            options={{ headerShown: false }}
-          />
+
           <Stack.Screen
             name="PrivacyPolicy"
             component={PrivacyPolicy}
@@ -442,21 +424,6 @@ export default function App() {
           <Stack.Screen
             name="Admin"
             component={Admin}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="SkillDashboard"
-            component={SkillDasboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="NriDashboard"
-            component={NriDashboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="InvestorDashboard"
-            component={InvestorDashboard}
             options={{ headerShown: false }}
           />
           <Stack.Screen
@@ -572,6 +539,13 @@ export default function App() {
               </PersistentLayout>
             )}
           </Stack.Screen>
+          <Stack.Screen name="SkilledProfile">
+            {() => (
+              <PersistentLayout>
+                <SkilledProfile />
+              </PersistentLayout>
+            )}
+          </Stack.Screen>
           <Stack.Screen name="propertyhome">
             {() => (
               <PersistentLayout>
@@ -607,7 +581,7 @@ export default function App() {
               </PersistentLayout>
             )}
           </Stack.Screen>
-          <Stack.Screen name="PropertyDetails">
+          <Stack.Screen name="PropertyDetails" options={{ headerShown: false }}>
             {(props) => (
               <PersistentLayout>
                 <PropertyDetailsScreen {...props} />

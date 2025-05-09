@@ -30,6 +30,7 @@ const AddNRIMember = ({ closeModal }) => {
   const [showLocationList, setShowLocationList] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
   const [showCountryList, setShowCountryList] = useState(false);
+  const [senduserType, setsenduserType] = useState("");
 
   const navigation = useNavigation();
   const countries = [
@@ -58,33 +59,41 @@ const AddNRIMember = ({ closeModal }) => {
       ]);
 
       if (!token) return;
+      const senduserType = userType;
 
       let endpoint = "";
       switch (userType) {
         case "WealthAssociate":
         case "ReferralAssociate":
           endpoint = `${API_URL}/agent/AgentDetails`;
+          setsenduserType("WealthAssociate");
           break;
         case "Customer":
           endpoint = `${API_URL}/customer/getcustomer`;
+          setsenduserType("customer");
           break;
         case "CoreMember":
           endpoint = `${API_URL}/core/getcore`;
+          setsenduserType("core");
           break;
         case "Investor":
           endpoint = `${API_URL}/investors/getinvestor`;
+          setsenduserType("investor");
           break;
         case "NRI":
           endpoint = `${API_URL}/nri/getnri`;
+          setsenduserType("nri");
           break;
         case "SkilledResource":
           endpoint = `${API_URL}/skillLabour/getskilled`;
+          setsenduserType("skilled");
           break;
         case "CallCenter":
           endpoint = `${API_URL}/callcenter/getcallcenter`;
           break;
         default:
           endpoint = `${API_URL}/agent/AgentDetails`;
+          setsenduserType("WealthAssociate");
       }
 
       const response = await fetch(endpoint, {
@@ -135,6 +144,16 @@ const AddNRIMember = ({ closeModal }) => {
       Alert.alert("Error", "Please fill all the fields");
       return;
     }
+    console.log(
+      name,
+      country,
+      locality,
+      indianLocation,
+      occupation,
+      mobileIN,
+      mobileCountryNo,
+      senduserType
+    );
 
     setLoading(true);
     try {
@@ -145,12 +164,6 @@ const AddNRIMember = ({ closeModal }) => {
         "Wealthassociate";
 
       // Determine the RegisteredBy value based on user type
-      const registeredByValue = [
-        "WealthAssociate",
-        "ReferralAssociate",
-      ].includes(userType)
-        ? userType
-        : "WealthAssociate";
 
       const response = await fetch(`${API_URL}/nri/register`, {
         method: "POST",
@@ -166,14 +179,14 @@ const AddNRIMember = ({ closeModal }) => {
           MobileIN: mobileIN,
           MobileCountryNo: mobileCountryNo,
           AddedBy: addedByValue,
-          RegisteredBy: registeredByValue,
+          RegisteredBy: "Wealth",
         }),
       });
 
       const data = await response.json();
       if (response.ok) {
         Alert.alert("Success", data.message);
-        closeModal();
+        navigation.goBack();
       } else {
         Alert.alert("Error", data.message);
       }

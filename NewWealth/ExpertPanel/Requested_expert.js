@@ -117,13 +117,6 @@ const RequestedExpert = ({ closeModal }) => {
       Alert.alert("Error", "Please select an expert type.");
       return false;
     }
-    if (!reason.trim() || reason.length < 10) {
-      Alert.alert(
-        "Error",
-        "Please provide a detailed reason (at least 10 characters)."
-      );
-      return false;
-    }
     return true;
   };
 
@@ -134,22 +127,22 @@ const RequestedExpert = ({ closeModal }) => {
     const requestData = {
       expertType: selectedExpert,
       reason: reason.trim(),
-      userType,
+      UserType:userType,
     };
 
     // Add user identifier based on user type
     if (userType === "WealthAssociate" || userType === "ReferralAssociate") {
       requestData.WantedBy = Details?.MobileNumber || "Unknown";
     } else if (userType === "Customer") {
-      requestData.CustomerId = Details?.MobileNumber;
+      requestData.WantedBy = Details?.MobileNumber;
     } else if (userType === "CoreMember") {
-      requestData.CoreMemberId = Details?.MobileNumber;
+      requestData.WantedBy = Details?.MobileNumber;
     } else if (userType === "Investor") {
-      requestData.InvestorId = Details?.MobileNumber;
+      requestData.WantedBy = Details?.MobileNumber;
     } else if (userType === "NRI") {
-      requestData.NRIId = Details?.MobileIN;
+      requestData.WantedBy = Details?.MobileIN;
     } else if (userType === "SkilledResource") {
-      requestData.SkilledId = Details?.MobileNumber;
+      requestData.WantedBy = Details?.MobileNumber;
     }
 
     try {
@@ -165,7 +158,7 @@ const RequestedExpert = ({ closeModal }) => {
 
       if (response.ok) {
         Alert.alert("Success", "Request submitted successfully!");
-        closeModal();
+        navigation.goBack();
       } else {
         Alert.alert(
           "Error",

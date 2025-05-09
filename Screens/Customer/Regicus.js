@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
 
 const screenHeight = Dimensions.get("window").height;
 const { width } = Dimensions.get("window");
@@ -41,6 +42,7 @@ const RegisterExecute = ({ closeModal }) => {
   const [Details, setDetails] = useState({});
   const [errorMessage, setErrorMessage] = useState("");
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const navigation = useNavigation();
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -185,7 +187,7 @@ const RegisterExecute = ({ closeModal }) => {
       if (response.ok) {
         const result = await response.json();
         Alert.alert("Success", "Registration successful!");
-        closeModal();
+        navigation.navigate("Login");
       } else if (response.status === 400) {
         const errorData = await response.json();
         setErrorMessage(errorData.message || "Mobile number already exists."); // Set the error message
@@ -407,7 +409,7 @@ const RegisterExecute = ({ closeModal }) => {
               style={styles.cancelButton}
               onPress={() => {
                 console.log("Cancel button clicked");
-                closeModal && closeModal();
+                navigation.goBack();
               }}
               disabled={isLoading}
             >
@@ -436,7 +438,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: "red",
-    fontSize:20
+    fontSize: 20,
   },
   container: {
     backgroundColor: "white",

@@ -19,12 +19,12 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import logo6 from "../../assets/Land.jpg";
-import logo7 from "../../assets/residntial.jpg";
-import logo8 from "../../assets/commercial.jpeg";
-import logo9 from "../../assets/villa.jpg";
-import logo10 from "../../assets/house.png";
-import logo11 from "../../assets/logo.png";
+// import logo6 from "../../assets/Land.jpg";
+// import logo7 from "../../assets/residntial.jpg";
+// import logo8 from "../../assets/commercial.jpg";
+// import logo9 from "../../assets/villa.jpg";
+// import logo10 from "../../assets/house.png";
+// import logo11 from "../../assets/logo.png";
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
@@ -43,30 +43,26 @@ const ViewAllRequestedProperties = ({ navigation }) => {
 
   // Enhanced property type image mapping
   const getImageByPropertyType = (propertyType) => {
-    if (!propertyType) return logo10;
-
-    const type = propertyType.toLowerCase();
-    switch (type) {
-      case "land":
-      case "land(opensite)":
-        return logo6;
-      case "residential":
-      case "house(individual)":
-      case "house":
-        return logo7;
-      case "commercial":
-      case "commercial property":
-      case "commercial land":
-        return logo8;
-      case "villa":
-        return logo9;
+    switch (propertyType.toLowerCase()) {
       case "flat(apartment)":
       case "apartment":
         return require("../../assets/download.jpeg");
+      case "land(opensite)":
+      case "land":
+        return require("../../assets/Land.jpg");
+      case "house(individual)":
+      case "house":
+        return require("../../assets/house.png");
+      case "villa":
+        return require("../../assets/villa.jpg");
       case "agriculture land":
         return require("../../assets/agriculture.jpeg");
+      case "commercial property":
+        return require("../../assets/commercial.jpeg");
+      case "commercial land":
+        return require("../../assets/commland.jpeg");
       default:
-        return logo10;
+        return require("../../assets/house.png");
     }
   };
 

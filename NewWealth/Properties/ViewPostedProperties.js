@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Linking,
+  Alert,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -24,6 +25,7 @@ const { width } = Dimensions.get("window");
 const numColumns = 3;
 
 const ViewPostedProperties = () => {
+  const navigation = useNavigation();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState("");
@@ -56,6 +58,48 @@ const ViewPostedProperties = () => {
       }
     } catch (error) {
       console.error("Error loading referred info from storage:", error);
+    }
+  };
+
+  const handlePropertyPress = async (property) => {
+    if (!property?._id) {
+      console.error("Property ID is missing");
+      return;
+    }
+
+    let formattedPrice = "Price not available";
+    try {
+      const priceValue = parseInt(property.price);
+      if (!isNaN(priceValue)) {
+        formattedPrice = `₹${priceValue.toLocaleString()}`;
+      }
+    } catch (e) {
+      console.error("Error formatting price:", e);
+    }
+
+    try {
+      // Store the property in AsyncStorage before navigating
+      await AsyncStorage.setItem(
+        "currentProperty",
+        JSON.stringify({
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          images: property.images,
+        })
+      );
+
+      navigation.navigate("PropertyDetails", {
+        property: {
+          ...property,
+          id: property._id,
+          price: formattedPrice,
+          images: property.images,
+        },
+      });
+    } catch (error) {
+      console.error("Error storing property:", error);
+      Alert.alert("Error", "Failed to navigate to property details");
     }
   };
 
@@ -101,18 +145,15 @@ const ViewPostedProperties = () => {
     }
   };
 
-  // Format images for display (handles both array and single image)
   const formatImages = (property) => {
     if (!property) return [];
 
-    // Handle array of photos
     if (Array.isArray(property.photo) && property.photo.length > 0) {
       return property.photo.map((photo) => ({
         uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
       }));
     }
 
-    // Handle single photo string
     if (typeof property.photo === "string") {
       return [
         {
@@ -123,7 +164,6 @@ const ViewPostedProperties = () => {
       ];
     }
 
-    // Fallback to default image
     return [logo1];
   };
 
@@ -318,7 +358,12 @@ const ViewPostedProperties = () => {
       ) : (
         <View style={styles.grid}>
           {properties.map((item) => (
-            <View key={item._id} style={styles.card}>
+            <TouchableOpacity
+              key={item._id}
+              style={styles.card}
+              onPress={() => handlePropertyPress(item)}
+              activeOpacity={0.8}
+            >
               <PropertyImageSlider images={item.images} />
               <View style={styles.details}>
                 <View style={styles.idContainer}>
@@ -333,12 +378,15 @@ const ViewPostedProperties = () => {
                 </Text>
                 <TouchableOpacity
                   style={styles.editButton}
-                  onPress={() => handleEditPress(item)}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleEditPress(item);
+                  }}
                 >
                   <Text style={styles.editButtonText}>Edit</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       )}

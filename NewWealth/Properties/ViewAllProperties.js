@@ -24,7 +24,7 @@ import { useNavigation } from "@react-navigation/native";
 const { width } = Dimensions.get("window");
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
-const ViewAllProperties = ({ navigation }) => {
+const ViewAllProperties = () => {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState({ Contituency: "" });
@@ -47,6 +47,7 @@ const ViewAllProperties = ({ navigation }) => {
   const [userType, setUserType] = useState("");
   const navigations=useNavigation()
 
+  
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -901,6 +902,9 @@ const ViewAllProperties = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  propertyCardContainer: {
+    marginBottom: 15,
+  },
   container: {
     flex: 1,
     backgroundColor: "#f1f1f1",
