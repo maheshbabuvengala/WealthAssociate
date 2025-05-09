@@ -23,14 +23,8 @@ import RegisterScreen from "./Screens/Register_screen";
 import RegisterCustomer from "./Screens/Customer_Register";
 import Login_screen from "./Screens/Login_screen";
 import Admin_panel from "./Screens/Admin_panel";
-import CustomerDashboard from "./CustomerDashboard/CustomerDashboard";
-import CoreDashboard from "./CoreDashboard/CoreDashboard";
-import RLogin_screen from "./Refferal/Screens/Login_screen";
 import PrivacyPolicy from "./Screens/PrivacyPolicy";
 import Admin from "./Admin_Pan/AdminDashboard";
-import SkillDasboard from "./SkillDashboard/SkillDashboard";
-import NriDashboard from "./NriDashboard/NriDashboard";
-import InvestorDashboard from "./InvestorDashboard/InvestorDashboard";
 import StartingScreen from "./StartingScreen";
 import CallCenterDashboard from "./CallCenterDash/CallCenterDashboard";
 import CallCenterLogin from "./CallCenterDash/Login_screen";
@@ -262,7 +256,7 @@ export default function App() {
   const MainStack = () => (
     <PersistentLayout>
       <Stack.Navigator
-      initialRouteName="newhome"  
+        initialRouteName="newhome"
         screenOptions={{
           headerShown: false,
           animationEnabled: true,
@@ -402,21 +396,7 @@ export default function App() {
             component={Admin_panel}
             options={{ headerShown: false }}
           />
-          <Stack.Screen
-            name="CustomerDashboard"
-            component={CustomerDashboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="CoreDashboard"
-            component={CoreDashboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="RefferalDashboard"
-            component={RLogin_screen}
-            options={{ headerShown: false }}
-          />
+
           <Stack.Screen
             name="PrivacyPolicy"
             component={PrivacyPolicy}
@@ -425,21 +405,6 @@ export default function App() {
           <Stack.Screen
             name="Admin"
             component={Admin}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="SkillDashboard"
-            component={SkillDasboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="NriDashboard"
-            component={NriDashboard}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="InvestorDashboard"
-            component={InvestorDashboard}
             options={{ headerShown: false }}
           />
           <Stack.Screen

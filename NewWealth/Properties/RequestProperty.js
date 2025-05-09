@@ -140,15 +140,15 @@ const RequestedPropertyForm = ({ closeModal }) => {
     if (userType === "WealthAssociate" || userType === "ReferralAssociate") {
       requestData.PostedBy = Details.MobileNumber;
     } else if (userType === "Customer") {
-      requestData.CustomerId = Details.MobileNumber;
+      requestData.PostedBy = Details.MobileNumber;
     } else if (userType === "CoreMember") {
-      requestData.CoreMemberId = Details.MobileNumber;
+      requestData.PostedBy = Details.MobileNumber;  
     } else if (userType === "Investor") {
-      requestData.InvestorId = Details.MobileNumber;
+      requestData.PostedBy = Details.MobileNumber;
     } else if (userType === "NRI") {
-      requestData.NRIId = Details.MobileIN;
+      requestData.PostedBy = Details.MobileIN;
     } else if (userType === "SkilledResource") {
-      requestData.SkilledId = Details.MobileNumber;
+      requestData.PostedBy = Details.MobileNumber;
     }
 
     setLoading(true);
