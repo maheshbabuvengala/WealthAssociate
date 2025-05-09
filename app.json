@@ -86,7 +86,11 @@
       }
     },
     "web": {
-      "favicon": "./assets/icon-512.png"
+      "favicon": "./assets/icon-512.png",
+      "bundler":"metro",
+      "linking":{
+        "enabled":false
+      }
     },
     "extra": {
       "eas": {

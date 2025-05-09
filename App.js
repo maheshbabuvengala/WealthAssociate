@@ -86,12 +86,35 @@ Notifications.setNotificationHandler({
 });
 
 const linking = {
-  prefixes: ["https://www.wealthassociate.in"],
+  prefixes: ["https://www.wealthassociate.in", "wealthassociate://"],
   config: {
     screens: {
-      "Main Screen": "",
+      "Main Screen": {
+        path: "",
+        initialRouteName: "Main Screen", // Force this as initial
+      },
       PrivacyPolicy: "privacy_policy",
     },
+  },
+  getInitialURL: async () => {
+    if (Platform.OS === "web") {
+      // You could also check sessionStorage or localStorage
+      if (
+        !window.performance ||
+        performance.navigation.type === 0 ||
+        performance.navigation.type === 1
+      ) {
+        // Type 0: page was just loaded, Type 1: page reloaded
+        return "/";
+      }
+    }
+    const url = await Linking.getInitialURL();
+    return url || "/";
+  },
+  subscribe(listener) {
+    const onReceiveURL = ({ url }) => listener(url);
+    const subscription = Linking.addEventListener("url", onReceiveURL);
+    return () => subscription.remove();
   },
 };
 
@@ -100,7 +123,6 @@ export default function App() {
   const [initialRoute, setInitialRoute] = useState("Main Screen");
   const [expoPushToken, setExpoPushToken] = useState("");
 
-  // Helper function to handle notification permission
   const requestNotificationPermission = async () => {
     try {
       // Skip if not a physical device
@@ -195,17 +217,14 @@ export default function App() {
           await AsyncStorage.removeItem("expoPushToken");
           await AsyncStorage.setItem("appVersion", APP_VERSION);
 
-          // Request notification permission when version changes
           await requestNotificationPermission();
         } else {
-          // Also request permission if we don't have a token stored
           const existingToken = await AsyncStorage.getItem("expoPushToken");
           if (!existingToken) {
             await requestNotificationPermission();
           }
         }
 
-        // Determine initial route based on auth state
         const token = await AsyncStorage.getItem("authToken");
         const userType = await AsyncStorage.getItem("userType");
 
