@@ -25,7 +25,7 @@ import AddNri from "./AddNri";
 import AddInvestor from "./AddInvestors";
 import Rskill from "./Rskill";
 import Add_Agent from "./Add_Agent";
-import ViewSkilledLabours from "../MySkilled/ViewSkilledLabours";
+// import ViewSkilledLabours from "../MySkilled/ViewSkilledLabours";
 
 export default function Add_Member() {
   const navigation = useNavigation();

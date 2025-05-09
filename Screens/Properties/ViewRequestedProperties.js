@@ -18,7 +18,7 @@ const { width } = Dimensions.get("window");
 import { API_URL } from "../../data/ApiUrl";
 import logo1 from "../../assets/Land.jpg";
 import logo2 from "../../assets/residntial.jpg";
-import logo3 from "../../assets/commercial.jpg";
+import logo3 from "../../assets/commercial.jpeg";
 import logo4 from "../../assets/villa.jpg";
 import logo5 from "../../assets/house.png";
 
@@ -68,7 +68,7 @@ const RequestedProperties = () => {
         id: item._id,
         title: item.propertyTitle,
         type: item.propertyType,
-        ExactLocation:item.islocation,
+        ExactLocation: item.islocation,
         location: item.location,
         budget: `₹${item.Budget.toLocaleString()}`,
         image: getImageByPropertyType(item.propertyType),
@@ -160,14 +160,18 @@ const RequestedProperties = () => {
                 {/* Property ID Display - Added this section */}
                 <View style={styles.idContainer}>
                   <View style={styles.idBadge}>
-                    <Text style={styles.idText}>ID: {getLastFourChars(item.id)}</Text>
+                    <Text style={styles.idText}>
+                      ID: {getLastFourChars(item.id)}
+                    </Text>
                   </View>
                 </View>
-                
+
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.text}>Type: {item.type}</Text>
-                 <Text style={styles.text}>Constituency: {item.location}</Text>
-                               <Text style={styles.text}>ExactLocation: {item.ExactLocation}</Text>
+                <Text style={styles.text}>Constituency: {item.location}</Text>
+                <Text style={styles.text}>
+                  ExactLocation: {item.ExactLocation}
+                </Text>
                 <Text style={styles.text}>Budget: {item.budget}</Text>
                 <TouchableOpacity
                   style={styles.editButton}
@@ -220,7 +224,11 @@ const RequestedProperties = () => {
               placeholder="Budget"
             />
             <View style={styles.modalButtonsContainer}>
-              <Button title="Save Changes" color="green" onPress={handleSaveEdit} />
+              <Button
+                title="Save Changes"
+                color="green"
+                onPress={handleSaveEdit}
+              />
               <Button
                 title="Cancel"
                 color="red"
@@ -241,15 +249,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f8f8",
     alignItems: "center",
   },
-  heading: { 
-    fontSize: 20, 
-    fontWeight: "bold", 
-    marginBottom: 15 
+  heading: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
   },
-  grid: { 
-    flexDirection: "row", 
-    flexWrap: "wrap", 
-    justifyContent: "center" 
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
   },
   card: {
     backgroundColor: "white",
@@ -260,14 +268,14 @@ const styles = StyleSheet.create({
     elevation: 3,
     position: "relative",
   },
-  image: { 
-    width: "100%", 
-    height: 120, 
+  image: {
+    width: "100%",
+    height: 120,
     resizeMode: "cover",
     borderRadius: 5,
   },
-  details: { 
-    padding: 10 
+  details: {
+    padding: 10,
   },
   // New styles for ID display
   idContainer: {
@@ -285,13 +293,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 12,
   },
-  title: { 
-    fontSize: 14, 
-    fontWeight: "bold", 
-    marginBottom: 5 
+  title: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 5,
   },
-  text: { 
-    fontSize: 12, 
+  text: {
+    fontSize: 12,
     color: "#666",
     marginBottom: 3,
   },
@@ -302,9 +310,9 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: "center",
   },
-  editButtonText: { 
-    color: "white", 
-    fontSize: 14 
+  editButtonText: {
+    color: "white",
+    fontSize: 14,
   },
   modalContainer: {
     flex: 1,
@@ -318,15 +326,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: 300,
   },
-  modalTitle: { 
-    fontSize: 18, 
-    fontWeight: "bold", 
-    marginBottom: 10 
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
   },
-  input: { 
-    borderWidth: 1, 
-    padding: 8, 
-    marginBottom: 10, 
+  input: {
+    borderWidth: 1,
+    padding: 8,
+    marginBottom: 10,
     borderRadius: 5,
     borderColor: "#ccc",
   },
