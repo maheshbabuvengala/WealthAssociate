@@ -190,7 +190,7 @@ const Rskill = ({ closeModal }) => {
         setSkill("");
         setLocation("");
         setMobileNumber("");
-        closeModal();
+        navigation.goBack();
       } else {
         Alert.alert("Error", data.message || "Registration failed");
       }

@@ -232,7 +232,7 @@ const Add_Agent = ({ closeModal }) => {
       if (response.ok) {
         const result = await response.json();
         Alert.alert("Success", "Registration successful!");
-        closeModal();
+        navigation.goBack();
       } else if (response.status === 400) {
         const errorData = await response.json();
         Alert.alert("Error", "Mobile number already exists.");

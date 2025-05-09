@@ -133,7 +133,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
       location,
       islocation,
       Budget: budget,
-      userType, 
+      userType,
     };
 
     // Add user identifier based on user type
@@ -167,7 +167,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
       const result = await response.json();
       if (response.ok) {
         Alert.alert("Success", result.message);
-        closeModal();
+        navigation.goBack();
       } else {
         Alert.alert("Error", result.message || "Failed to request property.");
       }
@@ -407,7 +407,6 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: "rgba(0, 0, 0, 0.5)",
   },
- 
 });
 
 export default RequestedPropertyForm;

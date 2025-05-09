@@ -231,9 +231,12 @@ const Header = () => {
               navigation.goBack();
             } else {
               // Fallback to home screen if can't go back
-              navigation.navigate("Main", { screen: "newhome" });
+              navigation.navigate("Main", {
+                screen: "newhome",
+                params: { setActiveTab: "newhome" },
+              });
             }
-          }}
+          }} 
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={26} color="#555" />

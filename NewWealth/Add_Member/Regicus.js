@@ -196,7 +196,7 @@ const RegisterExecute = ({ closeModal }) => {
 
       if (response.ok) {
         Alert.alert("Success", "Registration successful!");
-        closeModal();
+       navigation.goBack()
       } else {
         setErrorMessage(
           result.message || "Registration failed. Please try again."

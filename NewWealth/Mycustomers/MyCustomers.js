@@ -22,15 +22,15 @@ export default function ViewCustomers() {
   const [userType, setUserType] = useState("");
 
   useEffect(() => {
-    const fetchUserType = async () => {
+    const fetchUserTypeAndCustomers = async () => {
       const type = await AsyncStorage.getItem("userType");
-      setUserType(type || "");
+      setUserType(type);
+      await fetchCustomers(type); // Pass the type directly
     };
-    fetchUserType();
-    fetchCustomers();
+    fetchUserTypeAndCustomers();
   }, []);
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (type = userType) => {
     try {
       const token = await AsyncStorage.getItem("authToken");
       if (!token) {
@@ -40,7 +40,9 @@ export default function ViewCustomers() {
       }
 
       let endpoint = "";
-      switch (userType) {
+      switch (
+        type // Use the passed type parameter
+      ) {
         case "WealthAssociate":
         case "ReferralAssociate":
           endpoint = `${API_URL}/customer/myCustomers`;
@@ -61,9 +63,9 @@ export default function ViewCustomers() {
 
       const data = await response.json();
 
-      if (userType === "WealthAssociate" || userType === "ReferralAssociate") {
+      if (type === "WealthAssociate" || type === "ReferralAssociate") {
         setCustomers(data?.referredAgents || []);
-      } else if (userType === "CoreMember") {
+      } else if (type === "CoreMember") {
         setCustomers(data?.referredAgents || []);
       } else {
         setCustomers(Array.isArray(data) ? data : []);
