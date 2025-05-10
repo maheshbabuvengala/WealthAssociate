@@ -6,13 +6,15 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 const BottomNavigation = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const [activeTab, setActiveTab] = useState(route.name);
+  const [activeTab, setActiveTab] = useState("newhome");
 
   useEffect(() => {
     if (route.params?.setActiveTab) {
       setActiveTab(route.params.setActiveTab);
     }
   }, [route.params]);
+
+
 
   const tabs = [
     {

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
   Image,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   Platform,
   StatusBar,
@@ -14,7 +14,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
-import { useNavigationState } from "@react-navigation/native";
 
 // Cache for user data
 let userDataCache = null;
@@ -29,19 +28,36 @@ export const clearHeaderCache = () => {
 const Header = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const [showBackButton, setShowBackButton] = useState(false);
   const [userData, setUserData] = useState({
     details: {},
     userType: "",
     loading: true,
   });
 
-  const isHomeScreen = useNavigationState((state) => {
-    const mainRoute = state.routes.find((r) => r.name === "Main");
-    if (!mainRoute || !mainRoute.state) return false;
-    const nestedState = mainRoute.state;
-    const currentRoute = nestedState.routes[nestedState.index];
-    return currentRoute?.name === "newhome";
-  });
+  useFocusEffect(
+    useCallback(() => {
+      // List of screens where back button should never appear
+      const noBackScreens = [
+        "newhome",
+        "Main Screen",
+        "Starting Screen",
+        "Home", // Admin panel
+        "Admin",
+        "CallCenterDashboard",
+      ];
+
+      // Check if current screen is in the noBackScreens list
+      const shouldHideBackButton = noBackScreens.includes(route.name);
+
+      // Also hide back button if we're at the initial route of a navigator
+      const state = navigation.getState();
+      const isInitialRoute =
+        state?.routes[state?.index || 0]?.name === route.name;
+
+      setShowBackButton(!shouldHideBackButton && !isInitialRoute);
+    }, [route.name, navigation])
+  );
 
   const fetchReferredDetails = useCallback(async (referredBy, addedBy) => {
     try {
@@ -206,7 +222,6 @@ const Header = () => {
     return initials;
   };
 
-  const showBackButton = !isHomeScreen && route.name !== "newhome";
   const showReferralCode = [
     "WealthAssociate",
     "Customer",
@@ -236,7 +251,7 @@ const Header = () => {
                 params: { setActiveTab: "newhome" },
               });
             }
-          }} 
+          }}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={26} color="#555" />
@@ -272,6 +287,7 @@ const Header = () => {
           <Text style={styles.profileInitials}>{getUserInitials()}</Text>
         </View>
       </TouchableOpacity>
+      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
     </View>
   );
 };
@@ -285,7 +301,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    marginTop: 20,
   },
   loadingContainer: {
     height: 60,
@@ -327,7 +342,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#25D366", // WhatsApp-like green color
+    backgroundColor: "#25D366",
     justifyContent: "center",
     alignItems: "center",
   },

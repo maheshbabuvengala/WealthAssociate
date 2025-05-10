@@ -24,7 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 // import logo8 from "../../assets/commercial.jpg";
 // import logo9 from "../../assets/villa.jpg";
 // import logo10 from "../../assets/house.png";
-// import logo11 from "../../assets/logo.png";
+import logo11 from "../../assets/logo.png";
 
 const { width } = Dimensions.get("window");
 const isWeb = Platform.OS === "web";
