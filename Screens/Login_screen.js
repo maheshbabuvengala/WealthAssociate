@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import logo1 from "../assets/logo2.png";
 import logo2 from "../assets/logo.png";
+// import { useNavigation } from "@react-navigation/native";
 
 export default function Login_screen() {
   const [mobileNumber, setMobileNumber] = useState("");
@@ -31,6 +32,20 @@ export default function Login_screen() {
   const [loginType, setLoginType] = useState("");
   const navigation = useNavigation();
   const [adminData, setAdminData] = useState(null);
+  const [clickCount, setClickCount] = useState(0);
+  // const navigation = useNavigation();
+
+  useEffect(() => {
+    if (clickCount === 5) {
+      setClickCount(0); // Reset count
+      Alert.alert("Welcome to call center dashboard");
+      navigation.navigate("CallCenterLogin"); // Replace with your actual screen name
+    }
+  }, [clickCount]);
+
+  const handleLogoPress = () => {
+    setClickCount((prev) => prev + 1);
+  };
 
   useEffect(() => {
     fetchAdminData();
@@ -144,15 +159,13 @@ export default function Login_screen() {
         await AsyncStorage.setItem("authToken", token);
         await AsyncStorage.setItem("userType", userType);
         console.log("Token stored in AsyncStorage:", token);
-      
+
         if (userType === "CallCenter") {
           navigation.navigate("CallCenterDashboard");
         } else {
           navigation.navigate("Main");
         }
-      }
-      
-       else {
+      } else {
         setErrorMessage(
           data.message || "Mobile number or password is incorrect."
         );
@@ -195,11 +208,13 @@ export default function Login_screen() {
           <View style={styles.card}>
             {Platform.OS !== "android" && Platform.OS !== "ios" && (
               <View style={styles.leftSection}>
-                <Image
-                  source={logo1}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
+                <TouchableOpacity onPress={handleLogoPress}>
+                  <Image
+                    source={logo1}
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
               </View>
             )}
 
@@ -217,22 +232,25 @@ export default function Login_screen() {
               >
                 <Icon name="arrow-back" size={24} color="#E82E5F" />
               </TouchableOpacity>
-              <Image
-                source={
-                  Platform.OS === "android" || Platform.OS === "ios"
-                    ? logo2
-                    : logo2
-                }
-                style={styles.illustration}
-                resizeMode="contain"
-              />
+              {/* <TouchableOpacity onPress={handleLogoPress}> */}
+                <Image
+                  source={
+                    Platform.OS === "android" || Platform.OS === "ios"
+                      ? logo2
+                      : logo2
+                  }
+                  style={styles.illustration}
+                  resizeMode="contain"
+                />
+              {/* </TouchableOpacity> */}
               <Text style={styles.tagline}>
                 Your Trusted Property Consultant
               </Text>
-
-              <Text style={styles.welcomeText}>
-                Welcome back! Log in to your {loginType} account.
-              </Text>
+              <TouchableOpacity onPress={handleLogoPress}>
+                <Text style={styles.welcomeText}>
+                  Welcome back! Log in to your {loginType} account.
+                </Text>
+              </TouchableOpacity>
 
               {errorMessage ? (
                 <Text style={styles.errorText}>{errorMessage}</Text>

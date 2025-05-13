@@ -45,9 +45,8 @@ const ViewAllProperties = () => {
   const [showPriceDropdown, setShowPriceDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [userType, setUserType] = useState("");
-  const navigations=useNavigation()
+  const navigations = useNavigation();
 
-  
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -785,17 +784,26 @@ const ViewAllProperties = () => {
       </Modal>
 
       {/* Regular Properties */}
-      {regularProperties.length > 0 && (
-        <>
-          <SectionHeader title="Regular Properties" />
-          <FlatList
-            data={regularProperties}
-            renderItem={({ item }) => <RenderPropertyCard property={item} />}
-            keyExtractor={(item) => item._id}
-            scrollEnabled={false}
-          />
-        </>
-      )}
+      {(userType === "WealthAssociate" ||
+        userType === "ReferralAssociate" ||
+        userType === "CoreMember") &&
+        regularProperties.length > 0 && (
+          <>
+            <SectionHeader
+              title="Regular Properties"
+              onViewAll={() => navigation.navigate("regularprop")}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {regularProperties.map((property, index) => (
+                <RenderPropertyCard key={index} property={property} />
+              ))}
+            </ScrollView>
+          </>
+        )}
 
       {/* Approved Properties */}
       {approvedProperties.length > 0 && (

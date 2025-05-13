@@ -10,6 +10,7 @@ import {
   ScrollView,
 } from "react-native";
 import { API_URL } from "../../../data/ApiUrl";
+import CheckBox from "@react-native-community/checkbox";
 
 const AgricultureForm = ({ closeModal, propertyId, initialData }) => {
   const [formData, setFormData] = useState({

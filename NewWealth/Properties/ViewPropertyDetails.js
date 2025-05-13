@@ -72,7 +72,19 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
 
   const loadProperty = async () => {
     try {
-      // First try to get from route.params
+      // First check if we have a property ID from route params (from notification)
+      if (route?.params?.propertyId) {
+        const propertyData = await fetchPropertyDetails(
+          route.params.propertyId
+        );
+        setProperty({
+          ...propertyData,
+          images: formatImages(propertyData),
+        });
+        return;
+      }
+
+      // Then try to get from route.params.property
       if (route?.params?.property) {
         const propertyFromRoute = route.params.property;
 
@@ -90,7 +102,6 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
             images: formatImages(propertyFromRoute),
           });
         }
-        setLoading(false);
         return;
       }
 
@@ -141,6 +152,19 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
     // Fallback to default image
     return [require("../../assets/logo.png")];
   };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      loadProperty();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
+    loadProperty();
+    fetchUserDetails();
+  }, [route.params?.propertyId]);
 
   const fetchUserDetails = async () => {
     try {

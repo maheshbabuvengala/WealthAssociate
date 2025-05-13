@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
-import { Checkbox } from "react-native-paper";
+import CheckBox from "@react-native-community/checkbox";
 import { API_URL } from "../../../data/ApiUrl";
 
 const { width } = Dimensions.get("window");

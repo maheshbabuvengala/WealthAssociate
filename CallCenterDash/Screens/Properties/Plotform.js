@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  CheckBox,
   Alert,
   ScrollView,
   StyleSheet,
@@ -70,7 +69,7 @@ const PlotInfoForm = ({ closeModal, propertyId, initialData }) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleCheckboxChange = (field, value) => {
+  const handleToggleChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
   };
 
@@ -108,6 +107,33 @@ const PlotInfoForm = ({ closeModal, propertyId, initialData }) => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Custom Toggle Component
+  const CustomToggle = ({ field, value, options }) => {
+    return (
+      <View style={styles.toggleContainer}>
+        {options.map((option) => (
+          <TouchableOpacity
+            key={option.value}
+            style={[
+              styles.toggleOption,
+              value === option.value && styles.toggleOptionSelected,
+            ]}
+            onPress={() => handleToggleChange(field, option.value)}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                value === option.value && styles.toggleTextSelected,
+              ]}
+            >
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
   };
 
   return (
@@ -183,40 +209,24 @@ const PlotInfoForm = ({ closeModal, propertyId, initialData }) => {
       />
 
       <Text style={styles.label}>Approval Status</Text>
-      <View style={styles.checkboxContainer}>
-        <CheckBox
-          value={formData.approvalStatus === "NonApproved"}
-          onValueChange={() =>
-            handleCheckboxChange("approvalStatus", "NonApproved")
-          }
-        />
-        <Text style={styles.label}>Non Approved</Text>
-      </View>
-      <View style={styles.checkboxContainer}>
-        <CheckBox
-          value={formData.approvalStatus === "Approved"}
-          onValueChange={() =>
-            handleCheckboxChange("approvalStatus", "Approved")
-          }
-        />
-        <Text style={styles.label}>Approved</Text>
-      </View>
+      <CustomToggle
+        field="approvalStatus"
+        value={formData.approvalStatus}
+        options={[
+          { value: "NonApproved", label: "Non Approved" },
+          { value: "Approved", label: "Approved" },
+        ]}
+      />
 
       <Text style={styles.label}>Bank Loan Facility</Text>
-      <View style={styles.checkboxContainer}>
-        <CheckBox
-          value={formData.bankLoanFacility === "Yes"}
-          onValueChange={() => handleCheckboxChange("bankLoanFacility", "Yes")}
-        />
-        <Text style={styles.label}>Yes</Text>
-      </View>
-      <View style={styles.checkboxContainer}>
-        <CheckBox
-          value={formData.bankLoanFacility === "No"}
-          onValueChange={() => handleCheckboxChange("bankLoanFacility", "No")}
-        />
-        <Text style={styles.label}>No</Text>
-      </View>
+      <CustomToggle
+        field="bankLoanFacility"
+        value={formData.bankLoanFacility}
+        options={[
+          { value: "Yes", label: "Yes" },
+          { value: "No", label: "No" },
+        ]}
+      />
 
       <Text style={styles.sectionHeading}>Amenities</Text>
       {[
@@ -232,24 +242,16 @@ const PlotInfoForm = ({ closeModal, propertyId, initialData }) => {
         { field: "gymArea", label: "Gym Area" },
         { field: "yogaArea", label: "Yoga Area" },
       ].map(({ field, label }) => (
-        <View key={field} style={styles.checkgroup}>
+        <View key={field} style={styles.amenityContainer}>
           <Text style={styles.label}>{label}</Text>
-          <View style={styles.check}>
-            <View style={styles.checkboxContainer}>
-              <CheckBox
-                value={formData[field] === "Yes"}
-                onValueChange={() => handleCheckboxChange(field, "Yes")}
-              />
-              <Text style={styles.label}>YES</Text>
-            </View>
-            <View style={styles.checkboxContainer}>
-              <CheckBox
-                value={formData[field] === "No"}
-                onValueChange={() => handleCheckboxChange(field, "No")}
-              />
-              <Text style={styles.label}>NO</Text>
-            </View>
-          </View>
+          <CustomToggle
+            field={field}
+            value={formData[field]}
+            options={[
+              { value: "Yes", label: "YES" },
+              { value: "No", label: "NO" },
+            ]}
+          />
         </View>
       ))}
 
@@ -281,9 +283,9 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     width: "100%",
-    maxWidth: 500, // increased from 400
+    maxWidth: 500,
     backgroundColor: "#E3F2FD",
-    alignSelf: "center", // centers the form if width < screen width
+    alignSelf: "center",
     borderRadius: 10,
   },
   heading: {
@@ -320,25 +322,38 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     backgroundColor: "#fff",
   },
-  checkboxContainer: {
+  toggleContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-    gap: 10,
-  },
-  check: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    width: "100%",
-  },
-  checkgroup: {
+    justifyContent: "space-between",
+    marginBottom: 15,
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 5,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  toggleOption: {
+    flex: 1,
+    padding: 12,
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+  },
+  toggleOptionSelected: {
+    backgroundColor: "#0D47A1",
+  },
+  toggleText: {
+    color: "#333",
+    fontWeight: "bold",
+  },
+  toggleTextSelected: {
+    color: "#fff",
+  },
+  amenityContainer: {
+    marginBottom: 15,
     padding: 10,
-    marginBottom: 10,
     backgroundColor: "#fff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   button: {
     backgroundColor: "#0D47A1",

@@ -46,8 +46,8 @@ export default function ViewAgents() {
   const [constituencies, setConstituencies] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [coreMembers, setCoreMembers] = useState([]);
-  const [referrerNames, setReferrerNames] = useState({});
+  const [referrerDetails, setReferrerDetails] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
 
   const getAuthToken = async () => {
     try {
@@ -62,6 +62,49 @@ export default function ViewAgents() {
     }
   };
 
+  const fetchReferrerDetails = async (referredBy) => {
+    if (!referredBy || referrerDetails[referredBy]) return;
+
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(
+        `${API_URL}/properties/getPropertyreffered`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token || "",
+          },
+          body: JSON.stringify({
+            referredBy: referredBy,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === "success") {
+          const details = data.referredByDetails || data.addedByDetails;
+          if (details) {
+            setReferrerDetails((prev) => ({
+              ...prev,
+              [referredBy]: {
+                name:
+                  details.name ||
+                  details.Name ||
+                  details.FullName ||
+                  "Referrer",
+                mobileNumber: details.Number || details.MobileNumber || "N/A",
+              },
+            }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching referrer details:", error);
+    }
+  };
+
   const fetchAssignedAgents = async () => {
     try {
       setRefreshing(true);
@@ -69,22 +112,23 @@ export default function ViewAgents() {
 
       const token = await getAuthToken();
 
-      const [agentsRes, coreMembersRes, districtsRes] = await Promise.all([
+      const [agentsRes, districtsRes] = await Promise.all([
         fetch(`${API_URL}/callexe/myagents`, {
           headers: {
-            token: `${token}` || "",
+            token: token || "",
           },
         }),
-        fetch(`${API_URL}/core/getallcoremembers`),
-        fetch(`${API_URL}/alldiscons/alldiscons`),
+        fetch(`${API_URL}/alldiscons/alldiscons`, {
+          headers: {
+            token: token || "",
+          },
+        }),
       ]);
 
       if (!agentsRes.ok) throw new Error("Failed to fetch assigned agents");
-      if (!coreMembersRes.ok) throw new Error("Failed to fetch core members");
       if (!districtsRes.ok) throw new Error("Failed to fetch districts");
 
       const agentsData = await agentsRes.json();
-      const coreMembersData = await coreMembersRes.json();
       const districtsData = await districtsRes.json();
 
       const sortedAgents = agentsData.data.sort((a, b) => {
@@ -97,64 +141,20 @@ export default function ViewAgents() {
 
       setAgents(sortedAgents);
       setFilteredAgents(sortedAgents);
-      setCoreMembers(coreMembersData.data || []);
       setDistricts(districtsData || []);
 
-      loadReferrerNames(sortedAgents, coreMembersData.data || []);
+      // Fetch referrer details for each agent
+      sortedAgents.forEach((agent) => {
+        if (agent?.ReferredBy) {
+          fetchReferrerDetails(agent.ReferredBy);
+        }
+      });
     } catch (error) {
       console.error("Fetch error:", error);
       Alert.alert("Error", error.message || "Failed to load assigned agents");
     } finally {
       setLoading(false);
       setRefreshing(false);
-    }
-  };
-
-  const loadReferrerNames = (agents = [], coreMembers = []) => {
-    const names = {};
-    console.log("Agents:", agents);
-    console.log("Core Members:", coreMembers);
-
-    agents.forEach((agent) => {
-      if (agent?.ReferredBy) {
-        const referredByCode = agent.ReferredBy.trim();
-        if (!names[referredByCode]) {
-          names[referredByCode] = getReferrerName(
-            referredByCode,
-            agents,
-            coreMembers
-          );
-          console.log(`Lookup ${referredByCode}:`, names[referredByCode]);
-        }
-      }
-    });
-
-    setReferrerNames(names);
-    console.log("Final referrer names:", names);
-  };
-
-  const getReferrerName = (referredByCode, agents = [], coreMembers = []) => {
-    if (!referredByCode || typeof referredByCode !== "string") return "N/A";
-
-    const cleanCode = referredByCode.trim().toUpperCase();
-
-    try {
-      const agentReferrer = agents.find(
-        (a) => a?.MyRefferalCode?.trim()?.toUpperCase() === cleanCode
-      );
-      if (agentReferrer) return agentReferrer?.FullName || "Agent";
-
-      const coreReferrer = coreMembers.find(
-        (m) => m?.MyRefferalCode?.trim()?.toUpperCase() === cleanCode
-      );
-      if (coreReferrer) return coreReferrer?.FullName || "Core Member";
-
-      if (cleanCode === "WA0000000001") return "Wealth Associate";
-
-      return "Referrer not found";
-    } catch (error) {
-      console.error("Error in getReferrerName:", error);
-      return "Error loading referrer";
     }
   };
 
@@ -331,7 +331,7 @@ export default function ViewAgents() {
       PANNumber: agent.PANNumber || "",
       BankAccountNumber: agent.BankAccountNumber || "",
     });
-    setPhoto(agent.photoUrl || null);
+    setPhoto(agent.photo ? `${API_URL}${agent.photo}` : null);
 
     if (agent.District) {
       const district = districts.find((d) => d.parliament === agent.District);
@@ -351,6 +351,12 @@ export default function ViewAgents() {
   };
 
   const handleSaveEditedAgent = async () => {
+    if (!editedAgent.FullName || !editedAgent.MobileNumber) {
+      Alert.alert("Error", "Full Name and Mobile Number are required");
+      return;
+    }
+
+    setIsSaving(true);
     try {
       const token = await getAuthToken();
       const formData = new FormData();
@@ -378,7 +384,7 @@ export default function ViewAgents() {
           const localUri = photo;
           const filename = localUri.split("/").pop();
           const match = /\.(\w+)$/.exec(filename);
-          const type = match ? `image/${match[1]}` : `image`;
+          const type = match ? `image/${match[1]}` : "image";
 
           formData.append("photo", {
             uri: localUri,
@@ -419,6 +425,8 @@ export default function ViewAgents() {
     } catch (error) {
       console.error("Update error:", error);
       Alert.alert("Error", error.message || "Failed to update agent");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -573,7 +581,15 @@ export default function ViewAgents() {
                     <View style={styles.row}>
                       <Text style={styles.label}>Referred By</Text>
                       <Text style={styles.value}>
-                        : {referrerNames[agent.ReferredBy] || "Loading..."}
+                        :{" "}
+                        {referrerDetails[agent.ReferredBy]?.name ||
+                          "Loading..."}
+                        {referrerDetails[agent.ReferredBy]?.mobileNumber && (
+                          <Text>
+                            {" "}
+                            ({referrerDetails[agent.ReferredBy].mobileNumber})
+                          </Text>
+                        )}
                       </Text>
                     </View>
                   )}
@@ -690,7 +706,7 @@ export default function ViewAgents() {
                 )}
               </View>
 
-              <Text style={styles.inputLabel}>Full Name</Text>
+              <Text style={styles.inputLabel}>Full Name *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Full Name"
@@ -737,7 +753,7 @@ export default function ViewAgents() {
                 keyboardType="numeric"
               />
 
-              <Text style={styles.inputLabel}>Mobile Number</Text>
+              <Text style={styles.inputLabel}>Mobile Number *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Mobile Number"
@@ -813,8 +829,13 @@ export default function ViewAgents() {
                 <TouchableOpacity
                   style={[styles.modalButton, styles.saveButton]}
                   onPress={handleSaveEditedAgent}
+                  disabled={isSaving}
                 >
-                  <Text style={styles.modalButtonText}>Save</Text>
+                  {isSaving ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text style={styles.modalButtonText}>Save</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </ScrollView>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState,useRef } from "react";
 import {
   StyleSheet,
   ActivityIndicator,
@@ -65,12 +65,14 @@ import reginvestor from "./NewWealth/Add_Member/AddInvestors";
 import NriProfile from "./NewWealth/UsersProfiles/NriProfile";
 import Addexpert from "./NewWealth/ExpertPanel/AddExpert";
 import ViewAllRequestedProperties from "./NewWealth/Properties/AllrequestedProperties";
+import { createNavigationContainerRef } from "@react-navigation/native";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
 const EXPO_PROJECT_ID = "38b6a11f-476f-46f4-8263-95fe96a6d8ca";
 
-// Configure notifications globally
+export const navigationRef = createNavigationContainerRef();
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -85,20 +87,18 @@ const linking = {
     screens: {
       "Main Screen": {
         path: "",
-        initialRouteName: "Main Screen", // Force this as initial
+        initialRouteName: "Main Screen",
       },
       PrivacyPolicy: "privacy_policy",
     },
   },
   getInitialURL: async () => {
     if (Platform.OS === "web") {
-      // You could also check sessionStorage or localStorage
       if (
         !window.performance ||
         performance.navigation.type === 0 ||
         performance.navigation.type === 1
       ) {
-        // Type 0: page was just loaded, Type 1: page reloaded
         return "/";
       }
     }
@@ -116,81 +116,115 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState("Main Screen");
   const [expoPushToken, setExpoPushToken] = useState("");
+  
+  // Define the notification listeners using useRef
+  const notificationListener = useRef();
+  const responseListener = useRef();
 
-  const requestNotificationPermission = async () => {
-    try {
-      // Skip if not a physical device
-      if (!Device.isDevice) {
-        console.log("Notifications not supported on simulators");
-        return;
-      }
+  const handleNotificationPress = (notification) => {
+    const data = notification.request.content.data;
 
-      // Set up notification channel for Android8
-      if (Platform.OS === "android") {
-        await Notifications.setNotificationChannelAsync("default", {
-          name: "default",
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: "#FF231F7C",
-          sound: null,
+    if (navigationRef.isReady()) {
+      if (data?.screen === "PropertyDetails" && data?.propertyId) {
+        navigationRef.navigate("Main", {
+          screen: "PropertyDetails",
+          params: { propertyId: data.propertyId },
         });
       }
-
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== "granted") {
-        console.log("Notification permission not granted");
-        return;
-      }
-
-      try {
-        const token = (
-          await Notifications.getExpoPushTokenAsync({
-            projectId: EXPO_PROJECT_ID,
-          })
-        ).data;
-
-        setExpoPushToken(token);
-        await sendTokenToBackend(token, Platform.OS);
-        await AsyncStorage.setItem("expoPushToken", token);
-      } catch (tokenError) {
-        console.warn("Could not get push token:", tokenError);
-      }
-    } catch (error) {
-      console.error("Notification setup error:", error);
     }
   };
 
-  // Notification listeners setup
+  const registerForPushNotificationsAsync = async () => {
+    if (!Device.isDevice) {
+      console.log("Notifications not supported on simulators");
+      return;
+    }
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#FF231F7C",
+      });
+    }
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== "granted") {
+      console.log("Notification permission not granted");
+      return;
+    }
+
+    try {
+      const token = (
+        await Notifications.getExpoPushTokenAsync({
+          projectId: EXPO_PROJECT_ID,
+        })
+      ).data;
+
+      setExpoPushToken(token);
+      await sendTokenToBackend(token, Platform.OS);
+      await AsyncStorage.setItem("expoPushToken", token);
+    } catch (error) {
+      console.error("Error getting push token:", error);
+    }
+  };
+
+  const requestNotificationPermission = async () => {
+    const { status } = await Notifications.requestPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission required",
+        "Push notifications need to be enabled for the best experience.",
+        [{ text: "OK" }]
+      );
+    }
+  };
+
   useEffect(() => {
-    const responseListener =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data;
-        if (data?.url) {
-          Linking.canOpenURL(data.url).then((supported) => {
-            if (supported) Linking.openURL(data.url);
-          });
-        }
+    registerForPushNotificationsAsync();
+
+    // Notification received while app is in foreground
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        console.log("Notification received:", notification);
       });
 
+    // Notification tapped/opened
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        handleNotificationPress(response.notification);
+      });
+
+    // Check if app was launched from a notification
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        handleNotificationPress(response.notification);
+      }
+    });
+
     return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
-      Notifications.removeNotificationSubscription(responseListener);
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(
+          notificationListener.current
+        );
+      }
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
     };
   }, []);
 
-  // App startup logic
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Check for updates in production
         if (!__DEV__) {
           const update = await Updates.checkForUpdateAsync();
           if (update.isAvailable) {
@@ -204,13 +238,11 @@ export default function App() {
           }
         }
 
-        // Version check and migration
         const storedVersion = await AsyncStorage.getItem("appVersion");
         if (storedVersion !== APP_VERSION) {
           await AsyncStorage.removeItem("authToken");
           await AsyncStorage.removeItem("expoPushToken");
           await AsyncStorage.setItem("appVersion", APP_VERSION);
-
           await requestNotificationPermission();
         } else {
           const existingToken = await AsyncStorage.getItem("expoPushToken");
@@ -229,23 +261,23 @@ export default function App() {
               setInitialRoute("Main");
               break;
             case "Customer":
-              setInitialRoute("newhome");
+              setInitialRoute("Main");
               break;
             case "Investor":
-              setInitialRoute("newhome");
+              setInitialRoute("Main");
               break;
             case "Coremember":
-              setInitialRoute("newhome");
+              setInitialRoute("Main");
               break;
             case "SkilledLabour":
-              setInitialRoute("newhome");
+              setInitialRoute("Main");
               break;
             case "CallCenter":
             case "Call center":
               setInitialRoute("CallCenterDashboard");
               break;
             case "Nri":
-              setInitialRoute("newhome");
+              setInitialRoute("Main");
               break;
             case "Admin":
               setInitialRoute("Admin");
@@ -271,6 +303,7 @@ export default function App() {
       </View>
     );
   }
+
 
   const MainStack = () => (
     <PersistentLayout>

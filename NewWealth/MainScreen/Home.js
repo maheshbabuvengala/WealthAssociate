@@ -660,23 +660,26 @@ const HomeScreen = () => {
           )}
         </View>
 
-        {regularProperties.length > 0 && (
-          <>
-            <SectionHeader
-              title="Regular Properties"
-              onViewAll={() => navigation.navigate("regularprop")}
-            />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalScroll}
-            >
-              {regularProperties.map((property, index) => (
-                <RenderPropertyCard key={index} property={property} />
-              ))}
-            </ScrollView>
-          </>
-        )}
+        {(userType === "WealthAssociate" ||
+          userType === "ReferralAssociate" ||
+          userType === "CoreMember") &&
+          regularProperties.length > 0 && (
+            <>
+              <SectionHeader
+                title="Regular Properties"
+                onViewAll={() => navigation.navigate("regularprop")}
+              />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalScroll}
+              >
+                {regularProperties.map((property, index) => (
+                  <RenderPropertyCard key={index} property={property} />
+                ))}
+              </ScrollView>
+            </>
+          )}
 
         {approvedProperties.length > 0 && (
           <>
@@ -733,7 +736,7 @@ const HomeScreen = () => {
         )}
 
         <SectionHeader
-          title="Listed Properties"
+          title="Requested Properties"
           onViewAll={() => navigation.navigate("allreqprop")}
         />
         {loading ? (

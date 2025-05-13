@@ -20,7 +20,7 @@ import avatar from "../../assets/man.png";
 const { width } = Dimensions.get("window");
 
 export default function SkilledLaboursScreen() {
-  const [activeTab, setActiveTab] = useState("myResources"); 
+  const [activeTab, setActiveTab] = useState("myResources");
   const [agents, setAgents] = useState([]);
   const [filteredAgents, setFilteredAgents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,8 +60,6 @@ export default function SkilledLaboursScreen() {
       if (response.ok && Array.isArray(data.skilledLabours)) {
         setAgents(data.skilledLabours);
         setFilteredAgents(data.skilledLabours);
-
-        // Extract unique skills and locations
         const skills = [
           ...new Set(data.skilledLabours.map((item) => item.SelectSkill)),
         ];
@@ -389,6 +387,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f2f2f2",
     paddingHorizontal: 10,
+    paddingBottom: 30,
   },
   tabContainer: {
     flexDirection: "row",
@@ -458,6 +457,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
     marginBottom: 15,
+    minWidth: "90%",
   },
   avatar: {
     width: 80,
