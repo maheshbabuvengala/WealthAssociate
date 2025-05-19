@@ -20,6 +20,7 @@ import { useNavigation } from "@react-navigation/native";
 import PropertyCard from "./PropertyCard";
 import { FlatList } from "react-native-gesture-handler";
 
+
 const { width } = Dimensions.get("window");
 
 const HomeScreen = () => {
@@ -32,6 +33,7 @@ const HomeScreen = () => {
   const [coreProjects, setCoreProjects] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
+  const [likedProperties, setLikedProperties] = useState([]);
   const [property, setProperty] = useState(null);
   const [referredInfo, setReferredInfo] = useState({
     name: "",
@@ -48,6 +50,12 @@ const HomeScreen = () => {
       const token = await AsyncStorage.getItem("authToken");
       const type = await AsyncStorage.getItem("userType");
       setUserType(type);
+
+      // Load liked properties from storage
+      const storedLikes = await AsyncStorage.getItem("likedProperties");
+      if (storedLikes) {
+        setLikedProperties(JSON.parse(storedLikes));
+      }
 
       let endpoint = "";
 
@@ -508,75 +516,137 @@ const HomeScreen = () => {
     }
   };
 
-  const RenderPropertyCard = ({ property }) => {
-    const propertyTag = getPropertyTag(property.createdAt);
-    const propertyId = getLastFourChars(property._id);
+   const RenderPropertyCard = ({ property }) => {
+  const propertyTag = getPropertyTag(property.createdAt);
+  const propertyId = getLastFourChars(property._id);
+  const [isLiked, setIsLiked] = useState(likedProperties.includes(property._id));
 
-    return (
-      <TouchableOpacity
-        onPress={() => handlePropertyPress(property)}
-        activeOpacity={0.8}
-      >
-        <View style={styles.propertyCard}>
-          {renderPropertyImage(property)}
+  const toggleLike = async () => {
+    // Immediately update the UI
+    const newLikedStatus = !isLiked;
+    setIsLiked(newLikedStatus);
+    
+    // Optimistically update liked properties
+    let updatedLikes;
+    if (newLikedStatus) {
+      updatedLikes = [...likedProperties, property._id];
+    } else {
+      updatedLikes = likedProperties.filter(id => id !== property._id);
+    }
+    
+    setLikedProperties(updatedLikes);
+    
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const userDetails = JSON.parse(await AsyncStorage.getItem("userDetails"));
+      
+      const response = await fetch(`${API_URL}/properties/like`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token: token || "",
+        },
+        body: JSON.stringify({
+          propertyId: property._id,
+          like: newLikedStatus,
+          userName: userDetails?.FullName || details?.FullName || details.Name || userDetails.Name || "User",
+          mobileNumber: userDetails?.MobileNumber || details?.MobileNumber || userDetails.MobileIN || details.MobileIN || "",
+        }),
+      });
 
-          <View
-            style={[
-              styles.statusTag,
-              {
-                backgroundColor:
-                  propertyTag === "Approved Property" ? "#4CAF50" : "#FF9800",
-              },
-            ]}
-          >
-            <Text style={styles.statusText}>{propertyTag}</Text>
-          </View>
-
-          <View style={styles.propertyIdContainer}>
-            <Text style={styles.propertyId}>ID: {propertyId}</Text>
-          </View>
-
-          <Text style={styles.cardTitle}>{property.propertyType}</Text>
-          <Text style={styles.cardSubtitle}>
-            {property.propertyDetails || "20 sqft"}
-          </Text>
-          <Text style={styles.cardSubtitle}>Location: {property.location}</Text>
-          <Text style={styles.cardPrice}>
-            ₹ {parseInt(property.price).toLocaleString()}
-          </Text>
-
-          <View style={styles.cardButtons}>
-            <TouchableOpacity
-              style={styles.enquiryBtn}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleEnquiryNow(property);
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "bold" }}>
-                Enquiry Now
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.shareBtn}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleShare(property);
-              }}
-            >
-              <FontAwesome name="share" size={16} color="white" />
-              <Text
-                style={{ color: "white", marginLeft: 5, fontWeight: "bold" }}
-              >
-                Share
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
+      if (!response.ok) {
+        // If API call fails, revert the UI changes
+        setIsLiked(!newLikedStatus);
+        setLikedProperties(likedProperties);
+        console.error("Failed to update like status");
+      } else {
+        // If successful, update AsyncStorage
+        await AsyncStorage.setItem("likedProperties", JSON.stringify(updatedLikes));
+      }
+    } catch (error) {
+      // If error occurs, revert the UI changes
+      setIsLiked(!newLikedStatus);
+      setLikedProperties(likedProperties);
+      console.error("Error toggling like:", error);
+    }
   };
+
+   return (
+    <TouchableOpacity
+      onPress={() => handlePropertyPress(property)}
+      activeOpacity={0.8}
+    >
+      <View style={styles.propertyCard}>
+        {renderPropertyImage(property)}
+
+        <View
+          style={[
+            styles.statusTag,
+            {
+              backgroundColor:
+                propertyTag === "Approved Property" ? "#4CAF50" : "#FF9800",
+            },
+          ]}
+        >
+          <Text style={styles.statusText}>{propertyTag}</Text>
+        </View>
+
+        <View style={styles.propertyIdContainer}>
+          <Text style={styles.propertyId}>ID: {propertyId}</Text>
+        </View>
+
+        <TouchableOpacity 
+          style={styles.likeButton} 
+          onPress={(e) => {
+            e.stopPropagation();
+            toggleLike();
+          }}
+        >
+          <Ionicons 
+            name={isLiked ? "heart" : "heart-outline"} 
+            size={24} 
+            color={isLiked ? "#D81B60" : "#fff"} 
+          />
+        </TouchableOpacity>
+
+        <Text style={styles.cardTitle}>{property.propertyType}</Text>
+        <Text style={styles.cardSubtitle}>Location: {property.location}</Text>
+        <Text style={styles.cardPrice}>
+          ₹ {parseInt(property.price).toLocaleString()}
+        </Text>
+
+        <View style={styles.cardButtons}>
+          <TouchableOpacity
+            style={styles.enquiryBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleEnquiryNow(property);
+            }}
+          >
+            <Text style={{ color: "white", fontWeight: "bold" }}>
+              Enquiry Now
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.shareBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleShare(property);
+            }}
+          >
+            <FontAwesome name="share" size={16} color="white" />
+            <Text
+              style={{ color: "white", marginLeft: 5, fontWeight: "bold" }}
+            >
+              Share
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
   const RequestedPropertyCard = ({ item }) => {
     const propertyTag = getPropertyTag(item.createdAt);
     const propertyId = getLastFourCharss(item.id);
@@ -659,7 +729,23 @@ const HomeScreen = () => {
             "requestexpert"
           )}
         </View>
+        <View style={styles.compactActionRow}>
+  <TouchableOpacity 
+  style={[styles.compactButton, {backgroundColor: "#FF9800"}]}
+  onPress={() => navigation.navigate('suppliersvendors')}
+>
+  <MaterialIcons name="store" size={20} color="#fff" />
+  <Text style={styles.compactButtonText}>Suppliers & Vendors</Text>
+</TouchableOpacity>
 
+  <TouchableOpacity 
+    style={[styles.compactButton, {backgroundColor: "#607D8B"}]}
+    onPress={() => navigation.navigate("skilledresources")}
+  >
+    <Ionicons name="people" size={20} color="#fff" />
+    <Text style={styles.compactButtonText}>Skilled Resources</Text>
+  </TouchableOpacity>
+</View>
         {(userType === "WealthAssociate" ||
           userType === "ReferralAssociate" ||
           userType === "CoreMember") &&
@@ -861,6 +947,36 @@ const styles = StyleSheet.create({
     marginVertical: 20,
     gap: 30,
   },
+   compactActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: 15,
+    marginBottom: 15,
+    marginTop: 5,
+  },
+  compactButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    height: '130%',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  compactButtonText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 13,
+    marginLeft: 6,
+  },
+
   scrollView: {
     flex: 1,
     marginBottom: 60,
@@ -898,7 +1014,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   propertyImage: {
-    width: Dimensions.get("window").width - 35,
+    width: Dimensions.get("window").width - 30,
     height: 200,
     borderRadius: 10,
     marginRight: 10,
@@ -934,6 +1050,14 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
   },
+  likeButton: {
+  position: 'absolute',
+  top: 20,
+  right: 20,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  borderRadius: 20,
+  padding: 5,
+},
   cardTitle: {
     fontWeight: "bold",
     fontSize: 16,

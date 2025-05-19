@@ -64,6 +64,11 @@ import regskill from "./NewWealth/Add_Member/Rskill";
 import reginvestor from "./NewWealth/Add_Member/AddInvestors";
 import NriProfile from "./NewWealth/UsersProfiles/NriProfile";
 import Addexpert from "./NewWealth/ExpertPanel/AddExpert";
+import SuppliersVendors from "./NewWealth/MainScreen/SuppliersVendors";
+import AddSupplier from "./NewWealth/MainScreen/AddSupplier";
+import vendor from "./NewWealth/MainScreen/vendor";
+import SkilledResources from "./NewWealth/MainScreen/SkilledResource";
+import SkilledWorkersList from "./NewWealth/MainScreen/skilllist";
 import ViewAllRequestedProperties from "./NewWealth/Properties/AllrequestedProperties";
 import { createNavigationContainerRef } from "@react-navigation/native";
 
@@ -315,6 +320,27 @@ export default function App() {
         }}
       >
         <Stack.Screen name="newhome" component={HomeScreen} />
+         <Stack.Screen 
+        name="suppliersvendors" 
+        component={SuppliersVendors} 
+        options={{ title: 'Suppliers & Vendors' }}
+      />
+       <Stack.Screen 
+          name="AddSupplier" 
+          component={AddSupplier} 
+          options={{ title: "Add Supplier" }}
+        />
+        <Stack.Screen
+           name="VendorList"
+           component={vendor}
+          options={({ route }) => ({ title: route.params.vendorType })}
+        />
+         <Stack.Screen name="skilledresources" component={SkilledResources} />
+         <Stack.Screen 
+            name="SkilledWorkersList" 
+           component={SkilledWorkersList} 
+           options={({ route }) => ({ title: route.params.categoryName })}
+         />
         <Stack.Screen name="nrireg" component={NriRegister} />
         <Stack.Screen name="invreg" component={InvestorRegister} />
         <Stack.Screen name="skillreg" component={SkilledRegister} />
