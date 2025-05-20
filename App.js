@@ -70,6 +70,7 @@ import vendor from "./NewWealth/MainScreen/Vendor";
 import SkilledResources from "./NewWealth/MainScreen/SkilledResource";
 import SkilledWorkersList from "./NewWealth/MainScreen/Skilllist";
 import ViewAllRequestedProperties from "./NewWealth/Properties/AllrequestedProperties";
+import ViewLikedProperties from "./NewWealth/Properties/ViewLikedProperties";
 import { createNavigationContainerRef } from "@react-navigation/native";
 
 const Stack = createStackNavigator();
@@ -364,6 +365,8 @@ export default function App() {
         <Stack.Screen name="regiskill" component={regskill} />
         <Stack.Screen name="regiinvestor" component={reginvestor} />
         <Stack.Screen name="addexpert" component={Addexpert} />
+        <Stack.Screen name="liked" component={ViewLikedProperties} />
+
         <Stack.Screen
           name="allreqprop"
           component={ViewAllRequestedProperties}

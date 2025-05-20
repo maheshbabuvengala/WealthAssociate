@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
+import { FontAwesome } from "@expo/vector-icons";
 
 // Cache for user data
 let userDataCache = null;
@@ -37,7 +38,6 @@ const Header = () => {
 
   useFocusEffect(
     useCallback(() => {
-      // List of screens where back button should never appear
       const noBackScreens = [
         "newhome",
         "Main Screen",
@@ -153,6 +153,20 @@ const Header = () => {
       const details = await response.json();
       userDataCache = { details, userType };
       lastFetchTime = now;
+
+      // Store user details in AsyncStorage including mobile number
+      const mobileNumber =
+        details.MobileNumber || details.MobileIN || details.Number;
+      if (mobileNumber) {
+        await AsyncStorage.setItem(
+          "userDetails",
+          JSON.stringify({
+            ...details,
+            userType,
+            mobileNumber,
+          })
+        );
+      }
 
       setUserData({ details, userType, loading: false });
 
@@ -280,6 +294,12 @@ const Header = () => {
         )}
       </View>
       <TouchableOpacity
+        onPress={() => navigation.navigate("Main", { screen: "liked" })}
+        style={styles.heartButton}
+      >
+        <FontAwesome name="heart-o" size={23} color="#D81B60" />
+      </TouchableOpacity>
+      <TouchableOpacity
         onPress={handleProfilePress}
         style={styles.profileButton}
       >
@@ -301,7 +321,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    marginTop:Platform.OS=="ios"?"10%":"auto"
+    marginTop: Platform.OS == "ios" ? "10%" : "auto",
   },
   loadingContainer: {
     height: 60,
@@ -351,6 +371,10 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  heartButton: {
+    padding: 0,
+    marginRight: 3,
   },
 });
 

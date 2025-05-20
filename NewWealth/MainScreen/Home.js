@@ -521,55 +521,55 @@ const HomeScreen = () => {
   const propertyId = getLastFourChars(property._id);
   const [isLiked, setIsLiked] = useState(likedProperties.includes(property._id));
 
-  const toggleLike = async () => {
-    // Immediately update the UI
+const toggleLike = async () => {
+  try {
+    const token = await AsyncStorage.getItem("authToken");
+    const userDetails = JSON.parse(await AsyncStorage.getItem("userDetails"));
+    
+    // Optimistically update the UI
     const newLikedStatus = !isLiked;
     setIsLiked(newLikedStatus);
     
-    // Optimistically update liked properties
+    // Update local liked properties array
     let updatedLikes;
     if (newLikedStatus) {
       updatedLikes = [...likedProperties, property._id];
     } else {
       updatedLikes = likedProperties.filter(id => id !== property._id);
     }
-    
     setLikedProperties(updatedLikes);
     
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const userDetails = JSON.parse(await AsyncStorage.getItem("userDetails"));
-      
-      const response = await fetch(`${API_URL}/properties/like`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          token: token || "",
-        },
-        body: JSON.stringify({
-          propertyId: property._id,
-          like: newLikedStatus,
-          userName: userDetails?.FullName || details?.FullName || details.Name || userDetails.Name || "User",
-          mobileNumber: userDetails?.MobileNumber || details?.MobileNumber || userDetails.MobileIN || details.MobileIN || "",
-        }),
-      });
+    // Save to AsyncStorage
+    await AsyncStorage.setItem("likedProperties", JSON.stringify(updatedLikes));
+    
+    // Send API request
+    const response = await fetch(`${API_URL}/properties/like`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        token: token || "",
+      },
+      body: JSON.stringify({
+        propertyId: property._id,
+        like: newLikedStatus,
+        userName: userDetails?.FullName || details?.FullName || "User",
+        mobileNumber: userDetails?.MobileNumber || details?.MobileNumber || "",
+      }),
+    });
 
-      if (!response.ok) {
-        // If API call fails, revert the UI changes
-        setIsLiked(!newLikedStatus);
-        setLikedProperties(likedProperties);
-        console.error("Failed to update like status");
-      } else {
-        // If successful, update AsyncStorage
-        await AsyncStorage.setItem("likedProperties", JSON.stringify(updatedLikes));
-      }
-    } catch (error) {
-      // If error occurs, revert the UI changes
+    if (!response.ok) {
+      // Revert changes if API call fails
       setIsLiked(!newLikedStatus);
-      setLikedProperties(likedProperties);
-      console.error("Error toggling like:", error);
+      const storedLikes = await AsyncStorage.getItem("likedProperties");
+      if (storedLikes) {
+        setLikedProperties(JSON.parse(storedLikes));
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  };
+  } catch (error) {
+    console.error("Error toggling like:", error);
+  }
+};
 
    return (
     <TouchableOpacity
