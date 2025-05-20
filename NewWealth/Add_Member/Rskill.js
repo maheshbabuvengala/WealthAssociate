@@ -15,15 +15,45 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
 
+// Add the skilledCategories array from SkilledResources
+const skilledCategories = [
+  { id: 1, name: "Drilling & Boring", category: "Heavy Equipment" },
+  { id: 2, name: "Masons", category: "Construction" },
+  { id: 3, name: "Carpenters", category: "Woodwork" },
+  { id: 5, name: "Concrete Workers", category: "Construction" },
+  { id: 6, name: "Scaffolders", category: "Safety" },
+  { id: 7, name: "Plasterers", category: "Finishing" },
+  { id: 8, name: "Tilers", category: "Flooring" },
+  { id: 9, name: "Painters", category: "Finishing" },
+  { id: 10, name: "Roofers", category: "Construction" },
+  { id: 11, name: "Welders", category: "Metalwork" },
+  { id: 12, name: "Electricians", category: "Electrical" },
+  { id: 13, name: "Plumbers", category: "Plumbing" },
+  { id: 14, name: "HVAC Techs", category: "Mechanical" },
+  { id: 16, name: "Waterproofing", category: "Finishing" },
+  { id: 17, name: "Insulators", category: "Finishing" },
+  { id: 18, name: "Glaziers", category: "Glasswork" },
+  { id: 19, name: "Granite Workers", category: "Stonework" },
+  { id: 20, name: "False Ceiling", category: "Interior" },
+  { id: 21, name: "Drywall Installers", category: "Interior" },
+  { id: 22, name: "Surveyors", category: "Planning" },
+  { id: 24, name: "Road Marking", category: "Civil" },
+  { id: 25, name: "Pipe Layers", category: "Plumbing" },
+  { id: 26, name: "Cable Pullers", category: "Electrical" },
+  { id: 27, name: "Drainage Workers", category: "Civil" },
+  { id: 28, name: "Concrete Finishers", category: "Construction" },
+  { id: 29, name: "Tunnel Workers", category: "Heavy Construction" },
+  { id: 30, name: "Fabricators", category: "Metalwork" },
+  { id: 31, name: "Solar Installers", category: "Electrical" },
+];
+
 const Rskill = ({ closeModal }) => {
   const [fullName, setFullName] = useState("");
   const [skill, setSkill] = useState("");
   const [location, setLocation] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
-  const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [Details, setDetails] = useState(null);
-  const [loadingSkills, setLoadingSkills] = useState(true);
   const [constituencies, setConstituencies] = useState([]);
   const [locationSearch, setLocationSearch] = useState("");
   const [showLocationList, setShowLocationList] = useState(false);
@@ -86,24 +116,12 @@ const Rskill = ({ closeModal }) => {
       console.error("Error fetching user details:", error);
     }
   };
+
   useEffect(() => {
     getDetails();
   }, []);
 
   useEffect(() => {
-    const fetchSkills = async () => {
-      try {
-        const response = await fetch(`${API_URL}/discons/skills`);
-        const data = await response.json();
-        setSkills(data.skills);
-        setFilteredSkills(data.skills);
-      } catch (error) {
-        alert("Error fetching skills: " + error.message);
-      } finally {
-        setLoadingSkills(false);
-      }
-    };
-
     const fetchConstituencies = async () => {
       try {
         const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
@@ -115,21 +133,20 @@ const Rskill = ({ closeModal }) => {
       }
     };
 
-    fetchSkills();
     fetchConstituencies();
   }, []);
 
   // Filter skills based on search input
   useEffect(() => {
     if (skillSearch) {
-      const filtered = skills.filter((skillItem) =>
-        skillItem.toLowerCase().includes(skillSearch.toLowerCase())
+      const filtered = skilledCategories.filter((category) =>
+        category.name.toLowerCase().includes(skillSearch.toLowerCase())
       );
       setFilteredSkills(filtered);
     } else {
-      setFilteredSkills(skills);
+      setFilteredSkills(skilledCategories);
     }
-  }, [skillSearch, skills]);
+  }, [skillSearch]);
 
   // Filter constituencies based on search input
   useEffect(() => {
@@ -162,13 +179,8 @@ const Rskill = ({ closeModal }) => {
         Details?.Number ||
         "Wealthassociate";
 
-      // Determine the RegisteredBy value based on user type
-      const registeredByValue = [
-        "WealthAssociate",
-        "ReferralAssociate",
-      ].includes(userType)
-        ? userType
-        : "WealthAssociate";
+      // Use the actual userType or default to "WealthAssociate" if not available
+      const registeredByValue = userType || "WealthAssociate";
 
       const response = await fetch(`${API_URL}/skillLabour/register`, {
         method: "POST",
@@ -221,70 +233,67 @@ const Rskill = ({ closeModal }) => {
             />
 
             <Text style={styles.label}>Select Skill</Text>
-            {loadingSkills ? (
-              <ActivityIndicator size="small" color="#E91E63" />
-            ) : (
-              <View style={styles.inputContainer}>
-                <View style={styles.searchInputContainer}>
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search and select skill"
-                    value={showSkillDropdown ? skillSearch : skill}
-                    onChangeText={(text) => {
-                      if (showSkillDropdown) {
-                        setSkillSearch(text);
-                      } else {
-                        setSkill(text);
-                        setSkillSearch(text);
-                        setShowSkillDropdown(true);
-                      }
-                    }}
-                    onFocus={() => {
+            <View style={styles.inputContainer}>
+              <View style={styles.searchInputContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search and select skill"
+                  value={showSkillDropdown ? skillSearch : skill}
+                  onChangeText={(text) => {
+                    if (showSkillDropdown) {
+                      setSkillSearch(text);
+                    } else {
+                      setSkill(text);
+                      setSkillSearch(text);
+                      setShowSkillDropdown(true);
+                    }
+                  }}
+                  onFocus={() => {
+                    setShowSkillDropdown(true);
+                    setSkillSearch("");
+                  }}
+                />
+                {showSkillDropdown && (
+                  <TouchableOpacity
+                    onPress={() => setShowSkillDropdown(false)}
+                    style={styles.dropdownToggle}
+                  >
+                    <Text style={styles.dropdownToggleText}>▲</Text>
+                  </TouchableOpacity>
+                )}
+                {!showSkillDropdown && (
+                  <TouchableOpacity
+                    onPress={() => {
                       setShowSkillDropdown(true);
                       setSkillSearch("");
                     }}
-                  />
-                  {showSkillDropdown && (
-                    <TouchableOpacity
-                      onPress={() => setShowSkillDropdown(false)}
-                      style={styles.dropdownToggle}
-                    >
-                      <Text style={styles.dropdownToggleText}>▲</Text>
-                    </TouchableOpacity>
-                  )}
-                  {!showSkillDropdown && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setShowSkillDropdown(true);
-                        setSkillSearch("");
-                      }}
-                      style={styles.dropdownToggle}
-                    >
-                      <Text style={styles.dropdownToggleText}>▼</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                {showSkillDropdown && (
-                  <View style={styles.dropdownContainer}>
-                    <ScrollView style={styles.scrollContainer}>
-                      {filteredSkills.map((item) => (
-                        <TouchableOpacity
-                          key={item}
-                          style={styles.listItem}
-                          onPress={() => {
-                            setSkill(item);
-                            setSkillSearch("");
-                            setShowSkillDropdown(false);
-                          }}
-                        >
-                          <Text>{item}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
+                    style={styles.dropdownToggle}
+                  >
+                    <Text style={styles.dropdownToggleText}>▼</Text>
+                  </TouchableOpacity>
                 )}
               </View>
-            )}
+              {showSkillDropdown && (
+                <View style={styles.dropdownContainer}>
+                  <ScrollView style={styles.scrollContainer}>
+                    {filteredSkills.map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={styles.listItem}
+                        onPress={() => {
+                          setSkill(item.name);
+                          setSkillSearch("");
+                          setShowSkillDropdown(false);
+                        }}
+                      >
+                        <Text>{item.name}</Text>
+                        <Text style={styles.categoryText}>{item.category}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
 
             <Text style={styles.label}>Location</Text>
             <View style={styles.inputContainer}>
@@ -391,11 +400,8 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: "center",
     backgroundColor: "#fff",
-    // borderRadius: 10,
     width: "100%",
     maxWidth: 400,
-    // marginTop: "40%",
-    // alignItems:"center",justifyContent:"center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.2,
@@ -455,16 +461,21 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 5,
     marginTop: 5,
-    maxHeight: 200,
-    backgroundColor: "#e6708e",
+    maxHeight: 200, // Increased from 150
+    backgroundColor: "#fff",
   },
   scrollContainer: {
-    maxHeight: 150,
+    maxHeight: 200, // Increased from 150
   },
   listItem: {
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+  },
+  categoryText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
   },
   buttonContainer: {
     flexDirection: "row",

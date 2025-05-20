@@ -14,8 +14,6 @@ const BottomNavigation = () => {
     }
   }, [route.params]);
 
-
-
   const tabs = [
     {
       label: "Home",
@@ -84,8 +82,6 @@ const BottomNavigation = () => {
     </View>
   );
 };
-
-// ... keep the rest of the file the same
 
 const styles = StyleSheet.create({
   container: {

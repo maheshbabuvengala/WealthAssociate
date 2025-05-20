@@ -1,4 +1,4 @@
-import React, { useEffect, useState,useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   StyleSheet,
   ActivityIndicator,
@@ -66,9 +66,9 @@ import NriProfile from "./NewWealth/UsersProfiles/NriProfile";
 import Addexpert from "./NewWealth/ExpertPanel/AddExpert";
 import SuppliersVendors from "./NewWealth/MainScreen/SuppliersVendors";
 import AddSupplier from "./NewWealth/MainScreen/AddSupplier";
-import vendor from "./NewWealth/MainScreen/vendor";
+import vendor from "./NewWealth/MainScreen/Vendor";
 import SkilledResources from "./NewWealth/MainScreen/SkilledResource";
-import SkilledWorkersList from "./NewWealth/MainScreen/skilllist";
+import SkilledWorkersList from "./NewWealth/MainScreen/Skilllist";
 import ViewAllRequestedProperties from "./NewWealth/Properties/AllrequestedProperties";
 import { createNavigationContainerRef } from "@react-navigation/native";
 
@@ -121,7 +121,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState("Main Screen");
   const [expoPushToken, setExpoPushToken] = useState("");
-  
+
   // Define the notification listeners using useRef
   const notificationListener = useRef();
   const responseListener = useRef();
@@ -154,7 +154,8 @@ export default function App() {
       });
     }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
     if (existingStatus !== "granted") {
@@ -309,7 +310,6 @@ export default function App() {
     );
   }
 
-
   const MainStack = () => (
     <PersistentLayout>
       <Stack.Navigator
@@ -320,27 +320,27 @@ export default function App() {
         }}
       >
         <Stack.Screen name="newhome" component={HomeScreen} />
-         <Stack.Screen 
-        name="suppliersvendors" 
-        component={SuppliersVendors} 
-        options={{ title: 'Suppliers & Vendors' }}
-      />
-       <Stack.Screen 
-          name="AddSupplier" 
-          component={AddSupplier} 
+        <Stack.Screen
+          name="suppliersvendors"
+          component={SuppliersVendors}
+          options={{ title: "Suppliers & Vendors" }}
+        />
+        <Stack.Screen
+          name="AddSupplier"
+          component={AddSupplier}
           options={{ title: "Add Supplier" }}
         />
         <Stack.Screen
-           name="VendorList"
-           component={vendor}
+          name="VendorList"
+          component={vendor}
           options={({ route }) => ({ title: route.params.vendorType })}
         />
-         <Stack.Screen name="skilledresources" component={SkilledResources} />
-         <Stack.Screen 
-            name="SkilledWorkersList" 
-           component={SkilledWorkersList} 
-           options={({ route }) => ({ title: route.params.categoryName })}
-         />
+        <Stack.Screen name="skilledresources" component={SkilledResources} />
+        <Stack.Screen
+          name="SkilledWorkersList"
+          component={SkilledWorkersList}
+          options={({ route }) => ({ title: route.params.categoryName })}
+        />
         <Stack.Screen name="nrireg" component={NriRegister} />
         <Stack.Screen name="invreg" component={InvestorRegister} />
         <Stack.Screen name="skillreg" component={SkilledRegister} />
@@ -410,7 +410,6 @@ export default function App() {
           component={RegisterCustomer}
           options={{ headerShown: false }}
         />
-        {/* <Stack.Screen name="ViewAllProperties" component={ViewAllProperties} /> */}
       </Stack.Navigator>
     </PersistentLayout>
   );

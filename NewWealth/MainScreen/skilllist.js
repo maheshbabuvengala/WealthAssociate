@@ -7,68 +7,109 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { API_URL } from "../../data/ApiUrl";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import avatar from "../../assets/man.png";
 
 const SkilledWorkersList = ({ route }) => {
   const { categoryName, categoryType } = route.params;
   const [workers, setWorkers] = useState([]);
+  const [filteredWorkers, setFilteredWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // This would be replaced with actual API calls
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const mockWorkers = [
-        {
-          id: 1,
-          name: `Professional ${categoryName}`,
-          rating: 4.7,
-          experience: "5+ years",
-          image: require("../../../WealthAssociate/assets/agent-icon.png"),
-          skills: ["Precision work", "Safety certified", "Equipment expert"],
-        },
-        {
-          id: 2,
-          name: `Expert ${categoryName}`,
-          rating: 4.5,
-          experience: "8+ years",
-          image: require("../../../WealthAssociate/assets/agent-icon.png"),
-          skills: ["Quality craftsmanship", "Team leader", "Fast worker"],
-        },
-        {
-          id: 3,
-          name: `Senior ${categoryName}`,
-          rating: 4.9,
-          experience: "10+ years",
-          image: require("../../../WealthAssociate/assets/agent-icon.png"),
-          skills: ["Complex projects", "Mentor", "Detail-oriented"],
-        },
-      ];
-      setWorkers(mockWorkers);
-      setLoading(false);
-    }, 800);
+    const fetchSkilledWorkers = async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        if (!token) {
+          console.error("No token found in AsyncStorage");
+          setError("Authentication required");
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch(`${API_URL}/skillLabour/list`, {
+          method: "GET",
+          headers: {
+            token: `${token}` || "",
+          },
+        });
+
+        const data = await response.json();
+        if (response.ok && Array.isArray(data.skilledLabours)) {
+          // Filter workers by the selected category
+          const filteredWorkers = data.skilledLabours.filter(
+            (worker) => worker.SelectSkill === categoryName
+          );
+          setWorkers(filteredWorkers);
+          setFilteredWorkers(filteredWorkers);
+        } else {
+          setError(data.message || "Failed to fetch workers");
+          setWorkers([]);
+          setFilteredWorkers([]);
+        }
+      } catch (error) {
+        console.error("Error fetching workers:", error);
+        setError("An error occurred while fetching workers");
+        setWorkers([]);
+        setFilteredWorkers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSkilledWorkers();
   }, [categoryName]);
 
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredWorkers(workers);
+    } else {
+      const filtered = workers.filter((worker) =>
+        worker.Location.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredWorkers(filtered);
+    }
+  }, [searchQuery, workers]);
+
   const renderWorkerItem = ({ item }) => (
-    <TouchableOpacity style={styles.workerItem}>
-      <Image source={item.image} style={styles.workerImage} />
-      <View style={styles.workerInfo}>
-        <Text style={styles.workerName}>{item.name}</Text>
+    <TouchableOpacity style={styles.workerCard}>
+      <Image source={avatar} style={styles.workerImage} />
+      <View style={styles.workerDetails}>
+        <Text style={styles.workerName}>{item.FullName}</Text>
+        <View style={styles.contactContainer}>
+          <Ionicons name="call" size={14} color="#3498db" />
+          <Text style={styles.contactText}> {item.MobileNumber}</Text>
+        </View>
         <View style={styles.ratingContainer}>
           <Ionicons name="star" size={16} color="#FFD700" />
-          <Text style={styles.ratingText}>{item.rating}</Text>
-          <Text style={styles.experienceText}> • {item.experience}</Text>
+          <Text style={styles.ratingText}>4.5</Text>
+          <Text style={styles.experienceText}>
+            {" "}
+            • {item.Experience || "Experienced"}
+          </Text>
         </View>
         <View style={styles.skillsContainer}>
-          {item.skills.map((skill, index) => (
-            <View key={index} style={styles.skillTag}>
-              <Text style={styles.skillText}>{skill}</Text>
-            </View>
-          ))}
+          <View style={styles.skillTag}>
+            <Text style={styles.skillText}>{item.SelectSkill}</Text>
+          </View>
+          <View style={styles.skillTag}>
+            <Text style={styles.skillText}>{item.Location}</Text>
+          </View>
         </View>
+        {item.AdditionalSkills && (
+          <View style={styles.additionalSkillsContainer}>
+            <Text style={styles.additionalSkillsText}>
+              Skills: {item.AdditionalSkills}
+            </Text>
+          </View>
+        )}
       </View>
-      <Ionicons name="chevron-forward" size={24} color="#999" />
     </TouchableOpacity>
   );
 
@@ -76,22 +117,48 @@ const SkilledWorkersList = ({ route }) => {
     <View style={styles.container}>
       <Text style={styles.header}>{categoryName}</Text>
       <Text style={styles.subHeader}>{categoryType} specialists</Text>
-      
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons
+          name="search"
+          size={20}
+          color="#95a5a6"
+          style={styles.searchIcon}
+        />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by location..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          clearButtonMode="while-editing"
+        />
+      </View>
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2c3e50" />
           <Text style={styles.loadingText}>Finding skilled workers...</Text>
         </View>
-      ) : (
+      ) : error ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>{error}</Text>
+        </View>
+      ) : filteredWorkers.length > 0 ? (
         <FlatList
-          data={workers}
+          data={filteredWorkers}
           renderItem={renderWorkerItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No workers available in this category</Text>
-          }
         />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>
+            {searchQuery.trim() === ""
+              ? "No workers available in this category"
+              : "No workers found in this location"}
+          </Text>
+        </View>
       )}
     </View>
   );
@@ -114,35 +181,62 @@ const styles = StyleSheet.create({
     color: "#7f8c8d",
     marginBottom: 20,
   },
-  workerItem: {
+  searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginBottom: 20,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#2c3e50",
+  },
+  workerCard: {
+    width: "90%",
     backgroundColor: "#fff",
-    borderRadius: 8,
-    marginBottom: 10,
-    elevation: 2,
+    borderRadius: 12,
+    padding: 20,
+    marginVertical: 8,
+    elevation: 3,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: 4,
+    alignItems: "center",
+    alignSelf: "center",
   },
   workerImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 15,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 10,
   },
-  workerInfo: {
-    flex: 1,
+  workerDetails: {
+    width: "100%",
+    alignItems: "center",
   },
   workerName: {
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 5,
     color: "#34495e",
+    textAlign: "center",
+  },
+  contactContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  contactText: {
+    fontSize: 14,
+    color: "#3498db",
   },
   ratingContainer: {
     flexDirection: "row",
@@ -161,18 +255,28 @@ const styles = StyleSheet.create({
   skillsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "center",
+    marginBottom: 5,
   },
   skillTag: {
-    backgroundColor: "#ecf0f1",
+    backgroundColor: "#f0f8ff",
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    marginRight: 8,
-    marginBottom: 5,
+    margin: 3,
   },
   skillText: {
     fontSize: 12,
     color: "#2c3e50",
+  },
+  additionalSkillsContainer: {
+    width: "100%",
+    padding: 5,
+  },
+  additionalSkillsText: {
+    fontSize: 12,
+    color: "#7f8c8d",
+    textAlign: "center",
   },
   listContent: {
     paddingBottom: 20,
@@ -186,9 +290,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: "#7f8c8d",
   },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   emptyText: {
     textAlign: "center",
-    marginTop: 20,
     color: "#95a5a6",
     fontSize: 16,
   },
