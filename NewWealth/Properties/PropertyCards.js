@@ -7,145 +7,87 @@ import {
   Linking,
   StyleSheet,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
 import ViewShot from "react-native-view-shot";
-import logo from "../../assets/logo.png";
-import { FontAwesome } from "@expo/vector-icons";
-import { FontAwesome5, AntDesign } from "@expo/vector-icons";
 
-const PropertyCard = ({ property, closeModal }) => {
-  const { photo, location, price, propertyType, PostedBy, fullName } = property;
+const PropertyCards = ({ property, closeModal }) => {
+  const { photo, location, price, propertyType } = property;
   const viewShotRef = useRef();
 
-  const handleVisitSite = () => {
-    Linking.openURL("https://www.wealthassociate.in");
-  };
-
-  const handleShareOnWhatsApp = async () => {
+  const handleShare = async () => {
     try {
       const uri = await viewShotRef.current.capture();
-      console.log("Image saved to", uri);
-
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        alert("Sharing is not available on this platform.");
-        return;
-      }
-
-      await Sharing.shareAsync(uri, {
-        mimeType: "image/jpeg",
-        dialogTitle: "Share Property",
-        UTI: "public.image",
-      });
-
-      const caption = `Check out this property in ${location} for ₹${price}.`;
-      const url = `whatsapp://send?text=${encodeURIComponent(caption)}`;
-      Linking.openURL(url)
-        .then(() => {
-          if (closeModal) closeModal();
-        })
-        .catch(() => {
-          alert("WhatsApp is not installed on your device.");
-        });
+      await Sharing.shareAsync(uri);
     } catch (error) {
-      console.error("Error sharing property:", error);
-      alert("Failed to share property.");
+      console.error("Error sharing:", error);
+      alert("Failed to share property");
     }
   };
 
   return (
-    <View style={styles.templateContainer}>
+    <View style={styles.container}>
       <ViewShot
         ref={viewShotRef}
-        options={{ format: "jpg", quality: 1.0, result: "tmpfile" }}
-        style={{ backgroundColor: "#5a89cc", borderRadius: 10, padding: 10 }}
+        options={{ format: "jpg", quality: 1.0 }}
+        style={styles.cardContainer}
       >
-        <Text
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            textAlign: "center",
-            fontSize: 25,
-            fontWeight: "600",
-            marginBottom: 20,
-            color: "white",
-          }}
-        >
-          Property For Sale
-        </Text>
+        {/* Header with Logo */}
         <View style={styles.header}>
-          <View style={{ display: "flex", flexDirection: "column" }}>
-            <Text style={styles.propertyType}>{propertyType}</Text>
-            <Text style={styles.locationText}>Location:{location}</Text>
-          </View>
-          <View>
-            <Image
-              source={logo}
-              style={{
-                width: 70,
-                height: 70,
-                position: "relative",
-                // left: "20%",
-                size: "contain",
-                top: 10,
-                left: -10,
-              }}
-            />
-            <Image
-              source={{
-                uri: "https://www.wealthassociate.in/images/logo.png",
-              }}
-              style={styles.logo}
-            />
+          <Image
+            source={require("../../assets/logosub.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+
+        {/* Main Content */}
+        <View style={styles.content}>
+          <Text style={styles.forSaleText}>PROPERTY FOR SALE</Text>
+
+          {/* Property Image */}
+          <Image
+            source={{ uri: photo || "https://via.placeholder.com/300" }}
+            style={styles.propertyImage}
+            defaultSource={require("../../assets/logosub.png")}
+          />
+
+          {/* Property Details */}
+          <View style={styles.detailsContainer}>
+            <Text style={styles.propertyType}>
+              PROPERTY TYPE: {propertyType.toUpperCase()}
+            </Text>
+            <Text style={styles.location}>
+              LOCATION: {location.toUpperCase()}
+            </Text>
+            <Text style={styles.price}>₹{price}</Text>
           </View>
         </View>
 
-        <View style={styles.imageSection}>
-          <Image source={{ uri: photo }} style={styles.propertyImage} />
-          <View style={styles.priceTag}>
-            <Text style={styles.priceText}>₹{price}</Text>
-          </View>
-        </View>
-
+        {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.downloadTitle}>Download Our App</Text>
-          <View style={styles.storeButtons}>
-            <TouchableOpacity
-              style={styles.storeButton}
-              onPress={() =>
-                Linking.openURL(
-                  "https://play.google.com/store/apps/details?id=your.app.id"
-                )
-              }
-            >
-              <FontAwesome5 name="google-play" size={24} color="#000" />
-              <Text style={styles.storeText}>Google Play</Text>
+          <Text style={styles.downloadText}>DOWNLOAD OUR APP</Text>
+          <View style={styles.appButtons}>
+            <TouchableOpacity style={styles.appButton}>
+              <FontAwesome name="android" size={16} color="#000" />
+              <Text style={styles.buttonText}>Play Store</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.storeButton}
-              onPress={() =>
-                Linking.openURL("https://apps.apple.com/app/idYourAppID")
-              }
-            >
-              <AntDesign name="apple1" size={24} color="#000" />
-              <Text style={styles.storeText}>App Store</Text>
+            <TouchableOpacity style={styles.appButton}>
+              <FontAwesome name="apple" size={16} color="#000" />
+              <Text style={styles.buttonText}>App Store</Text>
             </TouchableOpacity>
           </View>
         </View>
-        {/* <View style={styles.locationBox}></View> */}
       </ViewShot>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={() => closeModal()}>
-          <Text style={styles.buttonText}>Cancel</Text>
+      {/* Action Buttons */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity style={styles.callButton} onPress={closeModal}>
+          <Text style={styles.callButtonText}>Cancel</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={handleShareOnWhatsApp}>
-          <FontAwesome name="whatsapp" size={24} color="#25D366" />
-
-          <Text style={styles.buttonText}>Share on WhatsApp</Text>
+        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+          <FontAwesome name="whatsapp" size={16} color="#fff" />
+          <Text style={styles.shareButtonText}>Share</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -153,163 +95,156 @@ const PropertyCard = ({ property, closeModal }) => {
 };
 
 const styles = StyleSheet.create({
-  templateContainer: {
-    backgroundColor: "#5a89cc",
+  container: {
+    width: 330,
+    marginLeft: 17,
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 10,
+    top: 10,
+    maxHeight: "80%",
+  },
+  cardContainer: {
+    backgroundColor: "#fff",
     borderRadius: 10,
-    padding: 10,
-    margin: 10,
-    width: "100%",
-    maxWidth: 600,
+    overflow: "hidden",
+    elevation: 3,
+    marginBottom: 10,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    backgroundColor: "#fff5f5",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     alignItems: "center",
-    backgroundColor: "#eee",
-    // padding: 10,
-    borderRadius: 8,
-  },
-  propertyType: {
-    fontSize: 18,
-    fontWeight: "bold",
-    left: 20,
   },
   logo: {
-    width: 60,
-    height: 30,
-    resizeMode: "contain",
+    marginLeft: -9,
+    bottom: 15,
+    width: 120,
+    height: 120,
   },
-  imageSection: {
-    marginTop: 10,
-    backgroundColor: "#eee",
-    borderRadius: 15,
-    overflow: "hidden",
-    // paddingBottom: 10,
-    position: "relative",
-    alignItems: "center",
+  content: {
+    padding: 15,
+  },
+  forSaleText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "white",
+    textAlign: "center",
+    marginBottom: 10,
+    textTransform: "uppercase",
+    backgroundColor: "#1a237e",
+    height: 50,
+    width: 350,
+    lineHeight: 50,
+    marginTop: -48,
+    marginLeft: -20,
   },
   propertyImage: {
     width: "100%",
     height: 180,
-    borderRadius: 10,
-  },
-  priceTag: {
-    position: "absolute",
-    bottom: 10,
-    right: 10,
-    backgroundColor: "#333",
-    padding: 8,
-    borderRadius: 8,
-  },
-  priceText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  footer: {
-    flexDirection: "row",
-    marginTop: 15,
-    justifyContent: "space-between",
-  },
-  agentInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#eee",
-    borderRadius: 10,
-    padding: 10,
-    flex: 2,
-    marginRight: 5,
-  },
-  agentImageCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: "#e653b3",
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-    position: "relative",
-    right: 5,
-  },
-  agentImgText: {
-    fontSize: 10,
-    textAlign: "center",
-  },
-  agentDetails: {
-    justifyContent: "center",
-  },
-  agentName: {
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  agentPhone: {
-    fontSize: 14,
-    color: "#555",
-  },
-  // locationBox: {
-  //   flex: 1,
-  //   backgroundColor: "#eee",
-  //   borderRadius: 10,
-  //   justifyContent: "center",
-  //   alignItems: "center",
-  //   padding: 10,
-  // },
-  locationText: {
-    fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
-    left: 9,
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 15,
-  },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f9f9f9",
-    padding: 10,
     borderRadius: 5,
-    flex: 1,
-    marginHorizontal: 5,
-    justifyContent: "center",
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  buttonText: {
-    marginLeft: 5,
+  detailsContainer: {
+    marginBottom: -15,
+  },
+  propertyType: {
     fontSize: 14,
-    color: "#000",
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 3,
+    textTransform: "uppercase",
+  },
+  location: {
+    fontSize: 13,
+    color: "#555",
+    marginBottom: 8,
+    textTransform: "uppercase",
+  },
+  price: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "green",
+    textAlign: "center",
+    marginVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   footer: {
-    padding: 20,
+    backgroundColor: "#e8eaf6",
+    padding: 10,
     alignItems: "center",
-    backgroundColor: "#f8f8f8",
-    marginTop: 10,
-    borderRadius: 10,
   },
-
-  downloadTitle: {
-    fontSize: 16,
+  downloadText: {
+    fontSize: 14,
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 8,
+    color: "#1a237e",
   },
-
-  storeButtons: {
+  appButtons: {
     flexDirection: "row",
     justifyContent: "space-around",
     width: "100%",
   },
-
-  storeButton: {
+  appButton: {
+    flexDirection: "row",
     alignItems: "center",
-    padding: 10,
+    backgroundColor: "#fff",
+    padding: 8,
+    borderRadius: 5,
+    width: "45%",
+    justifyContent: "center",
+    elevation: 2,
   },
-
-  storeText: {
-    marginTop: 5,
+  buttonText: {
+    marginLeft: 6,
+    fontWeight: "500",
+    fontSize: 12,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  callButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "red",
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginRight: 5,
+    justifyContent: "center",
+  },
+  callButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#25D366",
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginLeft: 5,
+    justifyContent: "center",
+  },
+  shareButtonText: {
+    color: "#fff",
+    marginLeft: 6,
+    fontWeight: "bold",
     fontSize: 14,
   },
 });
 
-export default PropertyCard;
+export default PropertyCards;

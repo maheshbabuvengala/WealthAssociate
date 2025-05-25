@@ -52,10 +52,12 @@ const RegularPropertiesScreen = () => {
           (property) =>
             getPropertyTag(property.createdAt) === "Regular Property"
         );
-        setProperties(regularProps.map(property => ({
-          ...property,
-          images: formatImages(property)
-        })));
+        setProperties(
+          regularProps.map((property) => ({
+            ...property,
+            images: formatImages(property),
+          }))
+        );
       }
     } catch (error) {
       console.error("Error fetching properties:", error);
@@ -67,21 +69,25 @@ const RegularPropertiesScreen = () => {
   // Format images for display (handles both array and single image)
   const formatImages = (property) => {
     if (!property) return [];
-    
+
     // Handle array of photos
     if (Array.isArray(property.photo) && property.photo.length > 0) {
-      return property.photo.map(photo => ({
-        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`
+      return property.photo.map((photo) => ({
+        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
       }));
     }
-    
+
     // Handle single photo string
     if (typeof property.photo === "string") {
-      return [{
-        uri: property.photo.startsWith("http") ? property.photo : `${API_URL}${property.photo}`
-      }];
+      return [
+        {
+          uri: property.photo.startsWith("http")
+            ? property.photo
+            : `${API_URL}${property.photo}`,
+        },
+      ];
     }
-    
+
     // Fallback to default image
     return [require("../../../assets/logo.png")];
   };
@@ -131,7 +137,7 @@ const RegularPropertiesScreen = () => {
           ...property,
           id: property._id,
           price: formattedPrice,
-          images: property.images
+          images: property.images,
         })
       );
 
@@ -140,7 +146,7 @@ const RegularPropertiesScreen = () => {
           ...property,
           id: property._id,
           price: formattedPrice,
-          images: property.images
+          images: property.images,
         },
       });
     } catch (error) {
@@ -230,7 +236,7 @@ const RegularPropertiesScreen = () => {
             />
           ))}
         </ScrollView>
-        
+
         {images.length > 1 && (
           <View style={styles.pagination}>
             {images.map((_, index) => (
@@ -273,7 +279,7 @@ const RegularPropertiesScreen = () => {
             >
               <View style={styles.propertyCard}>
                 <PropertyImageSlider images={property.images} />
-                
+
                 <View
                   style={[
                     styles.statusTag,
@@ -290,9 +296,9 @@ const RegularPropertiesScreen = () => {
                   </Text>
                 </View>
                 <Text style={styles.cardTitle}>{property.propertyType}</Text>
-                <Text style={styles.cardSubtitle}>
+                {/* <Text style={styles.cardSubtitle}>
                   {property.propertyDetails || "20 sqft"}
-                </Text>
+                </Text> */}
                 <Text style={styles.cardSubtitle}>
                   Location: {property.location}
                 </Text>

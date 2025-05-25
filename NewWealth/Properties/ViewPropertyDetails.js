@@ -491,11 +491,11 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
           <Text style={styles.actionButtonText}>Share</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: "#4CAF50" }]}
+          style={[styles.actionButton, { backgroundColor: "#D81B60" }]}
           onPress={handleEnquiry}
         >
-          <FontAwesome name="envelope" size={20} color="white" />
-          <Text style={styles.actionButtonText}>Enquire</Text>
+          {/* <FontAwesome name="envelope" size={20} color="white" /> */}
+          <Text style={styles.actionButtonText}>Enquiry Now</Text>
         </TouchableOpacity>
       </View>
 
@@ -575,6 +575,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f8f8",
+    paddingBottom:"10%"
   },
   scrollContent: {
     paddingBottom: 80,
@@ -682,7 +683,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     position: "absolute",
-    bottom: 0,
+    bottom: "8%",
     left: 0,
     right: 0,
     flexDirection: "row",
@@ -691,6 +692,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#eee",
+    
   },
   actionButton: {
     flexDirection: "row",

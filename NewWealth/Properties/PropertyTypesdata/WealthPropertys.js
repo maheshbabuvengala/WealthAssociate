@@ -295,9 +295,9 @@ const WealthPropertiesScreen = () => {
                   </Text>
                 </View>
                 <Text style={styles.cardTitle}>{property.propertyType}</Text>
-                <Text style={styles.cardSubtitle}>
+                {/* <Text style={styles.cardSubtitle}>
                   {property.propertyDetails || "20 sqft"}
-                </Text>
+                </Text> */}
                 <Text style={styles.cardSubtitle}>
                   Location: {property.location}
                 </Text>

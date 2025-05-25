@@ -232,16 +232,13 @@ export default function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Auto-update logic
         if (!__DEV__) {
           const update = await Updates.checkForUpdateAsync();
           if (update.isAvailable) {
             await Updates.fetchUpdateAsync();
-            Alert.alert("Update Available", "Restart to apply the update.", [
-              {
-                text: "Restart",
-                onPress: async () => await Updates.reloadAsync(),
-              },
-            ]);
+            await Updates.reloadAsync(); // Auto-restart the app
+            return; // Exit early to avoid executing rest of the init twice
           }
         }
 

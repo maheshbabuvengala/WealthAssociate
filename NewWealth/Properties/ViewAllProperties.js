@@ -497,9 +497,9 @@ const ViewAllProperties = () => {
           </View>
 
           <Text style={styles.cardTitle}>{property.propertyType}</Text>
-          <Text style={styles.cardSubtitle}>
+          {/* <Text style={styles.cardSubtitle}>
             {property.propertyDetails || "20 sqft"}
-          </Text>
+          </Text> */}
           <Text style={styles.cardSubtitle}>Location: {property.location}</Text>
           <Text style={styles.cardPrice}>
             ₹ {parseInt(property.price).toLocaleString()}
@@ -784,26 +784,17 @@ const ViewAllProperties = () => {
       </Modal>
 
       {/* Regular Properties */}
-      {(userType === "WealthAssociate" ||
-        userType === "ReferralAssociate" ||
-        userType === "CoreMember") &&
-        regularProperties.length > 0 && (
-          <>
-            <SectionHeader
-              title="Regular Properties"
-              onViewAll={() => navigation.navigate("regularprop")}
-            />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalScroll}
-            >
-              {regularProperties.map((property, index) => (
-                <RenderPropertyCard key={index} property={property} />
-              ))}
-            </ScrollView>
-          </>
-        )}
+      {regularProperties.length > 0 && (
+        <>
+          <SectionHeader title="Regular Properties" />
+          <FlatList
+            data={regularProperties}
+            renderItem={({ item }) => <RenderPropertyCard property={item} />}
+            keyExtractor={(item) => item._id}
+            scrollEnabled={false}
+          />
+        </>
+      )}
 
       {/* Approved Properties */}
       {approvedProperties.length > 0 && (
@@ -1049,11 +1040,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
-    margin: 20,
+    // margin: 20,
     backgroundColor: "white",
     borderRadius: 10,
-    padding: 20,
+    // padding: 20,
     elevation: 5,
+    borderRadius:10
   },
   modalHeading: {
     fontSize: 20,

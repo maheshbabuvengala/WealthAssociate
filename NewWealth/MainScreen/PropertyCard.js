@@ -138,11 +138,10 @@ const PropertyCard = () => {
           {/* Header with Logo */}
           <View style={styles.header}>
             <Image
-              source={require("../../assets/logo.png")}
+              source={require("../../assets/logosub.png")}
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.tagline}>Your Trusted Property Consultant</Text>
           </View>
 
           {/* Main Content */}
@@ -153,7 +152,7 @@ const PropertyCard = () => {
             <Image
               source={{ uri: photo || "https://via.placeholder.com/300" }}
               style={styles.propertyImage}
-              defaultSource={require("../../assets/logo.png")}
+              defaultSource={require("../../assets/logosub.png")}
             />
 
             {/* Property Details */}
@@ -205,6 +204,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   container: {
+    width: 330,
+    marginLeft: 17,
     flex: 1,
     backgroundColor: "#f5f5f5",
     paddingHorizontal: 10,
@@ -238,14 +239,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   header: {
-    backgroundColor: "lightpink",
+    backgroundColor: "#fff5f5",
     paddingVertical: 10,
     paddingHorizontal: 15,
     alignItems: "center",
   },
   logo: {
-    width: 200,
-    height: 50,
+    marginLeft: -9,
+    bottom: 15,
+    width: 120,
+    height: 120,
   },
   tagline: {
     color: "#fff",
@@ -264,18 +267,30 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textTransform: "uppercase",
     backgroundColor: "#1a237e",
-    borderRadius: 5,
-    height: 30,
-    lineHeight: 30,
+    height: 50,
+    width: 350,
+    lineHeight: 50,
+    marginTop: -48,
+    marginLeft: -20,
   },
   propertyImage: {
     width: "100%",
     height: 180,
     borderRadius: 5,
     marginBottom: 10,
+
+    // Shadow for iOS
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+
+    // Shadow for Android
+    elevation: 5,
   },
+
   detailsContainer: {
-    marginBottom: 10,
+    marginBottom: -15,
   },
   propertyType: {
     fontSize: 14,
@@ -293,10 +308,14 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#388e3c",
+    color: "green", // white text
     textAlign: "center",
     marginVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
+
   footer: {
     backgroundColor: "#e8eaf6",
     padding: 10,
