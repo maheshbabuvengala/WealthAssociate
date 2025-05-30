@@ -122,6 +122,8 @@ const Header = () => {
       }
 
       let endpoint = "";
+      let finalUserType = userType;
+      
       switch (userType) {
         case "WealthAssociate":
         case "ReferralAssociate":
@@ -151,7 +153,15 @@ const Header = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
 
       const details = await response.json();
-      userDataCache = { details, userType };
+      
+      // Check if user is agent and has AgentType "ValueAssociate"
+      if ((userType === "WealthAssociate" || userType === "ReferralAssociate") && 
+          details.AgentType === "ValueAssociate") {
+        finalUserType = "ValueAssociate";
+        await AsyncStorage.setItem("userTypevalue", "ValueAssociate");
+      }
+
+      userDataCache = { details, userType: finalUserType };
       lastFetchTime = now;
 
       // Store user details in AsyncStorage including mobile number
@@ -162,21 +172,22 @@ const Header = () => {
           "userDetails",
           JSON.stringify({
             ...details,
-            userType,
+            userType: finalUserType,
             mobileNumber,
           })
         );
       }
 
-      setUserData({ details, userType, loading: false });
+      setUserData({ details, userType: finalUserType, loading: false });
 
       if (
         [
           "WealthAssociate",
+          "ValueAssociate",
           "Customer",
           "CoreMember",
           "ReferralAssociate",
-        ].includes(userType)
+        ].includes(finalUserType)
       ) {
         if (details.ReferredBy)
           await fetchReferredDetails(details.ReferredBy, null);
@@ -203,6 +214,7 @@ const Header = () => {
 
     const profileRoutes = {
       WealthAssociate: "agentprofile",
+      ValueAssociate: "agentprofile",
       ReferralAssociate: "agentprofile",
       Customer: "CustomerProfile",
       CoreMember: "CoreProfile",
@@ -238,6 +250,7 @@ const Header = () => {
 
   const showReferralCode = [
     "WealthAssociate",
+    "ValueAssociate",
     "Customer",
     "CoreMember",
     "ReferralAssociate",

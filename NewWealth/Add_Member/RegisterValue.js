@@ -18,6 +18,7 @@ import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 
 const { width } = Dimensions.get("window");
 
@@ -25,6 +26,7 @@ const RegisterValue = ({ closeModal }) => {
   const [fullname, setFullname] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [district, setDistrict] = useState("");
   const [constituency, setConstituency] = useState("");
   const [expertise, setExpertise] = useState("");
@@ -45,7 +47,12 @@ const RegisterValue = ({ closeModal }) => {
   const [constituencies, setConstituencies] = useState([]);
   const [expertiseOptions, setExpertiseOptions] = useState([]);
   const [Details, setDetails] = useState({});
+  const [logo, setLogo] = useState(null);
+  const [logoFile, setLogoFile] = useState(null);
+  const [errors, setErrors] = useState({});
 
+  const companyNameRef = useRef(null);
+  const fullnameRef = useRef(null);
   const mobileRef = useRef(null);
   const emailRef = useRef(null);
   const districtRef = useRef(null);
@@ -78,6 +85,7 @@ const RegisterValue = ({ closeModal }) => {
     fetchDistrictsAndConstituencies();
     fetchExpertise();
   }, []);
+
   const experienceOptions = [
     { name: "0-1 years", code: "01" },
     { name: "1-3 years", code: "02" },
@@ -118,7 +126,7 @@ const RegisterValue = ({ closeModal }) => {
       const response = await fetch(`${API_URL}/core/getcore`, {
         method: "GET",
         headers: {
-          token: `${token}` || "",
+          token: ` ${token}` || "",
         },
       });
       const newDetails = await response.json();
@@ -138,20 +146,63 @@ const RegisterValue = ({ closeModal }) => {
     }
   }, [Details]);
 
-  const handleRegister = async () => {
-    if (
-      !fullname ||
-      !mobile ||
-      !email ||
-      !district ||
-      !constituency ||
-      !location ||
-      !expertise ||
-      !experience
-    ) {
-      Alert.alert("Error", "Please fill in all required fields.");
-      return;
+  // Logo handling function
+  const selectLogo = async () => {
+    try {
+      if (Platform.OS === "web") {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = (event) => {
+          const file = event.target.files[0];
+          if (file) {
+            setLogoFile(file);
+            setLogo(URL.createObjectURL(file));
+          }
+        };
+        input.click();
+      } else {
+        const permissionResult =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (permissionResult.status !== "granted") {
+          alert("Permission is required to upload logo.");
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 1,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+          setLogo(result.assets[0].uri);
+        }
+      }
+    } catch (error) {
+      console.error("Error selecting logo:", error);
     }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!fullname) newErrors.fullname = "Full name is required";
+    if (!mobile) newErrors.mobile = "Mobile number is required";
+    if (!email) newErrors.email = "Email is required";
+    if (!companyName) newErrors.companyName = "Company name is required";
+    if (!district) newErrors.district = "District is required";
+    if (!constituency) newErrors.constituency = "Constituency is required";
+    if (!expertise) newErrors.expertise = "Expertise is required";
+    if (!experience) newErrors.experience = "Experience is required";
+    if (!location) newErrors.location = "Location is required";
+    if (!logo) newErrors.logo = "Company logo is required";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleRegister = async () => {
+    if (!validateForm()) return;
 
     setIsLoading(true);
 
@@ -168,45 +219,76 @@ const RegisterValue = ({ closeModal }) => {
 
     const referenceId = `${selectedDistrict.parliamentCode}${selectedAssembly.code}`;
 
-    const userData = {
-      FullName: fullname,
-      MobileNumber: mobile,
-      Email: email,
-      District: district,
-      Contituency: constituency,
-      Locations: location,
-      Expertise: expertise,
-      Experience: experience,
-      ReferredBy: referralCode || "WA0000000001",
-      Password: "Wealth",
-      MyRefferalCode: referenceId,
-      AgentType: "ValueAssociate",
-    };
+    const formData = new FormData();
+    formData.append("FullName", fullname);
+    formData.append("MobileNumber", mobile);
+    formData.append("Email", email);
+    formData.append("CompanyName", companyName);
+    formData.append("District", district);
+    formData.append("Contituency", constituency);
+    formData.append("Locations", location);
+    formData.append("Expertise", expertise);
+    formData.append("Experience", experience);
+    formData.append("ReferredBy", referralCode || "WA0000000001");
+    formData.append("Password", "Wealth");
+    formData.append("MyRefferalCode", referenceId);
+    formData.append("AgentType", "ValueAssociate");
+
+    // Append logo
+    if (Platform.OS === "web") {
+      if (logoFile) {
+        formData.append("photo", logoFile);
+      }
+    } else {
+      if (logo) {
+        formData.append("photo", {
+          uri: logo,
+          name: "logo.jpg",
+          type: "image/jpeg",
+        });
+      }
+    }
 
     try {
       const response = await fetch(`${API_URL}/agent/AgentRegister`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userData),
+        body: formData,
       });
 
       setResponseStatus(response.status);
 
-      if (response.ok) {
-        const result = await response.json();
-        Alert.alert("Success", "Registration successful!");
-        closeModal();
-      } else if (response.status === 400) {
-        const errorData = await response.json();
-        Alert.alert("Error", "Mobile number already exists.");
-      } else {
-        const errorData = await response.json();
-        Alert.alert("Error", errorData.message || "Something went wrong.");
+      const responseText = await response.text();
+
+      try {
+        // Try to parse it as JSON only if there's content
+        const result = responseText ? JSON.parse(responseText) : {};
+
+        if (response.ok) {
+          Alert.alert("Success", "Registration successful!");
+          navigation.goBack();
+        } else if (response.status === 400) {
+          Alert.alert(
+            "Error",
+            result.message || "Mobile number already exists."
+          );
+        } else {
+          Alert.alert("Error", result.message || "Something went wrong.");
+        }
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        // Handle non-JSON responses here
+        if (response.ok) {
+          Alert.alert("Success", "Registration successful (non-JSON response)");
+          closeModal();
+        } else {
+          Alert.alert(
+            "Error",
+            responseText || "Server returned an invalid response"
+          );
+        }
       }
     } catch (error) {
-      console.error("Error during registration:", error);
+      console.error("Network error:", error);
       Alert.alert(
         "Error",
         "Failed to connect to the server. Please try again later."
@@ -236,16 +318,69 @@ const RegisterValue = ({ closeModal }) => {
             )}
 
             <View style={styles.webInputWrapper}>
-              {/* Row 1 */}
+              {/* Logo Upload Section */}
               <View style={styles.inputRow}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Company Logo</Text>
+                  <TouchableOpacity
+                    style={styles.logoUploadContainer}
+                    onPress={selectLogo}
+                  >
+                    {logo ? (
+                      <Image source={{ uri: logo }} style={styles.logoImage} />
+                    ) : (
+                      <View style={styles.logoPlaceholder}>
+                        <MaterialIcons
+                          name="add-a-photo"
+                          size={24}
+                          color="#555"
+                        />
+                        <Text style={styles.uploadText}>Upload Logo</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {errors.logo && (
+                    <Text style={styles.errorText}>{errors.logo}</Text>
+                  )}
+                </View>
+              </View>
+
+              {/* Row 1 - Company Name first */}
+              <View style={styles.inputRow}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Company Name</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      ref={companyNameRef}
+                      style={styles.input}
+                      placeholder="Company Name"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      onChangeText={setCompanyName}
+                      value={companyName}
+                      returnKeyType="next"
+                      onSubmitEditing={() => fullnameRef.current.focus()}
+                    />
+                    <MaterialIcons
+                      name="business"
+                      size={20}
+                      color="#E82E5F"
+                      style={styles.icon}
+                    />
+                  </View>
+                  {errors.companyName && (
+                    <Text style={styles.errorText}>{errors.companyName}</Text>
+                  )}
+                </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Fullname</Text>
                   <View style={styles.inputWrapper}>
                     <TextInput
+                      ref={fullnameRef}
                       style={styles.input}
                       placeholder="Full name"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setFullname}
+                      value={fullname}
                       returnKeyType="next"
                       onSubmitEditing={() => mobileRef.current.focus()}
                     />
@@ -256,6 +391,9 @@ const RegisterValue = ({ closeModal }) => {
                       style={styles.icon}
                     />
                   </View>
+                  {errors.fullname && (
+                    <Text style={styles.errorText}>{errors.fullname}</Text>
+                  )}
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Mobile Number</Text>
@@ -266,6 +404,7 @@ const RegisterValue = ({ closeModal }) => {
                       placeholder="Mobile Number"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setMobile}
+                      value={mobile}
                       keyboardType="number-pad"
                       returnKeyType="next"
                       onSubmitEditing={() => emailRef.current.focus()}
@@ -283,7 +422,14 @@ const RegisterValue = ({ closeModal }) => {
                       style={styles.icon}
                     />
                   </View>
+                  {errors.mobile && (
+                    <Text style={styles.errorText}>{errors.mobile}</Text>
+                  )}
                 </View>
+              </View>
+
+              {/* Row 2 */}
+              <View style={styles.inputRow}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Email</Text>
                   <View style={styles.inputWrapper}>
@@ -293,6 +439,7 @@ const RegisterValue = ({ closeModal }) => {
                       placeholder="Email"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setEmail}
+                      value={email}
                       returnKeyType="next"
                       onSubmitEditing={() => districtRef.current.focus()}
                       onFocus={() => {
@@ -309,11 +456,10 @@ const RegisterValue = ({ closeModal }) => {
                       style={styles.icon}
                     />
                   </View>
+                  {errors.email && (
+                    <Text style={styles.errorText}>{errors.email}</Text>
+                  )}
                 </View>
-              </View>
-
-              {/* Row 2 */}
-              <View style={styles.inputRow}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Select Parliament</Text>
                   <View style={styles.inputWrapper}>
@@ -351,6 +497,9 @@ const RegisterValue = ({ closeModal }) => {
                       </View>
                     )}
                   </View>
+                  {errors.district && (
+                    <Text style={styles.errorText}>{errors.district}</Text>
+                  )}
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Select Assembly</Text>
@@ -389,43 +538,9 @@ const RegisterValue = ({ closeModal }) => {
                       </View>
                     )}
                   </View>
-                </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Select Experience</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Select Experience"
-                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={experienceSearch}
-                      onChangeText={(text) => {
-                        setExperienceSearch(text);
-                        setShowExperienceList(true);
-                      }}
-                      onFocus={() => {
-                        setShowExperienceList(true);
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                      }}
-                    />
-                    {showExperienceList && (
-                      <View style={styles.dropdownContainer}>
-                        {filteredExperience.map((item) => (
-                          <TouchableOpacity
-                            key={item.code}
-                            style={styles.listItem}
-                            onPress={() => {
-                              setExperience(item.name);
-                              setExperienceSearch(item.name);
-                              setShowExperienceList(false);
-                            }}
-                          >
-                            <Text>{item.name}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View>
+                  {errors.constituency && (
+                    <Text style={styles.errorText}>{errors.constituency}</Text>
+                  )}
                 </View>
               </View>
 
@@ -468,6 +583,49 @@ const RegisterValue = ({ closeModal }) => {
                       </View>
                     )}
                   </View>
+                  {errors.expertise && (
+                    <Text style={styles.errorText}>{errors.expertise}</Text>
+                  )}
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Select Experience</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Select Experience"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={experienceSearch}
+                      onChangeText={(text) => {
+                        setExperienceSearch(text);
+                        setShowExperienceList(true);
+                      }}
+                      onFocus={() => {
+                        setShowExperienceList(true);
+                        setShowDistrictList(false);
+                        setShowConstituencyList(false);
+                      }}
+                    />
+                    {showExperienceList && (
+                      <View style={styles.dropdownContainer}>
+                        {filteredExperience.map((item) => (
+                          <TouchableOpacity
+                            key={item.code}
+                            style={styles.listItem}
+                            onPress={() => {
+                              setExperience(item.name);
+                              setExperienceSearch(item.name);
+                              setShowExperienceList(false);
+                            }}
+                          >
+                            <Text>{item.name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                  {errors.experience && (
+                    <Text style={styles.errorText}>{errors.experience}</Text>
+                  )}
                 </View>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Location</Text>
@@ -477,6 +635,7 @@ const RegisterValue = ({ closeModal }) => {
                       placeholder="Location"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setLocation}
+                      value={location}
                       onFocus={() => {
                         setShowDistrictList(false);
                         setShowConstituencyList(false);
@@ -491,7 +650,14 @@ const RegisterValue = ({ closeModal }) => {
                       style={styles.icon}
                     />
                   </View>
+                  {errors.location && (
+                    <Text style={styles.errorText}>{errors.location}</Text>
+                  )}
                 </View>
+              </View>
+
+              {/* Row 4 */}
+              <View style={styles.inputRow}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Referral Code</Text>
                   <View style={styles.inputWrapper}>
@@ -508,7 +674,6 @@ const RegisterValue = ({ closeModal }) => {
                         setShowExperienceList(false);
                       }}
                       value={referralCode}
-                      // editable={false}
                     />
                     <MaterialIcons
                       name="card-giftcard"
@@ -547,7 +712,6 @@ const RegisterValue = ({ closeModal }) => {
             )}
           </View>
         </ScrollView>
-        {/* <StatusBar style="auto" /> */}
       </KeyboardAvoidingView>
     </View>
   );
@@ -584,13 +748,12 @@ const styles = StyleSheet.create({
     color: "#ccc",
   },
   card: {
-    top:-20,
+    top: -20,
     display: "flex",
     justifyContent: "center",
     width: Platform.OS === "web" ? (width > 1024 ? "100%" : "100%") : "100%",
     backgroundColor: "#FFFFFF",
     padding: 20,
-    // borderRadius: 25,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.25,
@@ -599,7 +762,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: Platform.OS === "web" ? 0 : 1,
     borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
-    paddingBottom:30
+    paddingBottom: 30,
   },
   webInputWrapper: {
     width: "100%",
@@ -649,6 +812,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     color: "#191919",
+    marginBottom: 5,
   },
   row: {
     flexDirection: "row",
@@ -673,22 +837,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "400",
   },
-  loginText: {
-    marginTop: 20,
-    fontSize: 16,
-    color: "#E82E5F",
-  },
-  loginLink: {
-    fontWeight: "bold",
-  },
   loadingIndicator: {
     marginTop: 20,
   },
   errorText: {
     color: "red",
-    fontSize: 14,
-    marginBottom: 10,
-    textAlign: "center",
+    fontSize: 12,
+    marginTop: -5,
+    marginBottom: 5,
   },
   dropdownContainer: {
     position: "absolute",
@@ -703,13 +859,36 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     backgroundColor: "#e6708e",
   },
-  list: {
-    maxHeight: 150,
-  },
   listItem: {
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#ccc",
+  },
+  // Logo upload styles
+  logoUploadContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+    overflow: "hidden",
+  },
+  logoImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  logoPlaceholder: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  uploadText: {
+    fontSize: 12,
+    color: "#555",
+    marginTop: 5,
   },
 });
 

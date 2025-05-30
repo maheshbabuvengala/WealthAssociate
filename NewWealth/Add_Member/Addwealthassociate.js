@@ -46,6 +46,7 @@ const Add_Agent = ({ closeModal }) => {
   const [expertiseOptions, setExpertiseOptions] = useState([]);
   const [Details, setDetails] = useState({});
   const [userType, setUserType] = useState("");
+  const [valuemember, setValuemember] = useState(""); // New state for valuemember
 
   const mobileRef = useRef(null);
   const emailRef = useRef(null);
@@ -92,7 +93,6 @@ const Add_Agent = ({ closeModal }) => {
   };
 
   useEffect(() => {
-    // fetchUserType();
     fetchDistrictsAndConstituencies();
     fetchExpertise();
   }, []);
@@ -135,7 +135,6 @@ const Add_Agent = ({ closeModal }) => {
       const token = await AsyncStorage.getItem("authToken");
       let endpoint = "";
 
-      // Fix: Check for "CoreMember" (exact string match)
       if (userType === "CoreMember") {
         endpoint = `${API_URL}/core/getcore`;
       } else {
@@ -155,6 +154,11 @@ const Add_Agent = ({ closeModal }) => {
 
       const newDetails = await response.json();
       setDetails(newDetails);
+
+      // Set valuemember to "yes" if it exists in the details
+      if (newDetails.valuemember) {
+        setValuemember(newDetails.valuemember);
+      }
     } catch (error) {
       console.error("Error fetching user details:", error);
     }
@@ -216,6 +220,7 @@ const Add_Agent = ({ closeModal }) => {
       Password: "Wealth",
       MyRefferalCode: referenceId,
       AgentType: "WealthAssociate",
+      valuemember: referralCode || "no",
     };
 
     try {
@@ -621,8 +626,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: Platform.OS === "web" ? (width > 1024 ? "100%" : "100%") : "100%",
     backgroundColor: "#FFFFFF",
-    // padding: 15,
-    // borderRadius: 25,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.25,

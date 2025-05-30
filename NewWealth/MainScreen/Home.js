@@ -20,7 +20,6 @@ import { useNavigation } from "@react-navigation/native";
 import PropertyCard from "./PropertyCard";
 import { FlatList } from "react-native-gesture-handler";
 
-
 const { width } = Dimensions.get("window");
 
 const HomeScreen = () => {
@@ -31,10 +30,12 @@ const HomeScreen = () => {
   const [propertiess, setPropertiess] = useState([]);
   const [coreClients, setCoreClients] = useState([]);
   const [coreProjects, setCoreProjects] = useState([]);
+  const [valueprojects, setValueProjects] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
   const [likedProperties, setLikedProperties] = useState([]);
   const [property, setProperty] = useState(null);
+  const [referralCount, setReferralCount] = useState(0);
   const [referredInfo, setReferredInfo] = useState({
     name: "",
     mobileNumber: "",
@@ -105,6 +106,41 @@ const HomeScreen = () => {
     }
   };
 
+  const fetchReferralCount = async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const parsedDetails = details; // Assuming details is already parsed
+
+      if (!parsedDetails?.MyRefferalCode) return;
+
+      const response = await fetch(`${API_URL}/agent/valueagents`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token: token || "",
+        },
+        body: JSON.stringify({
+          referralCode: parsedDetails.MyRefferalCode,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setReferralCount(data.count || 0); // Assuming the response has a count field
+    } catch (error) {
+      console.error("Error fetching referral count:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (details?.MyRefferalCode) {
+      fetchReferralCount();
+    }
+  }, [details?.MyRefferalCode]);
+
   const fetchCoreClients = async () => {
     try {
       const response = await fetch(`${API_URL}/coreclient/getallcoreclients`);
@@ -120,6 +156,17 @@ const HomeScreen = () => {
       const response = await fetch(`${API_URL}/coreproject/getallcoreprojects`);
       const data = await response.json();
       setCoreProjects(data);
+    } catch (error) {
+      console.error("Error fetching core projects:", error);
+    }
+  };
+  const fetchValueProjects = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/coreproject/getallValueprojects`
+      );
+      const data = await response.json();
+      setValueProjects(data);
     } catch (error) {
       console.error("Error fetching core projects:", error);
     }
@@ -332,6 +379,7 @@ const HomeScreen = () => {
     getDetails();
     fetchCoreClients();
     fetchCoreProjects();
+    fetchValueProjects();
     fetchProperties();
     fetchPropertiess();
     loadReferredInfoFromStorage();
@@ -516,137 +564,145 @@ const HomeScreen = () => {
     }
   };
 
-   const RenderPropertyCard = ({ property }) => {
-  const propertyTag = getPropertyTag(property.createdAt);
-  const propertyId = getLastFourChars(property._id);
-  const [isLiked, setIsLiked] = useState(likedProperties.includes(property._id));
+  const RenderPropertyCard = ({ property }) => {
+    const propertyTag = getPropertyTag(property.createdAt);
+    const propertyId = getLastFourChars(property._id);
+    const [isLiked, setIsLiked] = useState(
+      likedProperties.includes(property._id)
+    );
 
-const toggleLike = async () => {
-  try {
-    const token = await AsyncStorage.getItem("authToken");
-    const userDetails = JSON.parse(await AsyncStorage.getItem("userDetails"));
-    
-    // Optimistically update the UI
-    const newLikedStatus = !isLiked;
-    setIsLiked(newLikedStatus);
-    
-    // Update local liked properties array
-    let updatedLikes;
-    if (newLikedStatus) {
-      updatedLikes = [...likedProperties, property._id];
-    } else {
-      updatedLikes = likedProperties.filter(id => id !== property._id);
-    }
-    setLikedProperties(updatedLikes);
-    
-    // Save to AsyncStorage
-    await AsyncStorage.setItem("likedProperties", JSON.stringify(updatedLikes));
-    
-    // Send API request
-    const response = await fetch(`${API_URL}/properties/like`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        token: token || "",
-      },
-      body: JSON.stringify({
-        propertyId: property._id,
-        like: newLikedStatus,
-        userName: userDetails?.FullName || details?.FullName || "User",
-        mobileNumber: userDetails?.MobileNumber || details?.MobileNumber || "",
-      }),
-    });
+    const toggleLike = async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const userDetails = JSON.parse(
+          await AsyncStorage.getItem("userDetails")
+        );
 
-    if (!response.ok) {
-      // Revert changes if API call fails
-      setIsLiked(!newLikedStatus);
-      const storedLikes = await AsyncStorage.getItem("likedProperties");
-      if (storedLikes) {
-        setLikedProperties(JSON.parse(storedLikes));
+        // Optimistically update the UI
+        const newLikedStatus = !isLiked;
+        setIsLiked(newLikedStatus);
+
+        // Update local liked properties array
+        let updatedLikes;
+        if (newLikedStatus) {
+          updatedLikes = [...likedProperties, property._id];
+        } else {
+          updatedLikes = likedProperties.filter((id) => id !== property._id);
+        }
+        setLikedProperties(updatedLikes);
+
+        // Save to AsyncStorage
+        await AsyncStorage.setItem(
+          "likedProperties",
+          JSON.stringify(updatedLikes)
+        );
+
+        // Send API request
+        const response = await fetch(`${API_URL}/properties/like`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token || "",
+          },
+          body: JSON.stringify({
+            propertyId: property._id,
+            like: newLikedStatus,
+            userName: userDetails?.FullName || details?.FullName || "User",
+            mobileNumber:
+              userDetails?.MobileNumber || details?.MobileNumber || "",
+          }),
+        });
+
+        if (!response.ok) {
+          // Revert changes if API call fails
+          setIsLiked(!newLikedStatus);
+          const storedLikes = await AsyncStorage.getItem("likedProperties");
+          if (storedLikes) {
+            setLikedProperties(JSON.parse(storedLikes));
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      } catch (error) {
+        console.error("Error toggling like:", error);
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-  } catch (error) {
-    console.error("Error toggling like:", error);
-  }
-};
+    };
 
-   return (
-    <TouchableOpacity
-      onPress={() => handlePropertyPress(property)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.propertyCard}>
-        {renderPropertyImage(property)}
+    return (
+      <TouchableOpacity
+        onPress={() => handlePropertyPress(property)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.propertyCard}>
+          {renderPropertyImage(property)}
 
-        <View
-          style={[
-            styles.statusTag,
-            {
-              backgroundColor:
-                propertyTag === "Approved Property" ? "#4CAF50" : "#FF9800",
-            },
-          ]}
-        >
-          <Text style={styles.statusText}>{propertyTag}</Text>
-        </View>
+          <View
+            style={[
+              styles.statusTag,
+              {
+                backgroundColor:
+                  propertyTag === "Approved Property" ? "#4CAF50" : "#FF9800",
+              },
+            ]}
+          >
+            <Text style={styles.statusText}>{propertyTag}</Text>
+          </View>
 
-        <View style={styles.propertyIdContainer}>
-          <Text style={styles.propertyId}>ID: {propertyId}</Text>
-        </View>
+          <View style={styles.propertyIdContainer}>
+            <Text style={styles.propertyId}>ID: {propertyId}</Text>
+          </View>
 
-        <TouchableOpacity 
-          style={styles.likeButton} 
-          onPress={(e) => {
-            e.stopPropagation();
-            toggleLike();
-          }}
-        >
-          <Ionicons 
-            name={isLiked ? "heart" : "heart-outline"} 
-            size={24} 
-            color={isLiked ? "#D81B60" : "#fff"} 
-          />
-        </TouchableOpacity>
-
-        <Text style={styles.cardTitle}>{property.propertyType}</Text>
-        <Text style={styles.cardSubtitle}>Location: {property.location}</Text>
-        <Text style={styles.cardPrice}>
-          ₹ {parseInt(property.price).toLocaleString()}
-        </Text>
-
-        <View style={styles.cardButtons}>
           <TouchableOpacity
-            style={styles.enquiryBtn}
+            style={styles.likeButton}
             onPress={(e) => {
               e.stopPropagation();
-              handleEnquiryNow(property);
+              toggleLike();
             }}
           >
-            <Text style={{ color: "white", fontWeight: "bold" }}>
-              Enquiry Now
-            </Text>
+            <Ionicons
+              name={isLiked ? "heart" : "heart-outline"}
+              size={24}
+              color={isLiked ? "#D81B60" : "#fff"}
+            />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.shareBtn}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleShare(property);
-            }}
-          >
-            <FontAwesome name="share" size={16} color="white" />
-            <Text
-              style={{ color: "white", marginLeft: 5, fontWeight: "bold" }}
+          <Text style={styles.cardTitle}>{property.propertyType}</Text>
+          <Text style={styles.cardSubtitle}>Location: {property.location}</Text>
+          <Text style={styles.cardPrice}>
+            ₹ {parseInt(property.price).toLocaleString()}
+          </Text>
+
+          <View style={styles.cardButtons}>
+            <TouchableOpacity
+              style={styles.enquiryBtn}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleEnquiryNow(property);
+              }}
             >
-              Share
-            </Text>
-          </TouchableOpacity>
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                Enquiry Now
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.shareBtn}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleShare(property);
+              }}
+            >
+              <FontAwesome name="share" size={16} color="white" />
+              <Text
+                style={{ color: "white", marginLeft: 5, fontWeight: "bold" }}
+              >
+                Share
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
+      </TouchableOpacity>
+    );
+  };
   const RequestedPropertyCard = ({ item }) => {
     const propertyTag = getPropertyTag(item.createdAt);
     const propertyId = getLastFourCharss(item.id);
@@ -706,6 +762,34 @@ const toggleLike = async () => {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
+        {(userType === "WealthAssociate" || userType === "ReferralAssociate") &&
+          details?.AgentType === "ValueAssociate" &&
+          details?.photo && (
+            <View style={styles.agentPhotoContainer}>
+              <Image
+                source={{ uri: `${API_URL}${details.photo}` }}
+                style={styles.agentPhoto}
+              />
+              <Text
+                style={styles.agentName}
+                numberOfLines={5}
+                ellipsizeMode="tail"
+              >
+                {details.CompanyName || "Value Associate"}
+                {"\n"}
+                <Text style={{ color: "#0495CA", fontSize: 14 }}>
+                  Value Associate
+                </Text>
+                {"\n"}
+                <View style={styles.skillTag}>
+                  <Text style={styles.skillText}>
+                    YourAgents:{referralCount}
+                  </Text>
+                </View>
+              </Text>
+            </View>
+          )}
+
         <View style={styles.actionRow}>
           {actionButton(
             "home",
@@ -730,22 +814,22 @@ const toggleLike = async () => {
           )}
         </View>
         <View style={styles.compactActionRow}>
-  <TouchableOpacity 
-  style={[styles.compactButton, {backgroundColor: "#FF9800"}]}
-  onPress={() => navigation.navigate('suppliersvendors')}
->
-  <MaterialIcons name="store" size={20} color="#fff" />
-  <Text style={styles.compactButtonText}>Suppliers & Vendors</Text>
-</TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.compactButton, { backgroundColor: "#FF9800" }]}
+            onPress={() => navigation.navigate("suppliersvendors")}
+          >
+            <MaterialIcons name="store" size={20} color="#fff" />
+            <Text style={styles.compactButtonText}>Suppliers & Vendors</Text>
+          </TouchableOpacity>
 
-  <TouchableOpacity 
-    style={[styles.compactButton, {backgroundColor: "#607D8B"}]}
-    onPress={() => navigation.navigate("skilledresources")}
-  >
-    <Ionicons name="people" size={20} color="#fff" />
-    <Text style={styles.compactButtonText}>Skilled Resources</Text>
-  </TouchableOpacity>
-</View>
+          <TouchableOpacity
+            style={[styles.compactButton, { backgroundColor: "#607D8B" }]}
+            onPress={() => navigation.navigate("skilledresources")}
+          >
+            <Ionicons name="people" size={20} color="#fff" />
+            <Text style={styles.compactButtonText}>Skilled Resources</Text>
+          </TouchableOpacity>
+        </View>
         {(userType === "WealthAssociate" ||
           userType === "ReferralAssociate" ||
           userType === "CoreMember") &&
@@ -887,6 +971,30 @@ const toggleLike = async () => {
             </ScrollView>
           </>
         )}
+        {valueprojects.length > 0 && (
+          <>
+            <SectionHeader title="Value Projects" />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {valueprojects.map((project, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.projectCard}
+                  onPress={() => handleOpenLink(project.website)}
+                >
+                  <Image
+                    source={{ uri: `${API_URL}${project.photo}` }}
+                    style={styles.projectImage}
+                  />
+                  <Text style={styles.projectTitle}>{project.city}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
       </ScrollView>
 
       <Modal
@@ -947,32 +1055,32 @@ const styles = StyleSheet.create({
     marginVertical: 20,
     gap: 30,
   },
-   compactActionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  compactActionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginHorizontal: 15,
     marginBottom: 15,
     marginTop: 5,
   },
   compactButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 6,
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginHorizontal: 5,
-    shadowColor: '#000',
-    height: '100%',
+    shadowColor: "#000",
+    height: "100%",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 2,
   },
   compactButtonText: {
-    color: 'white',
-    fontWeight: '700',
+    color: "white",
+    fontWeight: "700",
     fontSize: 13,
     marginLeft: 6,
   },
@@ -1051,13 +1159,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   likeButton: {
-  position: 'absolute',
-  top: 20,
-  right: 20,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  borderRadius: 20,
-  padding: 5,
-},
+    position: "absolute",
+    top: 20,
+    right: 20,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 20,
+    padding: 5,
+  },
   cardTitle: {
     fontWeight: "bold",
     fontSize: 16,
@@ -1246,6 +1354,41 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: "white",
     fontSize: 16,
+  },
+  agentPhotoContainer: {
+    alignItems: "flex-start",
+    marginVertical: 15,
+    display: "flex",
+    flexDirection: "row",
+  },
+  agentPhoto: {
+    width: 100,
+    height: 100,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: "#D81B60",
+  },
+  agentName: {
+    marginTop: 8,
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    alignItems: "flex-end",
+    marginLeft: 20,
+    flex: 1, // Let the text take up remaining space
+    flexShrink: 1, // Allow it to shrink
+  },
+  skillTag: {
+    backgroundColor: "#f0f8ff",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    margin: 3,
+  },
+  skillText: {
+    fontSize: 10,
+    color: "#2c3e50",
+    fontWeight: 600,
   },
 });
 
