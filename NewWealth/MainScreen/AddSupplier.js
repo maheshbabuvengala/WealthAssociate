@@ -15,12 +15,78 @@ import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
 import { API_URL } from "../../data/ApiUrl";
 
+// Subcategories data matching the SuppliersVendors component
+const vendorSubcategories = {
+  "Building Materials Suppliers": [
+    { id: 1, name: "Sand and Aggregates" },
+    { id: 2, name: "Cement and Concrete" },
+    { id: 3, name: "Structural Steel" },
+    { id: 4, name: "Bricks and Blocks" },
+    { id: 5, name: "Timber and Wood Products" },
+  ],
+  "Equipment and Tool Suppliers": [
+    { id: 1, name: "Heavy Machinery" },
+    { id: 2, name: "Power Tools" },
+    { id: 3, name: "Hand Tools" },
+    { id: 4, name: "Measuring and Layout Tools" },
+  ],
+  "Plumbing and Electrical Suppliers": [
+    { id: 1, name: "Pipes and Fittings" },
+    { id: 2, name: "Electrical Wiring" },
+    { id: 3, name: "Switches and Outlets" },
+    { id: 4, name: "Sanitary Fixtures" },
+  ],
+  "Paint and Finishing Suppliers": [
+    { id: 1, name: "Interior Paint" },
+    { id: 2, name: "Exterior Paint" },
+    { id: 3, name: "Varnishes and Wood Finishes" },
+    { id: 4, name: "Painting Tools" },
+  ],
+  "HVAC Suppliers": [
+    { id: 1, name: "Air Conditioners" },
+    { id: 2, name: "Heating Systems" },
+    { id: 3, name: "Ventilation Equipment" },
+    { id: 4, name: "Ductwork and Vents" },
+  ],
+  "Landscaping Suppliers": [
+    { id: 1, name: "Plants and Trees" },
+    { id: 2, name: "Soil and Mulch" },
+    { id: 3, name: "Irrigation Systems" },
+    { id: 4, name: "Outdoor Hardscaping" },
+  ],
+  "Prefabricated Construction Materials": [
+    { id: 1, name: "Prefab Wall Panels" },
+    { id: 2, name: "Modular Units" },
+    { id: 3, name: "Precast Concrete" },
+    { id: 4, name: "Steel Structures" },
+  ],
+  "Waste Management and Disposal": [
+    { id: 1, name: "Waste Containers" },
+    { id: 2, name: "Recycling Services" },
+    { id: 3, name: "Hazardous Waste Handling" },
+    { id: 4, name: "Site Cleanup" },
+  ],
+  "Logistics and Transport": [
+    { id: 1, name: "Material Delivery" },
+    { id: 2, name: "Heavy Equipment Transport" },
+    { id: 3, name: "On-Site Storage" },
+    { id: 4, name: "Crane and Lifting Services" },
+  ],
+  "Architectural and Design Suppliers": [
+    { id: 1, name: "Flooring Materials" },
+    { id: 2, name: "Windows and Doors" },
+    { id: 3, name: "Interior Fixtures" },
+    { id: 4, name: "Decorative Materials" },
+  ],
+};
+
 const AddSupplier = ({ navigation }) => {
   // Form state
   const [companyName, setCompanyName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
   const [logo, setLogo] = useState(null);
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -46,6 +112,17 @@ const AddSupplier = ({ navigation }) => {
     { id: 9, name: "Logistics and Transport" },
     { id: 10, name: "Architectural and Design Suppliers" },
   ];
+
+  // Get subcategories based on selected category
+  const getSubcategories = () => {
+    if (!selectedCategory) return [];
+    return vendorSubcategories[selectedCategory] || [];
+  };
+
+  // Reset subcategory when category changes
+  useEffect(() => {
+    setSelectedSubcategory("");
+  }, [selectedCategory]);
 
   // Fetch constituencies on component mount
   useEffect(() => {
@@ -141,6 +218,7 @@ const AddSupplier = ({ navigation }) => {
     if (!ownerName) newErrors.ownerName = "Owner name is required";
     if (!phone) newErrors.phone = "Phone number is required";
     if (!selectedCategory) newErrors.category = "Category is required";
+    if (!selectedSubcategory) newErrors.subcategory = "Subcategory is required";
     if (!location) newErrors.location = "Location is required";
     if (!logo) newErrors.logo = "Company logo is required";
     setErrors(newErrors);
@@ -156,6 +234,7 @@ const AddSupplier = ({ navigation }) => {
         formData.append("ownerName", ownerName);
         formData.append("phone", phone);
         formData.append("category", selectedCategory);
+        formData.append("subcategory", selectedSubcategory);
         formData.append("location", location);
         formData.append("exactLocation", exactLocation);
 
@@ -170,11 +249,13 @@ const AddSupplier = ({ navigation }) => {
           });
         }
 
-        // Replace with your actual API endpoint
-        const response = await fetch(`${API_URL}/suppliersvendors/addsupplier`, {
-          method: "POST",
-          body: formData,
-        });
+        const response = await fetch(
+          `${API_URL}/suppliersvendors/addsupplier`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
         const result = await response.json();
         if (response.ok) {
@@ -291,6 +372,29 @@ const AddSupplier = ({ navigation }) => {
         )}
       </View>
 
+      {/* Subcategory */}
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Subcategory</Text>
+        <Picker
+          selectedValue={selectedSubcategory}
+          onValueChange={(itemValue) => setSelectedSubcategory(itemValue)}
+          style={styles.picker}
+          enabled={!!selectedCategory}
+        >
+          <Picker.Item label="Select a subcategory" value="" />
+          {getSubcategories().map((subcategory) => (
+            <Picker.Item
+              key={subcategory.id}
+              label={subcategory.name}
+              value={subcategory.name}
+            />
+          ))}
+        </Picker>
+        {errors.subcategory && (
+          <Text style={styles.errorText}>{errors.subcategory}</Text>
+        )}
+      </View>
+
       {/* Location */}
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Location</Text>
@@ -370,7 +474,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#f5f5f5",
     flexGrow: 1,
-    paddingBottom:"30%"
+    paddingBottom: "40%",
   },
   title: {
     fontSize: 22,
@@ -393,7 +497,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: "#ddd",
-    width:"100%"
+    width: "100%",
   },
   picker: {
     backgroundColor: "white",
@@ -418,7 +522,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 5,
   },
-  // Logo upload styles
   logoContainer: {
     position: "relative",
     width: 120,
@@ -464,7 +567,6 @@ const styles = StyleSheet.create({
     color: "#555",
     marginTop: 8,
   },
-  // Location dropdown styles
   inputWrapper: {
     position: "relative",
   },

@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
+  Image,
+  FlatList,
 } from "react-native";
 import {
   Ionicons,
@@ -17,6 +19,329 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
+
+const vendorSubcategories = {
+  "Building Materials Suppliers": [
+    {
+      id: 1,
+      name: "Sand and Aggregates",
+      image:
+        "https://images.pexels.com/photos/262367/pexels-photo-262367.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Construction-grade sand, gravel, crushed stone, and other aggregates",
+    },
+    {
+      id: 2,
+      name: "Cement and Concrete",
+      image:
+        "https://images.pexels.com/photos/2219024/pexels-photo-2219024.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Various types of cement, ready-mix concrete, and concrete additives",
+    },
+    {
+      id: 3,
+      name: "Structural Steel",
+      image:
+        "https://images.pexels.com/photos/2760289/pexels-photo-2760289.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Beams, columns, rebars, and other structural steel components",
+    },
+    {
+      id: 4,
+      name: "Bricks and Blocks",
+      image:
+        "https://images.pexels.com/photos/207142/pexels-photo-207142.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Clay bricks, concrete blocks, AAC blocks, and other masonry units",
+    },
+    {
+      id: 5,
+      name: "Timber and Wood Products",
+      image:
+        "https://images.pexels.com/photos/129733/pexels-photo-129733.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Lumber, plywood, veneers, and engineered wood products",
+    },
+  ],
+  "Equipment and Tool Suppliers": [
+    {
+      id: 1,
+      name: "Heavy Machinery",
+      image:
+        "https://images.pexels.com/photos/2058911/pexels-photo-2058911.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Excavators, bulldozers, cranes, and other heavy construction equipment",
+    },
+    {
+      id: 2,
+      name: "Power Tools",
+      image:
+        "https://images.pexels.com/photos/6647217/pexels-photo-6647217.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Drills, saws, grinders, and other power tools for construction",
+    },
+    {
+      id: 3,
+      name: "Hand Tools",
+      image:
+        "https://images.pexels.com/photos/175039/pexels-photo-175039.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Hammers, wrenches, screwdrivers, and other hand tools",
+    },
+    {
+      id: 4,
+      name: "Measuring and Layout Tools",
+      image:
+        "https://images.pexels.com/photos/834892/pexels-photo-834892.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Levels, tape measures, laser measuring devices, and surveying equipment",
+    },
+  ],
+  "Plumbing and Electrical Suppliers": [
+    {
+      id: 1,
+      name: "Pipes and Fittings",
+      image:
+        "https://images.pexels.com/photos/4239146/pexels-photo-4239146.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "PVC, CPVC, copper, and other plumbing pipes and fittings",
+    },
+    {
+      id: 2,
+      name: "Electrical Wiring",
+      image:
+        "https://images.pexels.com/photos/1109541/pexels-photo-1109541.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Cables, wires, and conductors for electrical installations",
+    },
+    {
+      id: 3,
+      name: "Switches and Outlets",
+      image:
+        "https://images.pexels.com/photos/8005397/pexels-photo-8005397.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Electrical switches, outlets, and other control devices",
+    },
+    {
+      id: 4,
+      name: "Sanitary Fixtures",
+      image:
+        "https://images.pexels.com/photos/7935651/pexels-photo-7935651.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Toilets, sinks, faucets, and other bathroom fixtures",
+    },
+  ],
+  "Paint and Finishing Suppliers": [
+    {
+      id: 1,
+      name: "Interior Paint",
+      image:
+        "https://images.pexels.com/photos/5490778/pexels-photo-5490778.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Wall paints, primers, and interior finishes",
+    },
+    {
+      id: 2,
+      name: "Exterior Paint",
+      image:
+        "https://images.pexels.com/photos/186078/pexels-photo-186078.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Weather-resistant paints and coatings for exterior surfaces",
+    },
+    {
+      id: 3,
+      name: "Varnishes and Wood Finishes",
+      image:
+        "https://images.pexels.com/photos/279444/pexels-photo-279444.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Stains, varnishes, and protective coatings for wood",
+    },
+    {
+      id: 4,
+      name: "Painting Tools",
+      image:
+        "https://images.pexels.com/photos/8092505/pexels-photo-8092505.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Brushes, rollers, sprayers, and other painting equipment",
+    },
+  ],
+  "HVAC Suppliers": [
+    {
+      id: 1,
+      name: "Air Conditioners",
+      image:
+        "https://images.pexels.com/photos/4393549/pexels-photo-4393549.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Split ACs, window ACs, and central air conditioning systems",
+    },
+    {
+      id: 2,
+      name: "Heating Systems",
+      image:
+        "https://images.pexels.com/photos/9806250/pexels-photo-9806250.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Furnaces, boilers, and other heating equipment",
+    },
+    {
+      id: 3,
+      name: "Ventilation Equipment",
+      image:
+        "https://images.pexels.com/photos/6368836/pexels-photo-6368836.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Fans, blowers, and air handling units",
+    },
+    {
+      id: 4,
+      name: "Ductwork and Vents",
+      image:
+        "https://images.pexels.com/photos/10299440/pexels-photo-10299440.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Ducts, vents, grilles, and diffusers for HVAC systems",
+    },
+  ],
+  "Landscaping Suppliers": [
+    {
+      id: 1,
+      name: "Plants and Trees",
+      image:
+        "https://images.pexels.com/photos/1028599/pexels-photo-1028599.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Ornamental plants, trees, shrubs, and ground covers",
+    },
+    {
+      id: 2,
+      name: "Soil and Mulch",
+      image:
+        "https://images.pexels.com/photos/5748798/pexels-photo-5748798.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Topsoil, potting soil, compost, and mulch",
+    },
+    {
+      id: 3,
+      name: "Irrigation Systems",
+      image:
+        "https://images.pexels.com/photos/2566940/pexels-photo-2566940.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Sprinklers, drip irrigation, and water management systems",
+    },
+    {
+      id: 4,
+      name: "Outdoor Hardscaping",
+      image:
+        "https://images.pexels.com/photos/11754348/pexels-photo-11754348.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Pavers, stones, retaining walls, and other hardscape materials",
+    },
+  ],
+  "Prefabricated Construction Materials": [
+    {
+      id: 1,
+      name: "Prefab Wall Panels",
+      image:
+        "https://images.pexels.com/photos/302769/pexels-photo-302769.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Factory-made wall panels and partitions",
+    },
+    {
+      id: 2,
+      name: "Modular Units",
+      image:
+        "https://images.pexels.com/photos/259957/pexels-photo-259957.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Prefabricated modular building units and components",
+    },
+    {
+      id: 3,
+      name: "Precast Concrete",
+      image:
+        "https://images.pexels.com/photos/2422588/pexels-photo-2422588.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Precast concrete elements like beams, slabs, and staircases",
+    },
+    {
+      id: 4,
+      name: "Steel Structures",
+      image:
+        "https://images.pexels.com/photos/2884869/pexels-photo-2884869.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Pre-engineered steel buildings and components",
+    },
+  ],
+  "Waste Management and Disposal": [
+    {
+      id: 1,
+      name: "Waste Containers",
+      image:
+        "https://images.pexels.com/photos/3962883/pexels-photo-3962883.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Dumpsters, bins, and containers for construction waste",
+    },
+    {
+      id: 2,
+      name: "Recycling Services",
+      image:
+        "https://images.pexels.com/photos/802221/pexels-photo-802221.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Construction material recycling and recovery services",
+    },
+    {
+      id: 3,
+      name: "Hazardous Waste Handling",
+      image:
+        "https://images.pexels.com/photos/4239013/pexels-photo-4239013.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Safe disposal of hazardous construction materials",
+    },
+    {
+      id: 4,
+      name: "Site Cleanup",
+      image:
+        "https://images.pexels.com/photos/2219024/pexels-photo-2219024.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Post-construction cleanup and waste removal services",
+    },
+  ],
+  "Logistics and Transport": [
+    {
+      id: 1,
+      name: "Material Delivery",
+      image:
+        "https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Transportation and delivery of construction materials",
+    },
+    {
+      id: 2,
+      name: "Heavy Equipment Transport",
+      image:
+        "https://images.pexels.com/photos/6169673/pexels-photo-6169673.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Moving and transporting heavy construction equipment",
+    },
+    {
+      id: 3,
+      name: "On-Site Storage",
+      image:
+        "https://images.pexels.com/photos/6169668/pexels-photo-6169668.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Temporary storage solutions for construction sites",
+    },
+    {
+      id: 4,
+      name: "Crane and Lifting Services",
+      image:
+        "https://images.pexels.com/photos/261858/pexels-photo-261858.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Crane rental and lifting services for construction",
+    },
+  ],
+  "Architectural and Design Suppliers": [
+    {
+      id: 1,
+      name: "Flooring Materials",
+      image:
+        "https://images.pexels.com/photos/531758/pexels-photo-531758.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Tiles, hardwood, laminates, and other flooring options",
+    },
+    {
+      id: 2,
+      name: "Windows and Doors",
+      image:
+        "https://images.pexels.com/photos/276583/pexels-photo-276583.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description: "Custom windows, doors, and related architectural elements",
+    },
+    {
+      id: 3,
+      name: "Interior Fixtures",
+      image:
+        "https://images.pexels.com/photos/1457842/pexels-photo-1457842.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Light fixtures, ceiling details, and interior design elements",
+    },
+    {
+      id: 4,
+      name: "Decorative Materials",
+      image:
+        "https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=600",
+      description:
+        "Wallpapers, decorative panels, and interior finishing materials",
+    },
+  ],
+};
 
 const { width } = Dimensions.get("window");
 
@@ -123,8 +448,11 @@ const SuppliersVendors = () => {
     },
   ];
 
-  const handleVendorTypePress = (type) => {
-    navigation.navigate("VendorList", { vendorType: type });
+  const handleSubcategoryPress = (category, subcategory) => {
+    navigation.navigate("VendorList", {
+      vendorType: category,
+      subcategory: subcategory.name,
+    });
   };
 
   const handleAddSupplier = () => {
@@ -134,14 +462,6 @@ const SuppliersVendors = () => {
   const shouldShowAddButton = () => {
     return userType === "CoreMember" || agentType === "RegionalWealthAssociate";
   };
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#D81B60" />
-      </View>
-    );
-  }
 
   const renderIcon = (iconType, iconName, size, color) => {
     switch (iconType) {
@@ -160,39 +480,71 @@ const SuppliersVendors = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#D81B60" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {/* Header with Add Button in a Mini Box */}
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Suppliers & Vendors</Text>
-        
-      </View>
-
-      <Text style={styles.subtitle}>
-        Find all the services you need for your property
-      </Text>
-      <View style={{width:"50%",marginTop:-10,marginBottom:10}}>{shouldShowAddButton() && (
+        {shouldShowAddButton() && (
           <TouchableOpacity onPress={handleAddSupplier}>
             <View style={styles.addButtonBox}>
               <MaterialIcons name="add" size={18} color="#D81B60" />
               <Text style={styles.addButtonText}>Add Supplier</Text>
             </View>
           </TouchableOpacity>
-        )}</View>
+        )}
+      </View>
+
+      <Text style={styles.subtitle}>
+        Find all the services you need for your property
+      </Text>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.grid}>
-          {vendorTypes.map((vendor) => (
-            <TouchableOpacity
-              key={vendor.id}
-              style={[styles.vendorCard, { backgroundColor: vendor.color }]}
-              onPress={() => handleVendorTypePress(vendor.name)}
-            >
-              {renderIcon(vendor.iconType, vendor.icon, 30, "#D81B60")}
-              <Text style={styles.vendorName}>{vendor.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {vendorTypes.map((vendor) => (
+          <View key={vendor.id} style={styles.categoryContainer}>
+            <View style={styles.categoryHeader}>
+              {renderIcon(vendor.iconType, vendor.icon, 24, "#D81B60")}
+              <Text style={styles.categoryTitle}>{vendor.name}</Text>
+            </View>
+
+            <FlatList
+              data={vendorSubcategories[vendor.name] || []}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.subcategoryList}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.subcategoryCard}
+                  onPress={() => handleSubcategoryPress(vendor.name, item)}
+                >
+                  <Image
+                    source={{ uri: item.image }}
+                    style={styles.subcategoryImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.subcategoryTextContainer}>
+                    <Text style={styles.subcategoryName}>{item.name}</Text>
+                    <Text
+                      style={styles.subcategoryDescription}
+                      numberOfLines={2}
+                    >
+                      {item.description}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        ))}
       </ScrollView>
     </View>
   );
@@ -202,7 +554,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-    padding: 33,
+    padding: 20,
   },
   loadingContainer: {
     flex: 1,
@@ -213,7 +565,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 5
+    marginBottom: 10,
   },
   title: {
     fontSize: 20,
@@ -242,34 +594,56 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   scrollContainer: {
-    paddingBottom: 20,
+    paddingBottom: 30,
   },
-  grid: {
+  categoryContainer: {
+    marginBottom: 25,
+  },
+  categoryHeader: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
   },
-  vendorCard: {
-    width: width * 0.45 - 20,
-    height: 130,
+  categoryTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginLeft: 10,
+  },
+  subcategoryList: {
+    paddingLeft: 5,
+    paddingTop: 10,
+    paddingBottom: 10,
+  },
+  subcategoryCard: {
+    width: 160,
     backgroundColor: "white",
     borderRadius: 10,
-    marginBottom: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 10,
+    marginRight: 15,
+    overflow: "hidden",
     elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+    // paddingTop:10
   },
-  vendorName: {
-    color: "black",
-    fontSize: 13,
+  subcategoryImage: {
+    width: "100%",
+    height: 100,
+  },
+  subcategoryTextContainer: {
+    padding: 10,
+  },
+  subcategoryName: {
+    fontSize: 14,
     fontWeight: "bold",
-    marginTop: 10,
-    textAlign: "center",
+    color: "#333",
+    marginBottom: 5,
+  },
+  subcategoryDescription: {
+    fontSize: 12,
+    color: "#666",
   },
 });
 

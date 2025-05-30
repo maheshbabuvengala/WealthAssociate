@@ -6,13 +6,15 @@ import {
   Image,
   ActivityIndicator,
   ScrollView,
+  TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { API_URL } from "../../data/ApiUrl";
 
 const Vendor = ({ route }) => {
-  const { vendorType } = route.params;
+  const { vendorType, subcategory } = route.params;
   const [vendors, setVendors] = useState([]);
+  const [filteredVendors, setFilteredVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -37,6 +39,16 @@ const Vendor = ({ route }) => {
         const data = await response.json();
         const vendorsData = Array.isArray(data) ? data : [data];
         setVendors(vendorsData);
+        if (subcategory) {
+          const filtered = vendorsData.filter(
+            (vendor) =>
+              vendor.subcategory && vendor.subcategory.includes(subcategory)
+          );
+          setFilteredVendors(filtered);
+        } else {
+          setFilteredVendors(vendorsData);
+        }
+
         setLoading(false);
       } catch (err) {
         console.error("Error fetching vendors:", err);
@@ -46,7 +58,7 @@ const Vendor = ({ route }) => {
     };
 
     fetchVendors();
-  }, [vendorType]);
+  }, [vendorType, subcategory]);
 
   const formatImageUrl = (url) => {
     if (!url) return null;
@@ -83,13 +95,17 @@ const Vendor = ({ route }) => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>{vendorType}</Text>
+      <Text style={styles.header}>
+        {subcategory ? `${vendorType} - ${subcategory}` : vendorType}
+      </Text>
 
-      {vendors.length === 0 ? (
+      {filteredVendors.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="alert-circle-outline" size={50} color="#999" />
           <Text style={styles.emptyText}>
-            No suppliers found for this category
+            {subcategory
+              ? `No suppliers found for ${subcategory}`
+              : "No suppliers found for this category"}
           </Text>
           <Text style={styles.emptySubtext}>
             Please check back later or try another category
@@ -97,7 +113,7 @@ const Vendor = ({ route }) => {
         </View>
       ) : (
         <View style={styles.vendorsContainer}>
-          {vendors.map((item) => (
+          {filteredVendors.map((item) => (
             <View
               key={item._id || Math.random().toString()}
               style={styles.vendorCard}
@@ -123,7 +139,7 @@ const Vendor = ({ route }) => {
                   {item.ownerName || "Owner name not available"}
                 </Text>
                 <Text style={styles.ownerName}>
-                  {item.location || "Owner name not available"}
+                  {item.location || "Location not available"}
                 </Text>
                 <View style={styles.detailRow}>
                   <Ionicons name="location-outline" size={16} color="#666" />
@@ -137,6 +153,18 @@ const Vendor = ({ route }) => {
                   <View style={styles.detailRow}>
                     <Ionicons name="call-outline" size={16} color="#666" />
                     <Text style={styles.detailText}>{item.phone}</Text>
+                  </View>
+                )}
+                {item.subcategories && (
+                  <View style={styles.subcategoriesContainer}>
+                    <Text style={styles.subcategoriesTitle}>Services:</Text>
+                    <View style={styles.subcategories}>
+                      {item.subcategories.map((subcat, index) => (
+                        <Text key={index} style={styles.subcategory}>
+                          {subcat}
+                        </Text>
+                      ))}
+                    </View>
                   </View>
                 )}
               </View>
@@ -261,6 +289,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     maxWidth: "80%",
+  },
+  subcategoriesContainer: {
+    marginTop: 10,
+    width: "100%",
+  },
+  subcategoriesTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 5,
+    textAlign: "center",
+  },
+  subcategories: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  subcategory: {
+    fontSize: 12,
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    margin: 3,
+    color: "#555",
   },
 });
 
