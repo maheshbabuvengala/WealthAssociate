@@ -19,14 +19,14 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
-import Sand from "../../assets/sand.jpeg"
+import Sand from "../../assets/sand.jpeg";
 
 const vendorSubcategories = {
   "Building Materials Suppliers": [
     {
       id: 1,
       name: "Sand and Aggregates",
-      image:Sand,
+      image: Sand,
       description:
         "Construction-grade sand, gravel, crushed stone, and other aggregates",
     },
@@ -527,7 +527,11 @@ const SuppliersVendors = () => {
                   onPress={() => handleSubcategoryPress(vendor.name, item)}
                 >
                   <Image
-                    source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                    source={
+                      typeof item.image === "string"
+                        ? { uri: item.image }
+                        : item.image
+                    }
                     style={styles.subcategoryImage}
                     resizeMode="cover"
                   />
