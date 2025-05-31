@@ -35,13 +35,14 @@ import steel from "../../assets/steel.jpg";
 import precast from "../../assets/precast.jpg";
 import prefab from "../../assets/prefab.jpg";
 import modular from "../../assets/modular.jpg";
+// import Sand from "../../assets/Sand.jpeg"
 
 const vendorSubcategories = {
   "Building Materials Suppliers": [
     {
       id: 1,
       name: "Sand and Aggregates",
-      image: Sand,
+      image: modular,
       description:
         "Construction-grade sand, gravel, crushed stone, and other aggregates",
     },
@@ -302,7 +303,7 @@ const vendorSubcategories = {
     {
       id: 3,
       name: "On-Site Storage",
-      image:storage,
+      image: storage,
       description: "Temporary storage solutions for construction sites",
     },
     {
@@ -335,7 +336,7 @@ const vendorSubcategories = {
     {
       id: 4,
       name: "Decorative Materials",
-      image:decorative,
+      image: decorative,
       description:
         "Wallpapers, decorative panels, and interior finishing materials",
     },
@@ -526,7 +527,11 @@ const SuppliersVendors = () => {
                   onPress={() => handleSubcategoryPress(vendor.name, item)}
                 >
                   <Image
-                    source={{ uri: item.image }}
+                    source={
+                      typeof item.image === "string"
+                        ? { uri: item.image }
+                        : item.image
+                    }
                     style={styles.subcategoryImage}
                     resizeMode="cover"
                   />
