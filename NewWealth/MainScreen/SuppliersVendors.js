@@ -49,6 +49,7 @@ import waste from "../../assets/waste.jpg";
 import precast from "../../assets/precast.jpg";
 import prefab from "../../assets/prefab.jpg";
 import modular from "../../assets/modular.jpg";
+// import Sand from "../../assets/Sand.jpeg"
 
 const vendorSubcategories = {
   "Building Materials Suppliers": [
@@ -316,7 +317,7 @@ const vendorSubcategories = {
     {
       id: 3,
       name: "On-Site Storage",
-      image:storage,
+      image: storage,
       description: "Temporary storage solutions for construction sites",
     },
     {
@@ -349,7 +350,7 @@ const vendorSubcategories = {
     {
       id: 4,
       name: "Decorative Materials",
-      image:decorative,
+      image: decorative,
       description:
         "Wallpapers, decorative panels, and interior finishing materials",
     },

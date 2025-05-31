@@ -19,7 +19,7 @@ import { useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
-import * as ImagePicker from "expo-image-picker";
+// import * as ImagePicker from "expo-image-picker";
 
 const { width } = Dimensions.get("window");
 
