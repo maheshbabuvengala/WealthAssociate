@@ -17,6 +17,18 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import paint1 from "../../assets/paint1.jpg";
+import paint2 from "../../assets/paint2.jpg";
+import paint3 from "../../assets/paint3.jpg";
+import paint4 from "../../assets/paint4.jpg";
+import Hvac1 from "../../assets/Hvac1.jpg";
+import Hvac2 from "../../assets/Hvac2.jpg";
+import Hvac3 from "../../assets/Hvac3.jpg";
+import Hvac4 from "../../assets/Hvac4.jpg";
+import Land1 from "../../assets/Land1.jpg";
+import Land2 from "../../assets/Land2.jpg";
+import Land3 from "../../assets/Land3.jpg";
+import Land4 from "../../assets/Land4.jpg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 
@@ -100,7 +112,7 @@ const vendorSubcategories = {
       id: 1,
       name: "Pipes and Fittings",
       image:
-        "https://images.pexels.com/photos/4239146/pexels-photo-4239146.jpeg?auto=compress&cs=tinysrgb&w=600",
+        "https://images.pexels.com/photos/5490778/pexels-photo-5490778.jpeg?auto=compress&cs=tinysrgb&w=600",
       description: "PVC, CPVC, copper, and other plumbing pipes and fittings",
     },
     {
@@ -129,30 +141,26 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Interior Paint",
-      image:
-        "https://images.pexels.com/photos/5490778/pexels-photo-5490778.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: paint1,
       description: "Wall paints, primers, and interior finishes",
     },
     {
       id: 2,
       name: "Exterior Paint",
-      image:
-        "https://images.pexels.com/photos/186078/pexels-photo-186078.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: paint2,
       description:
         "Weather-resistant paints and coatings for exterior surfaces",
     },
     {
       id: 3,
       name: "Varnishes and Wood Finishes",
-      image:
-        "https://images.pexels.com/photos/279444/pexels-photo-279444.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: paint3,
       description: "Stains, varnishes, and protective coatings for wood",
     },
     {
       id: 4,
       name: "Painting Tools",
-      image:
-        "https://images.pexels.com/photos/8092505/pexels-photo-8092505.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: paint4,
       description: "Brushes, rollers, sprayers, and other painting equipment",
     },
   ],
@@ -160,30 +168,26 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Air Conditioners",
-      image:
-        "https://images.pexels.com/photos/4393549/pexels-photo-4393549.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: Hvac1,
       description:
         "Split ACs, window ACs, and central air conditioning systems",
     },
     {
       id: 2,
       name: "Heating Systems",
-      image:
-        "https://images.pexels.com/photos/9806250/pexels-photo-9806250.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: Hvac2,
       description: "Furnaces, boilers, and other heating equipment",
     },
     {
       id: 3,
       name: "Ventilation Equipment",
-      image:
-        "https://images.pexels.com/photos/6368836/pexels-photo-6368836.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: Hvac3,
       description: "Fans, blowers, and air handling units",
     },
     {
       id: 4,
       name: "Ductwork and Vents",
-      image:
-        "https://images.pexels.com/photos/10299440/pexels-photo-10299440.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: Hvac4,
       description: "Ducts, vents, grilles, and diffusers for HVAC systems",
     },
   ],
@@ -191,29 +195,25 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Plants and Trees",
-      image:
-        "https://images.pexels.com/photos/1028599/pexels-photo-1028599.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: Land1,
       description: "Ornamental plants, trees, shrubs, and ground covers",
     },
     {
       id: 2,
       name: "Soil and Mulch",
-      image:
-        "https://images.pexels.com/photos/5748798/pexels-photo-5748798.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: Land2,
       description: "Topsoil, potting soil, compost, and mulch",
     },
     {
       id: 3,
       name: "Irrigation Systems",
-      image:
-        "https://images.pexels.com/photos/2566940/pexels-photo-2566940.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: Land3,
       description: "Sprinklers, drip irrigation, and water management systems",
     },
     {
       id: 4,
       name: "Outdoor Hardscaping",
-      image:
-        "https://images.pexels.com/photos/11754348/pexels-photo-11754348.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: Land4,
       description:
         "Pavers, stones, retaining walls, and other hardscape materials",
     },
@@ -527,7 +527,11 @@ const SuppliersVendors = () => {
                   onPress={() => handleSubcategoryPress(vendor.name, item)}
                 >
                   <Image
-                    source={{ uri: item.image }}
+                    source={
+                      typeof item.image === "string"
+                        ? { uri: item.image }
+                        : item.image
+                    }
                     style={styles.subcategoryImage}
                     resizeMode="cover"
                   />
@@ -572,6 +576,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
+
   addButtonBox: {
     flexDirection: "row",
     alignItems: "center",

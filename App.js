@@ -66,7 +66,7 @@ import NriProfile from "./NewWealth/UsersProfiles/NriProfile";
 import Addexpert from "./NewWealth/ExpertPanel/AddExpert";
 import SuppliersVendors from "./NewWealth/MainScreen/SuppliersVendors";
 import AddSupplier from "./NewWealth/MainScreen/AddSupplier";
-import vendor from "./NewWealth/MainScreen/Vendor";
+import vendor from "./NewWealth/MainScreen/SuppliersVendors";
 import SkilledResources from "./NewWealth/MainScreen/SkilledResource";
 import SkilledWorkersList from "./NewWealth/MainScreen/Skilllist";
 import ViewAllRequestedProperties from "./NewWealth/Properties/AllrequestedProperties";
