@@ -2,6 +2,7 @@ import React from "react";
 import { View, StyleSheet, ScrollView, Text } from "react-native";
 import CoreClients from "./CoreClients";
 import CoreProjects from "./CoreProjects";
+import ValueProjects from "./ValueProjects";
 
 const ClientsAndProjectsScreen = () => {
   return (
@@ -15,6 +16,11 @@ const ClientsAndProjectsScreen = () => {
         <Text style={styles.sectionTitle}>Core Projects</Text>
         <CoreProjects />
       </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Value Projects</Text>
+        <ValueProjects />
+      </View>
     </ScrollView>
   );
 };
@@ -23,6 +29,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f1f1f1",
+    paddingBottom:"30%",
   },
   section: {
     marginBottom: 20,

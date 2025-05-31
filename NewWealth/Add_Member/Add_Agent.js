@@ -46,6 +46,7 @@ const Add_Agent = ({ closeModal }) => {
   const [expertiseOptions, setExpertiseOptions] = useState([]);
   const [Details, setDetails] = useState({});
   const [userType, setUserType] = useState("");
+  const [valueMember, setValueMember] = useState("no"); // Default to "no"
 
   const mobileRef = useRef(null);
   const emailRef = useRef(null);
@@ -59,13 +60,13 @@ const Add_Agent = ({ closeModal }) => {
       const storedUserType = await AsyncStorage.getItem("userType");
       console.log("Stored userType:", storedUserType); // Debug log
       setUserType(storedUserType);
-      
+
       if (storedUserType) {
         console.log("Fetching details for userType:", storedUserType); // Debug log
         await getDetails();
       }
     };
-    
+
     fetchData();
   }, []);
 
@@ -155,6 +156,11 @@ const Add_Agent = ({ closeModal }) => {
 
       const newDetails = await response.json();
       setDetails(newDetails);
+
+      // Set valueMember from the details if it exists
+      if (newDetails.valuemember) {
+        setValueMember(newDetails.valuemember);
+      }
     } catch (error) {
       console.error("Error fetching user details:", error);
       // Handle the error appropriately
@@ -220,6 +226,7 @@ const Add_Agent = ({ closeModal }) => {
       Password: "Wealth",
       MyRefferalCode: referenceId,
       AgentType: "WealthAssociate",
+      valuemember: valueMember, 
     };
 
     try {

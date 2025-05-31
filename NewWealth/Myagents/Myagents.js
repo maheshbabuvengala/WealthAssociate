@@ -27,8 +27,17 @@ export default function ViewAgents() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Check for both userType and userTypevalue
         const storedUserType = await AsyncStorage.getItem("userType");
-        setUserType(storedUserType || "");
+        const storedUserTypeValue = await AsyncStorage.getItem("userTypevalue");
+
+        // Determine which user type to use
+        const currentUserType =
+          storedUserTypeValue === "ValueAssociate"
+            ? "ValueAssociate"
+            : storedUserType || "";
+
+        setUserType(currentUserType);
 
         const token = await AsyncStorage.getItem("authToken");
         if (!token) {
@@ -38,7 +47,10 @@ export default function ViewAgents() {
         }
 
         let endpoint = "";
-        switch (storedUserType) {
+        let body = null;
+        let method = "GET";
+
+        switch (currentUserType) {
           case "CoreMember":
             endpoint = `${API_URL}/core/myagents`;
             break;
@@ -46,22 +58,48 @@ export default function ViewAgents() {
           case "ReferralAssociate":
             endpoint = `${API_URL}/agent/myAgents`;
             break;
+          case "ValueAssociate":
+            // For ValueAssociate, we need to send the agent's referral code
+            const userDetails = await AsyncStorage.getItem("userDetails");
+            if (userDetails) {
+              const parsedDetails = JSON.parse(userDetails);
+              if (parsedDetails.MyRefferalCode) {
+                endpoint = `${API_URL}/agent/valueagents`;
+                method = "POST";
+                body = JSON.stringify({
+                  referralCode: parsedDetails.MyRefferalCode,
+                });
+              }
+            }
+            break;
           default:
             setLoading(false);
             return;
         }
 
+        const headers = {
+          token: `${token}` || "",
+        };
+
+        if (method === "POST") {
+          headers["Content-Type"] = "application/json";
+        }
+
         const response = await fetch(endpoint, {
-          method: "GET",
-          headers: {
-            token: `${token}` || "",
-          },
+          method,
+          headers,
+          body,
         });
 
         const data = await response.json();
 
-        if (data && Array.isArray(data.referredAgents)) {
-          setAgents(data.referredAgents);
+        if (
+          data &&
+          Array.isArray(data.referredAgents || data.valueAgents || data)
+        ) {
+          // Handle different response structures
+          const agentsData = data.referredAgents || data.valueAgents || data;
+          setAgents(agentsData);
         } else {
           setAgents([]);
         }
@@ -172,12 +210,14 @@ export default function ViewAgents() {
                     </View>
                   )}
                 </View>
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => handleDeleteAgent(agent._id)}
-                >
-                  <Text style={styles.deleteButtonText}>Delete</Text>
-                </TouchableOpacity>
+                {userType !== "ValueAssociate" && (
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => handleDeleteAgent(agent._id)}
+                  >
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </View>
@@ -185,7 +225,8 @@ export default function ViewAgents() {
           <Text style={styles.noAgentsText}>
             {userType === "CoreMember" ||
             userType === "WealthAssociate" ||
-            userType === "ReferralAssociate"
+            userType === "ReferralAssociate" ||
+            userType === "ValueAssociate"
               ? "No agents found."
               : "This feature is only available for Core Members and Associates."}
           </Text>

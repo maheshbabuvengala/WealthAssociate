@@ -19,6 +19,7 @@ import { useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
+import * as ImagePicker from "expo-image-picker";
 
 const { width } = Dimensions.get("window");
 
@@ -126,7 +127,7 @@ const RegisterValue = ({ closeModal }) => {
       const response = await fetch(`${API_URL}/core/getcore`, {
         method: "GET",
         headers: {
-          token: `${token}` || "",
+          token: ` ${token}` || "",
         },
       });
       const newDetails = await response.json();
@@ -146,63 +147,20 @@ const RegisterValue = ({ closeModal }) => {
     }
   }, [Details]);
 
-  // Logo handling function
-  const selectLogo = async () => {
-    try {
-      if (Platform.OS === "web") {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "image/*";
-        input.onchange = (event) => {
-          const file = event.target.files[0];
-          if (file) {
-            setLogoFile(file);
-            setLogo(URL.createObjectURL(file));
-          }
-        };
-        input.click();
-      } else {
-        const permissionResult =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-        if (permissionResult.status !== "granted") {
-          alert("Permission is required to upload logo.");
-          return;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 1,
-        });
-
-        if (!result.canceled && result.assets && result.assets.length > 0) {
-          setLogo(result.assets[0].uri);
-        }
-      }
-    } catch (error) {
-      console.error("Error selecting logo:", error);
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    if (!fullname) newErrors.fullname = "Full name is required";
-    if (!mobile) newErrors.mobile = "Mobile number is required";
-    if (!email) newErrors.email = "Email is required";
-    if (!companyName) newErrors.companyName = "Company name is required";
-    if (!district) newErrors.district = "District is required";
-    if (!constituency) newErrors.constituency = "Constituency is required";
-    if (!expertise) newErrors.expertise = "Expertise is required";
-    if (!experience) newErrors.experience = "Experience is required";
-    if (!location) newErrors.location = "Location is required";
-    if (!logo) newErrors.logo = "Company logo is required";
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleRegister = async () => {
-    if (!validateForm()) return;
+    if (
+      !fullname ||
+      !mobile ||
+      !email ||
+      !district ||
+      !constituency ||
+      !location ||
+      !expertise ||
+      !experience
+    ) {
+      Alert.alert("Error", "Please fill in all required fields.");
+      return;
+    }
 
     setIsLoading(true);
 
@@ -219,35 +177,20 @@ const RegisterValue = ({ closeModal }) => {
 
     const referenceId = `${selectedDistrict.parliamentCode}${selectedAssembly.code}`;
 
-    const formData = new FormData();
-    formData.append("FullName", fullname);
-    formData.append("MobileNumber", mobile);
-    formData.append("Email", email);
-    formData.append("CompanyName", companyName);
-    formData.append("District", district);
-    formData.append("Contituency", constituency);
-    formData.append("Locations", location);
-    formData.append("Expertise", expertise);
-    formData.append("Experience", experience);
-    formData.append("ReferredBy", referralCode || "WA0000000001");
-    formData.append("Password", "Wealth");
-    formData.append("MyRefferalCode", referenceId);
-    formData.append("AgentType", "ValueAssociate");
-
-    // Append logo
-    if (Platform.OS === "web") {
-      if (logoFile) {
-        formData.append("logo", logoFile);
-      }
-    } else {
-      if (logo) {
-        formData.append("logo", {
-          uri: logo,
-          name: "logo.jpg",
-          type: "image/jpeg",
-        });
-      }
-    }
+    const userData = {
+      FullName: fullname,
+      MobileNumber: mobile,
+      Email: email,
+      District: district,
+      Contituency: constituency,
+      Locations: location,
+      Expertise: expertise,
+      Experience: experience,
+      ReferredBy: referralCode || "WA0000000001",
+      Password: "Wealth",
+      MyRefferalCode: referenceId,
+      AgentType: "ValueAssociate",
+    };
 
     try {
       const response = await fetch(`${API_URL}/agent/AgentRegister`, {
@@ -257,19 +200,38 @@ const RegisterValue = ({ closeModal }) => {
 
       setResponseStatus(response.status);
 
-      if (response.ok) {
-        const result = await response.json();
-        Alert.alert("Success", "Registration successful!");
-        closeModal();
-      } else if (response.status === 400) {
-        const errorData = await response.json();
-        Alert.alert("Error", "Mobile number already exists.");
-      } else {
-        const errorData = await response.json();
-        Alert.alert("Error", errorData.message || "Something went wrong.");
+      const responseText = await response.text();
+
+      try {
+        // Try to parse it as JSON only if there's content
+        const result = responseText ? JSON.parse(responseText) : {};
+
+        if (response.ok) {
+          Alert.alert("Success", "Registration successful!");
+          navigation.goBack();
+        } else if (response.status === 400) {
+          Alert.alert(
+            "Error",
+            result.message || "Mobile number already exists."
+          );
+        } else {
+          Alert.alert("Error", result.message || "Something went wrong.");
+        }
+      } catch (parseError) {
+        console.error("Error parsing response:", parseError);
+        // Handle non-JSON responses here
+        if (response.ok) {
+          Alert.alert("Success", "Registration successful (non-JSON response)");
+          closeModal();
+        } else {
+          Alert.alert(
+            "Error",
+            responseText || "Server returned an invalid response"
+          );
+        }
       }
     } catch (error) {
-      console.error("Error during registration:", error);
+      console.error("Network error:", error);
       Alert.alert(
         "Error",
         "Failed to connect to the server. Please try again later."
@@ -299,30 +261,7 @@ const RegisterValue = ({ closeModal }) => {
             )}
 
             <View style={styles.webInputWrapper}>
-              {/* Logo Upload Section */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Company Logo</Text>
-                  <TouchableOpacity
-                    style={styles.logoUploadContainer}
-                    onPress={selectLogo}
-                  >
-                    {logo ? (
-                      <Image source={{ uri: logo }} style={styles.logoImage} />
-                    ) : (
-                      <View style={styles.logoPlaceholder}>
-                        <MaterialIcons name="add-a-photo" size={24} color="#555" />
-                        <Text style={styles.uploadText}>Upload Logo</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                  {errors.logo && (
-                    <Text style={styles.errorText}>{errors.logo}</Text>
-                  )}
-                </View>
-              </View>
-
-              {/* Row 1 - Company Name first */}
+              {/* Row 1 */}
               <View style={styles.inputRow}>
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Company Name</Text>

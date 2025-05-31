@@ -184,6 +184,7 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
         "userType",
         "userData",
         "referredAddedByInfo",
+        "userTypevalue",
       ]);
 
       // Clear the in-memory header cache
