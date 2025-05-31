@@ -19,19 +19,19 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
-import Sand_Aggregates from "../../assets/Sand_Aggregates.jpg"
-import cement from "../../assets/cement.jpg"
-import steel from "../../assets/steel.jpg"
-import bricks from "../../assets/bricks.jpg"
-import timber from "../../assets/timber.jpg"
-import heavy from "../../assets/heavy.jpg"
-import power from "../../assets/power.png"
-import hand from "../../assets/hand.png"
-import measure from "../../assets/measure.jpg"
-import pipes from "../../assets/pipes.png"
-import wire from "../../assets/wire.jpg"
-import outlet from "../../assets/outlet.jpg"
-import sanitary from "../../assets/sanitary.jpeg"
+import Sand_Aggregates from "../../assets/Sand_Aggregates.jpg";
+import cement from "../../assets/cement.jpg";
+import steel from "../../assets/steel.jpeg";
+import bricks from "../../assets/bricks.jpg";
+import timber from "../../assets/timber.jpg";
+import heavy from "../../assets/heavy.jpg";
+import power from "../../assets/power.png";
+import hand from "../../assets/hand.png";
+import measure from "../../assets/measure.jpg";
+import pipes from "../../assets/pipes.png";
+import wire from "../../assets/wire.jpg";
+import outlet from "../../assets/outlet.jpg";
+import sanitary from "../../assets/sanitary.jpeg";
 
 import marblebased from "../../assets/marblebased.jpg";
 import decorative from "../../assets/decorative.jpg";
@@ -56,39 +56,35 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Sand and Aggregates",
-      image:Sand_Aggregates,
+      image: Sand_Aggregates,
       description:
         "Construction-grade sand, gravel, crushed stone, and other aggregates",
     },
     {
       id: 2,
       name: "Cement and Concrete",
-      image:
-        cement,
+      image: cement,
       description:
         "Various types of cement, ready-mix concrete, and concrete additives",
     },
     {
       id: 3,
       name: "Structural Steel",
-      image:
-       bricks,
+      image: steel,
       description:
         "Beams, columns, rebars, and other structural steel components",
     },
     {
       id: 4,
       name: "Bricks and Blocks",
-      image:
-      bricks,
+      image: bricks,
       description:
         "Clay bricks, concrete blocks, AAC blocks, and other masonry units",
     },
     {
       id: 5,
       name: "Timber and Wood Products",
-      image:
-        timber,
+      image: timber,
       description: "Lumber, plywood, veneers, and engineered wood products",
     },
   ],
@@ -96,31 +92,27 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Heavy Machinery",
-      image:
-      heavy,
+      image: heavy,
       description:
         "Excavators, bulldozers, cranes, and other heavy construction equipment",
     },
     {
       id: 2,
       name: "Power Tools",
-      image:
-        power,
+      image: power,
       description:
         "Drills, saws, grinders, and other power tools for construction",
     },
     {
       id: 3,
       name: "Hand Tools",
-      image:
-        hand,
+      image: hand,
       description: "Hammers, wrenches, screwdrivers, and other hand tools",
     },
     {
       id: 4,
       name: "Measuring and Layout Tools",
-      image:
-      measure,
+      image: measure,
       description:
         "Levels, tape measures, laser measuring devices, and surveying equipment",
     },
@@ -129,29 +121,25 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Pipes and Fittings",
-      image:
-      pipes,
+      image: pipes,
       description: "PVC, CPVC, copper, and other plumbing pipes and fittings",
     },
     {
       id: 2,
       name: "Electrical Wiring",
-      image:
-        wire,
+      image: wire,
       description: "Cables, wires, and conductors for electrical installations",
     },
     {
       id: 3,
       name: "Switches and Outlets",
-      image:
-        outlet,
+      image: outlet,
       description: "Electrical switches, outlets, and other control devices",
     },
     {
       id: 4,
       name: "Sanitary Fixtures",
-      image:
-        sanitary,
+      image: sanitary,
       description: "Toilets, sinks, faucets, and other bathroom fixtures",
     },
   ],
@@ -541,7 +529,11 @@ const SuppliersVendors = () => {
                   onPress={() => handleSubcategoryPress(vendor.name, item)}
                 >
                   <Image
-                    source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+                    source={
+                      typeof item.image === "string"
+                        ? { uri: item.image }
+                        : item.image
+                    }
                     style={styles.subcategoryImage}
                     resizeMode="cover"
                   />
