@@ -31,46 +31,72 @@ import Land3 from "../../assets/Land3.jpg";
 import Land4 from "../../assets/Land4.jpg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
+import Sand_Aggregates from "../../assets/Sand_Aggregates.jpg";
+import cement from "../../assets/cement.jpg";
+import steel from "../../assets/steel.jpg";
+import bricks from "../../assets/bricks.jpg";
+import timber from "../../assets/timber.jpg";
+import heavy from "../../assets/heavy.jpg";
+import power from "../../assets/power.png";
+import hand from "../../assets/hand.png";
+import measure from "../../assets/measure.jpg";
+import pipes from "../../assets/pipes.png";
+import wire from "../../assets/wire.jpg";
+import outlet from "../../assets/outlet.jpg";
+import sanitary from "../../assets/sanitary.jpeg";
+
+import marblebased from "../../assets/marblebased.jpg";
+import decorative from "../../assets/decorative.jpg";
+import door from "../../assets/door.jpg";
+import delivery from "../../assets/delivery.jpg";
+import interior from "../../assets/interior.jpg";
+import crane from "../../assets/crane.jpg";
+import hazaradous from "../../assets/hazaradous.jpg";
+import heavyequipment from "../../assets/heavyequipment.jpg";
+import recycle from "../../assets/recycle.jpg";
+import siteclean from "../../assets/siteclean.jpg";
+import storage from "../../assets/storage.jpg";
+import waste from "../../assets/waste.jpg";
+// import steelitem from "../../assets/steel.jpg";
+import precast from "../../assets/precast.jpg";
+import prefab from "../../assets/prefab.jpg";
+import modular from "../../assets/modular.jpg";
+// import Sand from "../../assets/Sand.jpeg"
 
 const vendorSubcategories = {
   "Building Materials Suppliers": [
     {
       id: 1,
       name: "Sand and Aggregates",
-      image:
-        "https://images.pexels.com/photos/262367/pexels-photo-262367.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: Sand_Aggregates,
       description:
         "Construction-grade sand, gravel, crushed stone, and other aggregates",
     },
     {
       id: 2,
       name: "Cement and Concrete",
-      image:
-        "https://images.pexels.com/photos/2219024/pexels-photo-2219024.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: cement,
       description:
         "Various types of cement, ready-mix concrete, and concrete additives",
     },
     {
       id: 3,
       name: "Structural Steel",
-      image:
-        "https://images.pexels.com/photos/2760289/pexels-photo-2760289.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: bricks,
       description:
         "Beams, columns, rebars, and other structural steel components",
     },
     {
       id: 4,
       name: "Bricks and Blocks",
-      image:
-        "https://images.pexels.com/photos/207142/pexels-photo-207142.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: bricks,
       description:
         "Clay bricks, concrete blocks, AAC blocks, and other masonry units",
     },
     {
       id: 5,
       name: "Timber and Wood Products",
-      image:
-        "https://images.pexels.com/photos/129733/pexels-photo-129733.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: timber,
       description: "Lumber, plywood, veneers, and engineered wood products",
     },
   ],
@@ -78,31 +104,27 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Heavy Machinery",
-      image:
-        "https://images.pexels.com/photos/2058911/pexels-photo-2058911.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: heavy,
       description:
         "Excavators, bulldozers, cranes, and other heavy construction equipment",
     },
     {
       id: 2,
       name: "Power Tools",
-      image:
-        "https://images.pexels.com/photos/6647217/pexels-photo-6647217.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: power,
       description:
         "Drills, saws, grinders, and other power tools for construction",
     },
     {
       id: 3,
       name: "Hand Tools",
-      image:
-        "https://images.pexels.com/photos/175039/pexels-photo-175039.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: hand,
       description: "Hammers, wrenches, screwdrivers, and other hand tools",
     },
     {
       id: 4,
       name: "Measuring and Layout Tools",
-      image:
-        "https://images.pexels.com/photos/834892/pexels-photo-834892.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: measure,
       description:
         "Levels, tape measures, laser measuring devices, and surveying equipment",
     },
@@ -111,29 +133,25 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Pipes and Fittings",
-      image:
-        "https://images.pexels.com/photos/5490778/pexels-photo-5490778.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: pipes,
       description: "PVC, CPVC, copper, and other plumbing pipes and fittings",
     },
     {
       id: 2,
       name: "Electrical Wiring",
-      image:
-        "https://images.pexels.com/photos/1109541/pexels-photo-1109541.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: wire,
       description: "Cables, wires, and conductors for electrical installations",
     },
     {
       id: 3,
       name: "Switches and Outlets",
-      image:
-        "https://images.pexels.com/photos/8005397/pexels-photo-8005397.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: outlet,
       description: "Electrical switches, outlets, and other control devices",
     },
     {
       id: 4,
       name: "Sanitary Fixtures",
-      image:
-        "https://images.pexels.com/photos/7935651/pexels-photo-7935651.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: sanitary,
       description: "Toilets, sinks, faucets, and other bathroom fixtures",
     },
   ],
@@ -222,30 +240,26 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Prefab Wall Panels",
-      image:
-        "https://images.pexels.com/photos/302769/pexels-photo-302769.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: prefab,
       description: "Factory-made wall panels and partitions",
     },
     {
       id: 2,
       name: "Modular Units",
-      image:
-        "https://images.pexels.com/photos/259957/pexels-photo-259957.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: modular,
       description: "Prefabricated modular building units and components",
     },
     {
       id: 3,
       name: "Precast Concrete",
-      image:
-        "https://images.pexels.com/photos/2422588/pexels-photo-2422588.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: precast,
       description:
         "Precast concrete elements like beams, slabs, and staircases",
     },
     {
       id: 4,
       name: "Steel Structures",
-      image:
-        "https://images.pexels.com/photos/2884869/pexels-photo-2884869.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: steel,
       description: "Pre-engineered steel buildings and components",
     },
   ],
@@ -253,29 +267,25 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Waste Containers",
-      image:
-        "https://images.pexels.com/photos/3962883/pexels-photo-3962883.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: waste,
       description: "Dumpsters, bins, and containers for construction waste",
     },
     {
       id: 2,
       name: "Recycling Services",
-      image:
-        "https://images.pexels.com/photos/802221/pexels-photo-802221.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: recycle,
       description: "Construction material recycling and recovery services",
     },
     {
       id: 3,
       name: "Hazardous Waste Handling",
-      image:
-        "https://images.pexels.com/photos/4239013/pexels-photo-4239013.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: hazaradous,
       description: "Safe disposal of hazardous construction materials",
     },
     {
       id: 4,
       name: "Site Cleanup",
-      image:
-        "https://images.pexels.com/photos/2219024/pexels-photo-2219024.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: siteclean,
       description: "Post-construction cleanup and waste removal services",
     },
   ],
@@ -283,29 +293,25 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Material Delivery",
-      image:
-        "https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: delivery,
       description: "Transportation and delivery of construction materials",
     },
     {
       id: 2,
       name: "Heavy Equipment Transport",
-      image:
-        "https://images.pexels.com/photos/6169673/pexels-photo-6169673.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: heavyequipment,
       description: "Moving and transporting heavy construction equipment",
     },
     {
       id: 3,
       name: "On-Site Storage",
-      image:
-        "https://images.pexels.com/photos/6169668/pexels-photo-6169668.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: storage,
       description: "Temporary storage solutions for construction sites",
     },
     {
       id: 4,
       name: "Crane and Lifting Services",
-      image:
-        "https://images.pexels.com/photos/261858/pexels-photo-261858.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: crane,
       description: "Crane rental and lifting services for construction",
     },
   ],
@@ -313,30 +319,26 @@ const vendorSubcategories = {
     {
       id: 1,
       name: "Flooring Materials",
-      image:
-        "https://images.pexels.com/photos/531758/pexels-photo-531758.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: marblebased,
       description: "Tiles, hardwood, laminates, and other flooring options",
     },
     {
       id: 2,
       name: "Windows and Doors",
-      image:
-        "https://images.pexels.com/photos/276583/pexels-photo-276583.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: door,
       description: "Custom windows, doors, and related architectural elements",
     },
     {
       id: 3,
       name: "Interior Fixtures",
-      image:
-        "https://images.pexels.com/photos/1457842/pexels-photo-1457842.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: interior,
       description:
         "Light fixtures, ceiling details, and interior design elements",
     },
     {
       id: 4,
       name: "Decorative Materials",
-      image:
-        "https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image: decorative,
       description:
         "Wallpapers, decorative panels, and interior finishing materials",
     },
