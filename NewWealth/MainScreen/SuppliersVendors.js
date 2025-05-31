@@ -19,14 +19,27 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
+import Sand_Aggregates from "../../assets/Sand_Aggregates.jpg"
+import cement from "../../assets/cement.jpg"
+import steel from "../../assets/steel.jpg"
+import bricks from "../../assets/bricks.jpg"
+import timber from "../../assets/timber.jpg"
+import heavy from "../../assets/heavy.jpg"
+import power from "../../assets/power.png"
+import hand from "../../assets/hand.png"
+import measure from "../../assets/measure.jpg"
+import pipes from "../../assets/pipes.png"
+import wire from "../../assets/wire.jpg"
+import outlet from "../../assets/outlet.jpg"
+import sanitary from "../../assets/sanitary.jpeg"
+
 
 const vendorSubcategories = {
   "Building Materials Suppliers": [
     {
       id: 1,
       name: "Sand and Aggregates",
-      image:
-        "https://images.pexels.com/photos/262367/pexels-photo-262367.jpeg?auto=compress&cs=tinysrgb&w=600",
+      image:Sand_Aggregates,
       description:
         "Construction-grade sand, gravel, crushed stone, and other aggregates",
     },
@@ -34,7 +47,7 @@ const vendorSubcategories = {
       id: 2,
       name: "Cement and Concrete",
       image:
-        "https://images.pexels.com/photos/2219024/pexels-photo-2219024.jpeg?auto=compress&cs=tinysrgb&w=600",
+        cement,
       description:
         "Various types of cement, ready-mix concrete, and concrete additives",
     },
@@ -42,7 +55,7 @@ const vendorSubcategories = {
       id: 3,
       name: "Structural Steel",
       image:
-        "https://images.pexels.com/photos/2760289/pexels-photo-2760289.jpeg?auto=compress&cs=tinysrgb&w=600",
+        steel,
       description:
         "Beams, columns, rebars, and other structural steel components",
     },
@@ -50,7 +63,7 @@ const vendorSubcategories = {
       id: 4,
       name: "Bricks and Blocks",
       image:
-        "https://images.pexels.com/photos/207142/pexels-photo-207142.jpeg?auto=compress&cs=tinysrgb&w=600",
+      bricks,
       description:
         "Clay bricks, concrete blocks, AAC blocks, and other masonry units",
     },
@@ -58,7 +71,7 @@ const vendorSubcategories = {
       id: 5,
       name: "Timber and Wood Products",
       image:
-        "https://images.pexels.com/photos/129733/pexels-photo-129733.jpeg?auto=compress&cs=tinysrgb&w=600",
+        timber,
       description: "Lumber, plywood, veneers, and engineered wood products",
     },
   ],
@@ -67,7 +80,7 @@ const vendorSubcategories = {
       id: 1,
       name: "Heavy Machinery",
       image:
-        "https://images.pexels.com/photos/2058911/pexels-photo-2058911.jpeg?auto=compress&cs=tinysrgb&w=600",
+      heavy,
       description:
         "Excavators, bulldozers, cranes, and other heavy construction equipment",
     },
@@ -75,7 +88,7 @@ const vendorSubcategories = {
       id: 2,
       name: "Power Tools",
       image:
-        "https://images.pexels.com/photos/6647217/pexels-photo-6647217.jpeg?auto=compress&cs=tinysrgb&w=600",
+        power,
       description:
         "Drills, saws, grinders, and other power tools for construction",
     },
@@ -83,14 +96,14 @@ const vendorSubcategories = {
       id: 3,
       name: "Hand Tools",
       image:
-        "https://images.pexels.com/photos/175039/pexels-photo-175039.jpeg?auto=compress&cs=tinysrgb&w=600",
+        hand,
       description: "Hammers, wrenches, screwdrivers, and other hand tools",
     },
     {
       id: 4,
       name: "Measuring and Layout Tools",
       image:
-        "https://images.pexels.com/photos/834892/pexels-photo-834892.jpeg?auto=compress&cs=tinysrgb&w=600",
+      measure,
       description:
         "Levels, tape measures, laser measuring devices, and surveying equipment",
     },
@@ -100,28 +113,28 @@ const vendorSubcategories = {
       id: 1,
       name: "Pipes and Fittings",
       image:
-        "https://images.pexels.com/photos/4239146/pexels-photo-4239146.jpeg?auto=compress&cs=tinysrgb&w=600",
+      pipes,
       description: "PVC, CPVC, copper, and other plumbing pipes and fittings",
     },
     {
       id: 2,
       name: "Electrical Wiring",
       image:
-        "https://images.pexels.com/photos/1109541/pexels-photo-1109541.jpeg?auto=compress&cs=tinysrgb&w=600",
+        wire,
       description: "Cables, wires, and conductors for electrical installations",
     },
     {
       id: 3,
       name: "Switches and Outlets",
       image:
-        "https://images.pexels.com/photos/8005397/pexels-photo-8005397.jpeg?auto=compress&cs=tinysrgb&w=600",
+        outlet,
       description: "Electrical switches, outlets, and other control devices",
     },
     {
       id: 4,
       name: "Sanitary Fixtures",
       image:
-        "https://images.pexels.com/photos/7935651/pexels-photo-7935651.jpeg?auto=compress&cs=tinysrgb&w=600",
+        sanitary,
       description: "Toilets, sinks, faucets, and other bathroom fixtures",
     },
   ],
@@ -527,7 +540,7 @@ const SuppliersVendors = () => {
                   onPress={() => handleSubcategoryPress(vendor.name, item)}
                 >
                   <Image
-                    source={{ uri: item.image }}
+                    source={typeof item.image === 'string' ? { uri: item.image } : item.image}
                     style={styles.subcategoryImage}
                     resizeMode="cover"
                   />
