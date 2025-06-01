@@ -46,6 +46,33 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
     return () => clearInterval(interval);
   }, [currentImageIndex, property?.images]);
 
+  const formatImages = (property) => {
+    if (!property) return [];
+
+    // Handle array of newImageUrls
+    if (
+      Array.isArray(property.newImageUrls) &&
+      property.newImageUrls.length > 0
+    ) {
+      return property.newImageUrls.map((url) => ({
+        uri: url, // Assuming URLs are already complete
+      }));
+    }
+
+    // Handle single image as string
+    if (typeof property.newImageUrls === "string") {
+      return [{ uri: property.newImageUrls }];
+    }
+
+    // Handle images array if passed directly
+    if (Array.isArray(property.images)) {
+      return property.images;
+    }
+
+    // Fallback to default image
+    return [require("../../assets/logo.png")];
+  };
+
   const fetchPropertyDetails = async (propertyId) => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -79,7 +106,7 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
         );
         setProperty({
           ...propertyData,
-          images: formatImages(propertyData),
+          images: formatImages(propertyData), // Updated here
         });
         return;
       }
@@ -94,12 +121,12 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
           setProperty({
             ...propertyFromRoute,
             ...fullDetails,
-            images: formatImages(fullDetails),
+            images: formatImages(fullDetails), // Updated here
           });
         } else {
           setProperty({
             ...propertyFromRoute,
-            images: formatImages(propertyFromRoute),
+            images: formatImages(propertyFromRoute), // Updated here
           });
         }
         return;
@@ -111,7 +138,7 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
         const parsedProperty = JSON.parse(storedProperty);
         setProperty({
           ...parsedProperty,
-          images: formatImages(parsedProperty),
+          images: formatImages(parsedProperty), // Updated here
         });
       }
     } catch (error) {
@@ -122,35 +149,30 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  // Format images for display (handles both array and single image)
-  const formatImages = (property) => {
-    if (!property) return [];
+  // Update the handleShare function
+  const handleShare = async () => {
+    try {
+      if (!property) {
+        Alert.alert("Error", "No property data to share");
+        return;
+      }
 
-    // Handle array of photos
-    if (Array.isArray(property.photo) && property.photo.length > 0) {
-      return property.photo.map((photo) => ({
-        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
-      }));
+      const shareData = {
+        photo: property.images?.[0]?.uri || null, // Uses the formatted images array
+        location: property.location || "Location not specified",
+        price: property.price || "Price not available",
+        propertyType: property.propertyType || "Property",
+        PostedBy: property.PostedBy || "",
+        fullName: property.fullName || "Wealth Associate",
+        mobile: property.mobile || property.MobileNumber || "",
+      };
+
+      await AsyncStorage.setItem("sharedProperty", JSON.stringify(shareData));
+      navigation.navigate("PropertyCard", { property: shareData });
+    } catch (error) {
+      console.error("Sharing error:", error);
+      Alert.alert("Error", "Failed to share property");
     }
-
-    // Handle single photo string
-    if (typeof property.photo === "string") {
-      return [
-        {
-          uri: property.photo.startsWith("http")
-            ? property.photo
-            : `${API_URL}${property.photo}`,
-        },
-      ];
-    }
-
-    // Handle images array if passed directly
-    if (Array.isArray(property.images)) {
-      return property.images;
-    }
-
-    // Fallback to default image
-    return [require("../../assets/logo.png")];
   };
 
   useEffect(() => {
@@ -228,31 +250,6 @@ const PropertyDetailsScreen = ({ route, navigation }) => {
         day: "numeric",
       })
     : "Date not available";
-
-  const handleShare = async () => {
-    try {
-      if (!property) {
-        Alert.alert("Error", "No property data to share");
-        return;
-      }
-
-      const shareData = {
-        photo: property.images?.[0]?.uri || null,
-        location: property.location || "Location not specified",
-        price: property.price || "Price not available",
-        propertyType: property.propertyType || "Property",
-        PostedBy: property.PostedBy || "",
-        fullName: property.fullName || "Wealth Associate",
-        mobile: property.mobile || property.MobileNumber || "",
-      };
-
-      await AsyncStorage.setItem("sharedProperty", JSON.stringify(shareData));
-      navigation.navigate("PropertyCard", { property: shareData });
-    } catch (error) {
-      console.error("Sharing error:", error);
-      Alert.alert("Error", "Failed to share property");
-    }
-  };
 
   const handleEnquiry = () => {
     setPropertyModalVisible(true);
@@ -575,7 +572,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f8f8",
-    paddingBottom:"10%"
+    paddingBottom: "10%",
   },
   scrollContent: {
     paddingBottom: 80,
@@ -692,7 +689,6 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#eee",
-    
   },
   actionButton: {
     flexDirection: "row",

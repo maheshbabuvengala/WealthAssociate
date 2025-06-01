@@ -24,18 +24,18 @@ import logo1 from "../../assets/man2.png";
 import { clearHeaderCache } from "../MainScreen/Uppernavigation";
 
 const { width } = Dimensions.get("window");
-
 const Agent_Profile = ({ onDetailsUpdates }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [Details, setDetails] = useState({});
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
+  const [file, setFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   const navigation = useNavigation();
 
   useEffect(() => {
     getDetails();
-    loadProfileImage();
     requestPermissions();
   }, []);
 
@@ -54,78 +54,142 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
     }
   };
 
-  const loadProfileImage = async () => {
+  const getAuthToken = async () => {
     try {
-      const savedImage = await AsyncStorage.getItem("@profileImage");
-      if (savedImage !== null) {
-        setProfileImage(savedImage);
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+      return token;
+    } catch (error) {
+      console.error("Error getting auth token:", error);
+      throw error;
+    }
+  };
+
+  const selectImageFromGallery = async () => {
+    try {
+      if (Platform.OS === "web") {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = (event) => {
+          const file = event.target.files[0];
+          if (file) {
+            const imageUrl = URL.createObjectURL(file);
+            setProfileImage(imageUrl);
+            setFile(file);
+            uploadProfileImage(file);
+          }
+        };
+        input.click();
+      } else {
+        const permissionResult =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (permissionResult.status !== "granted") {
+          Alert.alert("Permission is required to upload a photo.");
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 1,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+          setProfileImage(result.assets[0].uri);
+          uploadProfileImage(result.assets[0].uri);
+        }
       }
     } catch (error) {
-      console.error("Error loading profile image:", error);
+      console.error("Error selecting image from gallery:", error);
+      Alert.alert("Error", "Failed to select image");
     }
   };
 
-  const handleImagePicker = () => {
-    if (Platform.OS === "web") {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.accept = "image/*";
-      input.onchange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            saveImage(event.target.result);
-          };
-          reader.readAsDataURL(file);
-        }
-      };
-      input.click();
-    } else {
-      Alert.alert("Select Image", "Choose an option", [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Gallery",
-          onPress: async () => {
-            let result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: true,
-              aspect: [1, 1],
-              quality: 1,
-            });
-
-            if (!result.canceled) {
-              saveImage(result.assets[0].uri);
-            }
-          },
-        },
-        {
-          text: "Camera",
-          onPress: async () => {
-            let result = await ImagePicker.launchCameraAsync({
-              allowsEditing: true,
-              aspect: [1, 1],
-              quality: 1,
-            });
-
-            if (!result.canceled) {
-              saveImage(result.assets[0].uri);
-            }
-          },
-        },
-      ]);
-    }
-  };
-
-  const saveImage = async (uri) => {
+  const takePhotoWithCamera = async () => {
     try {
-      await AsyncStorage.setItem("@profileImage", uri);
-      setProfileImage(uri);
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (status !== "granted") {
+        Alert.alert("Camera permission is required to take a photo.");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setProfileImage(result.assets[0].uri);
+        uploadProfileImage(result.assets[0].uri);
+      }
     } catch (error) {
-      console.error("Error saving profile image:", error);
+      console.error("Error opening camera:", error);
+      Alert.alert("Error", "Failed to take photo");
+    }
+  };
+
+  const uploadProfileImage = async (imageUri) => {
+    setIsUploading(true);
+    try {
+      const agentId = Details._id; // Get agent ID from stored details
+      const formData = new FormData();
+
+      if (Platform.OS === "web") {
+        if (file) {
+          formData.append("photo", file);
+        } else if (
+          typeof imageUri === "string" &&
+          imageUri.startsWith("blob:")
+        ) {
+          const response = await fetch(imageUri);
+          const blob = await response.blob();
+          const file = new File([blob], "profile.jpg", { type: blob.type });
+          formData.append("photo", file);
+        }
+      } else {
+        const localUri = imageUri;
+        const filename = localUri.split("/").pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : "image";
+
+        formData.append("photo", {
+          uri: localUri,
+          name: filename,
+          type,
+        });
+      }
+
+      // Append agentId as a field (not inside the file object)
+      formData.append("agentId", agentId);
+
+      const response = await fetch(`${API_URL}/agent/updateProfileImage`, {
+        method: "PUT",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json(); // Get detailed error from backend
+        throw new Error(errorData.message || "Failed to update profile image");
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        Alert.alert("Success", "Profile image updated successfully");
+        getDetails(); // Refresh profile data
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      Alert.alert("Error", error.message || "Failed to update profile image");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -142,16 +206,63 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
           text: "Delete",
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem("@profileImage");
-              setProfileImage(null);
+              const token = await AsyncStorage.getItem("authToken");
+              if (!token) {
+                throw new Error("Authentication token not found");
+              }
+
+              const response = await fetch(
+                `${API_URL}/agent/deleteProfileImage`,
+                {
+                  method: "DELETE",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              );
+
+              const result = await response.json();
+
+              if (!response.ok) {
+                throw new Error(
+                  result.message || "Failed to delete profile image"
+                );
+              }
+
+              if (result.success) {
+                setProfileImage(null);
+                Alert.alert("Success", "Profile image removed successfully");
+                getDetails(); // Refresh profile data
+              }
             } catch (error) {
               console.error("Error deleting profile image:", error);
-              Alert.alert("Error", "Failed to remove profile image");
+              Alert.alert(
+                "Error",
+                error.message || "Failed to remove profile image"
+              );
             }
           },
         },
       ]
     );
+  };
+
+  const handleImagePicker = () => {
+    Alert.alert("Select Image", "Choose an option", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Gallery",
+        onPress: selectImageFromGallery,
+      },
+      {
+        text: "Camera",
+        onPress: takePhotoWithCamera,
+      },
+    ]);
   };
 
   const handleDetailsUpdate = () => {
@@ -169,6 +280,9 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
       });
       const newDetails = await response.json();
       setDetails(newDetails);
+      if (newDetails.photo) {
+        setProfileImage(newDetails.photo);
+      }
       setLoading(false);
     } catch (error) {
       console.error("Error fetching agent details:", error);
@@ -178,7 +292,6 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
 
   const LogOut = async () => {
     try {
-      // Clear all user-related data from AsyncStorage
       await AsyncStorage.multiRemove([
         "authToken",
         "userType",
@@ -221,7 +334,6 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
 
   return (
     <View style={styles.mainContainer}>
-      {/* <Uppernavigation /> */}
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         style={styles.scrollView}
@@ -238,13 +350,20 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
             <>
               <View style={styles.profileHeader}>
                 <View style={{ position: "relative" }}>
-                  <Image
-                    source={profileImage ? { uri: profileImage } : logo1}
-                    style={styles.avatar}
-                  />
+                  {isUploading ? (
+                    <View style={[styles.avatar, styles.uploadingAvatar]}>
+                      <ActivityIndicator size="small" color="#FF3366" />
+                    </View>
+                  ) : (
+                    <Image
+                      source={profileImage ? { uri: profileImage } : logo1}
+                      style={styles.avatar}
+                    />
+                  )}
                   <TouchableOpacity
                     style={styles.cameraButton}
                     onPress={handleImagePicker}
+                    disabled={isUploading}
                   >
                     <FontAwesome name="camera" size={20} color="white" />
                   </TouchableOpacity>
@@ -253,6 +372,7 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
                     <TouchableOpacity
                       style={styles.deleteImageButton}
                       onPress={deleteProfileImage}
+                      disabled={isUploading}
                     >
                       <MaterialIcons name="delete" size={20} color="white" />
                     </TouchableOpacity>
@@ -312,9 +432,6 @@ const Agent_Profile = ({ onDetailsUpdates }) => {
           )}
         </View>
       </ScrollView>
-      {/* <View style={styles.bottomNavContainer}>
-        <BottomNavigation />
-      </View> */}
     </View>
   );
 };
@@ -353,7 +470,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    marginBottom: 60, // Adjust based on your bottom nav height
+    marginBottom: 60,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -430,6 +547,11 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     marginBottom: 10,
   },
+  uploadingAvatar: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+  },
   profileName: {
     fontSize: 22,
     fontWeight: "bold",
@@ -474,17 +596,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
-  },
-  bottomNavContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    zIndex: 10,
   },
 });
 

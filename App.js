@@ -72,6 +72,7 @@ import SkilledWorkersList from "./NewWealth/MainScreen/Skilllist";
 import ViewAllRequestedProperties from "./NewWealth/Properties/AllrequestedProperties";
 import ViewLikedProperties from "./NewWealth/Properties/ViewLikedProperties";
 import { createNavigationContainerRef } from "@react-navigation/native";
+import myAgents from "./NewWealth/Myagents/Myagents";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -343,6 +344,7 @@ export default function App() {
         <Stack.Screen name="invreg" component={InvestorRegister} />
         <Stack.Screen name="skillreg" component={SkilledRegister} />
         <Stack.Screen name="addmember" component={Add_Member} />
+        <Stack.Screen name="myagents" component={myAgents} />
         <Stack.Screen name="agentprofile" component={Agent_Profile} />
         <Stack.Screen name="InvestorProfile" component={Investorprofile} />
         <Stack.Screen name="CustomerProfile" component={Customerprofile} />

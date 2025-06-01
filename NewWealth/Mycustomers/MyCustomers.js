@@ -194,7 +194,7 @@ export default function ViewCustomers() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>My Customers</Text>
+      <Text style={styles.heading}>My Customers:{customers.length > 0 ?customers.length:"0"}</Text>
       <View style={styles.gridContainer}>
         {customers.length > 0 ? (
           customers.map(renderCustomerCard)

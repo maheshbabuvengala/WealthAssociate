@@ -64,7 +64,7 @@ const CoreClients = () => {
               onPress={() => handleOpenLink(item.website)}
             >
               <Image
-                source={{ uri: `${API_URL}${item.photo}` }}
+                source={{ uri: item.newImageUrl }}
                 style={styles.clientImage}
               />
             </TouchableOpacity>

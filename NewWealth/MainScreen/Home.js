@@ -109,9 +109,9 @@ const HomeScreen = () => {
   const fetchReferralCount = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const parsedDetails = details; // Assuming details is already parsed
+      const userDetails = JSON.parse(await AsyncStorage.getItem("userDetails"));
 
-      if (!parsedDetails?.MyRefferalCode) return;
+      if (!userDetails?.MyRefferalCode) return;
 
       const response = await fetch(`${API_URL}/agent/valueagents`, {
         method: "POST",
@@ -120,7 +120,7 @@ const HomeScreen = () => {
           token: token || "",
         },
         body: JSON.stringify({
-          referralCode: parsedDetails.MyRefferalCode,
+          referralCode: userDetails.MyRefferalCode,
         }),
       });
 
@@ -129,9 +129,24 @@ const HomeScreen = () => {
       }
 
       const data = await response.json();
-      setReferralCount(data.count || 0); // Assuming the response has a count field
+
+      // The response might be an array of agents, so count them
+      if (Array.isArray(data)) {
+        setReferralCount(data.length);
+      }
+      // Or it might be an object with a count property
+      else if (data.count !== undefined) {
+        setReferralCount(data.count);
+      }
+      // Or it might be an object with a valueAgents array
+      else if (Array.isArray(data.valueAgents)) {
+        setReferralCount(data.valueAgents.length);
+      } else {
+        setReferralCount(0);
+      }
     } catch (error) {
       console.error("Error fetching referral count:", error);
+      setReferralCount(0);
     }
   };
 
@@ -303,23 +318,37 @@ const HomeScreen = () => {
 
   const handleShare = (property) => {
     let shareImage;
-    if (Array.isArray(property.photo) && property.photo.length > 0) {
-      shareImage = property.photo[0].startsWith("http")
-        ? property.photo[0]
-        : `${API_URL}${property.photo[0]}`;
-    } else if (property.photo) {
-      shareImage = property.photo.startsWith("http")
-        ? property.photo
-        : `${API_URL}${property.photo}`;
+
+    // Handle images - ONLY from newImageUrls (ignore photo field)
+    if (
+      Array.isArray(property.newImageUrls) &&
+      property.newImageUrls.length > 0
+    ) {
+      shareImage = property.newImageUrls[0]; // Use first image (assumes URLs are complete)
+    } else if (typeof property.newImageUrls === "string") {
+      shareImage = property.newImageUrls;
     } else {
-      shareImage = null;
+      shareImage = null; // No image available
+    }
+
+    // Format price if available
+    let formattedPrice = "Price not available";
+    if (property.price) {
+      try {
+        const priceValue = parseInt(property.price);
+        if (!isNaN(priceValue)) {
+          formattedPrice = `₹${priceValue.toLocaleString()}`;
+        }
+      } catch (e) {
+        console.error("Error formatting price:", e);
+      }
     }
 
     navigation.navigate("PropertyCard", {
       property: {
         photo: shareImage,
         location: property.location || "Location not specified",
-        price: property.price || "Price not available",
+        price: formattedPrice, // Use formatted price
         propertyType: property.propertyType || "Property",
         PostedBy: property.PostedBy || details?.Number || "",
         fullName: property.fullName || details?.name || "Wealth Associate",
@@ -391,23 +420,20 @@ const HomeScreen = () => {
       return;
     }
 
+    // Handle images - ONLY from newImageUrls (ignore photo field)
     let images = [];
-    if (Array.isArray(property.photo)) {
-      images = property.photo.map((photo) => ({
-        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
+    if (Array.isArray(property.newImageUrls)) {
+      images = property.newImageUrls.map((url) => ({
+        uri: url, // Assuming URLs are already complete (no need for API_URL prefix)
       }));
-    } else if (property.photo) {
-      images = [
-        {
-          uri: property.photo.startsWith("http")
-            ? property.photo
-            : `${API_URL}${property.photo}`,
-        },
-      ];
+    } else if (typeof property.newImageUrls === "string") {
+      images = [{ uri: property.newImageUrls }];
     } else {
+      // Fallback to default logo if no newImageUrls
       images = [require("../../assets/logo.png")];
     }
 
+    // Format price
     let formattedPrice = "Price not available";
     try {
       const priceValue = parseInt(property.price);
@@ -423,7 +449,7 @@ const HomeScreen = () => {
         ...property,
         id: property._id,
         price: formattedPrice,
-        images: images,
+        images: images, // Now only contains newImageUrls or fallback
       },
     });
   };
@@ -460,7 +486,12 @@ const HomeScreen = () => {
     const scrollRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    const images = Array.isArray(property.photo) ? property.photo : [];
+    // Handle both array and string cases for newImageUrls only
+    const images = Array.isArray(property.newImageUrls)
+      ? property.newImageUrls
+      : typeof property.newImageUrls === "string"
+      ? [property.newImageUrls]
+      : [];
 
     // Auto-scroll every 3 seconds
     useEffect(() => {
@@ -478,7 +509,6 @@ const HomeScreen = () => {
       return () => clearInterval(interval);
     }, [currentIndex, images.length]);
 
-    // Handle horizontal scroll view with swiping
     if (images.length > 0) {
       return (
         <View style={{ marginBottom: 10 }}>
@@ -501,9 +531,7 @@ const HomeScreen = () => {
             {images.map((item, index) => (
               <Image
                 key={index}
-                source={{
-                  uri: item.startsWith("http") ? item : `${API_URL}${item}`,
-                }}
+                source={{ uri: item }}
                 style={{
                   width: SCREEN_WIDTH - 40,
                   height: 200,
@@ -537,31 +565,18 @@ const HomeScreen = () => {
       );
     }
 
-    // Single image
-    else if (typeof property.photo === "string") {
-      return (
-        <Image
-          source={{
-            uri: property.photo.startsWith("http")
-              ? property.photo
-              : `${API_URL}${property.photo}`,
-          }}
-          style={{ width: 260, height: 200, borderRadius: 10 }}
-          resizeMode="cover"
-        />
-      );
-    }
-
-    // Fallback image
-    else {
-      return (
-        <Image
-          source={require("../../assets/logo.png")}
-          style={{ width: SCREEN_WIDTH - 40, height: 200, borderRadius: 10 }}
-          resizeMode="contain"
-        />
-      );
-    }
+    // Fallback image (only shown if no newImageUrls exist)
+    return (
+      <Image
+        source={require("../../assets/logo.png")}
+        style={{
+          width: SCREEN_WIDTH - 40,
+          height: 200,
+          borderRadius: 10,
+        }}
+        resizeMode="contain"
+      />
+    );
   };
 
   const RenderPropertyCard = ({ property }) => {
@@ -582,7 +597,6 @@ const HomeScreen = () => {
         const newLikedStatus = !isLiked;
         setIsLiked(newLikedStatus);
 
-        // Update local liked properties array
         let updatedLikes;
         if (newLikedStatus) {
           updatedLikes = [...likedProperties, property._id];
@@ -767,7 +781,7 @@ const HomeScreen = () => {
           details?.photo && (
             <View style={styles.agentPhotoContainer}>
               <Image
-                source={{ uri: `${API_URL}${details.photo}` }}
+                source={{ uri: details.photo }}
                 style={styles.agentPhoto}
               />
               <Text
@@ -781,11 +795,15 @@ const HomeScreen = () => {
                   Value Associate
                 </Text>
                 {"\n"}
-                <View style={styles.skillTag}>
-                  <Text style={styles.skillText}>
-                    YourAgents:{referralCount}
-                  </Text>
-                </View>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("myagents")}
+                >
+                  <View style={styles.skillTag}>
+                    <Text style={styles.skillText}>
+                      YourAgents:{referralCount}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
               </Text>
             </View>
           )}
@@ -938,7 +956,7 @@ const HomeScreen = () => {
                   onPress={() => handleOpenLink(client.website)}
                 >
                   <Image
-                    source={{ uri: `${API_URL}${client.photo}` }}
+                    source={{ uri: client.newImageUrl }}
                     style={styles.clientImage}
                   />
                 </TouchableOpacity>
@@ -962,7 +980,7 @@ const HomeScreen = () => {
                   onPress={() => handleOpenLink(project.website)}
                 >
                   <Image
-                    source={{ uri: `${API_URL}${project.photo}` }}
+                    source={{ uri: project.newImageUrl }}
                     style={styles.projectImage}
                   />
                   <Text style={styles.projectTitle}>{project.city}</Text>
@@ -986,7 +1004,7 @@ const HomeScreen = () => {
                   onPress={() => handleOpenLink(project.website)}
                 >
                   <Image
-                    source={{ uri: `${API_URL}${project.photo}` }}
+                    source={{ uri: project.newImageUrl }}
                     style={styles.projectImage}
                   />
                   <Text style={styles.projectTitle}>{project.city}</Text>

@@ -347,6 +347,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
     elevation: 4,
+    paddingBottom:300
   },
   header: {
     backgroundColor: "#E91E63",

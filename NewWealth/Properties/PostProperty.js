@@ -21,6 +21,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import PropertyCard from "./PropertyCard";
 import { useNavigation } from "@react-navigation/native";
+import * as ImageManipulator from 'expo-image-manipulator';
 
 const { width } = Dimensions.get("window");
 
@@ -166,7 +167,7 @@ const PostProperty = ({ closeModal }) => {
           userDetails.MobileNumber || userDetails.MobileIN
         );
         formData.append("userType", userType);
-        formData.append("propertyDetails", ""); // Sending empty string for propertyDetails
+        formData.append("propertyDetails", "");
 
         // Add referral code if available
         if (userDetails.MyRefferalCode) {
@@ -196,7 +197,6 @@ const PostProperty = ({ closeModal }) => {
         const result = await response.json();
         if (response.ok) {
           setPostedProperty({
-            // Use the first photo for the card display
             photo: result.photos?.[0] || photos[0],
             photos: result.photos || photos,
             location,
@@ -205,7 +205,7 @@ const PostProperty = ({ closeModal }) => {
             PostedBy: userDetails.MobileNumber || userDetails.MobileIN,
             fullName: userDetails.FullName || userDetails.Name,
             mobile: userDetails.MobileNumber || userDetails.MobileIN,
-            propertyDetails: "", // Empty propertyDetails
+            propertyDetails: "",
             userType,
           });
           setModalVisible(true);
@@ -226,7 +226,54 @@ const PostProperty = ({ closeModal }) => {
     }
   };
 
-  // Image handling functions
+  // Image compression function for web
+  const compressImageForWeb = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions while maintaining aspect ratio
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to blob with quality setting (0.6 = 60% quality)
+          canvas.toBlob((blob) => {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            console.log(`Original size: ${(file.size / 1024 / 1024).toFixed(2)}MB, Compressed size: ${(blob.size / 1024 / 1024).toFixed(2)}MB`);
+            resolve(compressedFile);
+          }, 'image/jpeg', 0.6);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Image handling functions with compression
   const selectImagesFromGallery = async () => {
     try {
       if (photos.length >= 4) {
@@ -239,25 +286,33 @@ const PostProperty = ({ closeModal }) => {
         input.type = "file";
         input.accept = "image/*";
         input.multiple = true;
-        input.onchange = (event) => {
+        input.onchange = async (event) => {
           const newFiles = Array.from(event.target.files);
           const remainingSlots = 4 - photos.length;
           const filesToAdd = newFiles.slice(0, remainingSlots);
 
           if (filesToAdd.length > 0) {
-            const newPhotos = filesToAdd.map((file) =>
-              URL.createObjectURL(file)
+            // Compress all selected images
+            const compressedFiles = await Promise.all(
+              filesToAdd.map(async (file) => {
+                // Only compress if larger than 500KB
+                if (file.size > 500 * 1024) {
+                  return await compressImageForWeb(file);
+                }
+                return file;
+              })
             );
+
+            const newPhotos = compressedFiles.map(file => URL.createObjectURL(file));
             setPhotos([...photos, ...newPhotos]);
-            setFiles([...files, ...filesToAdd]);
+            setFiles([...files, ...compressedFiles]);
           } else {
             alert(`You can only upload ${remainingSlots} more photo(s)`);
           }
         };
         input.click();
       } else {
-        const permissionResult =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (permissionResult.status !== "granted") {
           alert("Permission is required to upload photos.");
@@ -266,14 +321,24 @@ const PostProperty = ({ closeModal }) => {
 
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 1,
+          quality: 0.6, // 60% quality for compression
           allowsMultipleSelection: true,
           selectionLimit: 4 - photos.length,
         });
 
         if (!result.canceled && result.assets && result.assets.length > 0) {
-          const newUris = result.assets.map((asset) => asset.uri);
-          setPhotos([...photos, ...newUris]);
+          // Further compress each selected image to ensure consistent size
+          const compressedUris = await Promise.all(
+            result.assets.map(async (asset) => {
+              const manipResult = await ImageManipulator.manipulateAsync(
+                asset.uri,
+                [{ resize: { width: 800 } }], // Resize to max width of 800px
+                { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+              );
+              return manipResult.uri;
+            })
+          );
+          setPhotos([...photos, ...compressedUris]);
         }
       }
     } catch (error) {
@@ -298,11 +363,17 @@ const PostProperty = ({ closeModal }) => {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        quality: 1,
+        quality: 0.6, // 60% quality for compression
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setPhotos([...photos, result.assets[0].uri]);
+        // Further compress the captured image
+        const manipResult = await ImageManipulator.manipulateAsync(
+          result.assets[0].uri,
+          [{ resize: { width: 800 } }], // Resize to max width of 800px
+          { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        setPhotos([...photos, manipResult.uri]);
       }
     } catch (error) {
       console.error("Error opening camera:", error);

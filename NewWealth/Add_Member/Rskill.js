@@ -462,7 +462,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginTop: 5,
     maxHeight: 200, // Increased from 150
-    backgroundColor: "#fff",
+    backgroundColor: "#e6708e",
+    // bottom:"100%"
   },
   scrollContainer: {
     maxHeight: 200, // Increased from 150

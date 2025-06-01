@@ -150,30 +150,6 @@ const ViewAllProperties = () => {
     setPropertyModalVisible(true);
   };
 
-  const handleShare = (property) => {
-    let shareImage;
-    if (Array.isArray(property.photo) && property.photo.length > 0) {
-      shareImage = property.photo[0].startsWith("http")
-        ? property.photo[0]
-        : `${API_URL}${property.photo[0]}`;
-    } else if (property.photo) {
-      shareImage = property.photo.startsWith("http")
-        ? property.photo
-        : `${API_URL}${property.photo}`;
-    } else {
-      shareImage = null;
-    }
-
-    setPostedProperty({
-      propertyType: property.propertyType,
-      photo: shareImage,
-      location: property.location,
-      price: property.price,
-      PostedBy: property.PostedBy || details?.Number || "",
-      fullName: property.fullName || details?.name || "Wealth Associate",
-    });
-  };
-
   const getLastFourChars = (id) => {
     return id ? id.slice(-4) : "N/A";
   };
@@ -321,15 +297,37 @@ const ViewAllProperties = () => {
     )
   );
 
+  const formatImages = (property) => {
+    if (!property) return [];
+
+    // Handle array of newImageUrls
+    if (
+      Array.isArray(property.newImageUrls) &&
+      property.newImageUrls.length > 0
+    ) {
+      return property.newImageUrls.map((url) => ({
+        uri: url, // Assuming URLs are already complete
+      }));
+    }
+
+    // Handle single image as string
+    if (typeof property.newImageUrls === "string") {
+      return [{ uri: property.newImageUrls }];
+    }
+
+    // Fallback to default logo
+    return [require("../../assets/logo.png")];
+  };
+
   const renderPropertyImage = (property) => {
     const scrollRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    const images = Array.isArray(property.photo) ? property.photo : [];
+    const images = formatImages(property); // Use the updated formatImages function
 
     // Auto-scroll every 3 seconds
     useEffect(() => {
-      if (!images.length) return;
+      if (images.length <= 1) return;
 
       const interval = setInterval(() => {
         const nextIndex = (currentIndex + 1) % images.length;
@@ -343,7 +341,16 @@ const ViewAllProperties = () => {
       return () => clearInterval(interval);
     }, [currentIndex, images.length]);
 
-    // Handle horizontal scroll view with swiping
+    if (images.length === 0) {
+      return (
+        <Image
+          source={require("../../assets/logo.png")}
+          style={{ width: SCREEN_WIDTH - 40, height: 200, borderRadius: 10 }}
+          resizeMode="contain"
+        />
+      );
+    }
+
     if (images.length > 0) {
       return (
         <View style={{ marginBottom: 10 }}>
@@ -359,12 +366,10 @@ const ViewAllProperties = () => {
               setCurrentIndex(newIndex);
             }}
           >
-            {images.map((item, index) => (
+            {images.map((image, index) => (
               <Image
                 key={index}
-                source={{
-                  uri: item.startsWith("http") ? item : `${API_URL}${item}`,
-                }}
+                source={image}
                 style={{
                   width: SCREEN_WIDTH - 40,
                   height: 200,
@@ -375,78 +380,37 @@ const ViewAllProperties = () => {
             ))}
           </ScrollView>
 
-          {/* Pagination dots */}
-          <View style={styles.pagination}>
-            {images.map((_, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.dot,
-                  index === currentIndex ? styles.activeDot : null,
-                ]}
-                onPress={() => {
-                  setCurrentIndex(index);
-                  scrollRef.current?.scrollTo({
-                    x: index * (SCREEN_WIDTH - 40),
-                    animated: true,
-                  });
-                }}
-              />
-            ))}
-          </View>
+          {images.length > 1 && (
+            <View style={styles.pagination}>
+              {images.map((_, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.dot,
+                    index === currentIndex ? styles.activeDot : null,
+                  ]}
+                  onPress={() => {
+                    setCurrentIndex(index);
+                    scrollRef.current?.scrollTo({
+                      x: index * (SCREEN_WIDTH - 40),
+                      animated: true,
+                    });
+                  }}
+                />
+              ))}
+            </View>
+          )}
         </View>
       );
     }
-
-    // Single image
-    else if (typeof property.photo === "string") {
-      return (
-        <Image
-          source={{
-            uri: property.photo.startsWith("http")
-              ? property.photo
-              : `${API_URL}${property.photo}`,
-          }}
-          style={{ width: SCREEN_WIDTH - 40, height: 200, borderRadius: 10 }}
-          resizeMode="cover"
-        />
-      );
-    }
-
-    // Fallback image
-    else {
-      return (
-        <Image
-          source={require("../../assets/logo.png")}
-          style={{ width: SCREEN_WIDTH - 40, height: 200, borderRadius: 10 }}
-          resizeMode="contain"
-        />
-      );
-    }
   };
-
   const handlePropertyPress = (property) => {
     if (!property?._id) {
       console.error("Property ID is missing");
       return;
     }
 
-    let images = [];
-    if (Array.isArray(property.photo)) {
-      images = property.photo.map((photo) => ({
-        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
-      }));
-    } else if (property.photo) {
-      images = [
-        {
-          uri: property.photo.startsWith("http")
-            ? property.photo
-            : `${API_URL}${property.photo}`,
-        },
-      ];
-    } else {
-      images = [require("../../assets/logo.png")];
-    }
+    const images = formatImages(property); // Use the updated formatImages function
 
     let formattedPrice = "Price not available";
     try {
@@ -468,6 +432,20 @@ const ViewAllProperties = () => {
     });
   };
 
+  // Update the handleShare function
+  const handleShare = (property) => {
+    const images = formatImages(property); // Use the updated formatImages function
+    const shareImage = images[0]?.uri || null;
+
+    setPostedProperty({
+      propertyType: property.propertyType,
+      photo: shareImage,
+      location: property.location,
+      price: property.price,
+      PostedBy: property.PostedBy || details?.Number || "",
+      fullName: property.fullName || details?.name || "Wealth Associate",
+    });
+  };
   const RenderPropertyCard = ({ property }) => {
     const propertyTag = getPropertyTag(property.createdAt);
     const propertyId = getLastFourChars(property._id);
@@ -1045,7 +1023,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     // padding: 20,
     elevation: 5,
-    borderRadius:10
+    borderRadius: 10,
   },
   modalHeading: {
     fontSize: 20,

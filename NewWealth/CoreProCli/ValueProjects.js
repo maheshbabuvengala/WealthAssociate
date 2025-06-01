@@ -19,7 +19,9 @@ const ValueProjects = () => {
 
   const fetchCoreProjects = async () => {
     try {
-      const response = await fetch(`${API_URL}/coreproject/getallValueprojects`);
+      const response = await fetch(
+        `${API_URL}/coreproject/getallValueprojects`
+      );
       const data = await response.json();
       setCoreProjects(data);
     } catch (error) {
@@ -64,7 +66,7 @@ const ValueProjects = () => {
               onPress={() => handleOpenLink(item.website)}
             >
               <Image
-                source={{ uri: `${API_URL}${item.photo}` }}
+                source={{ uri: item.newImageUrl }}
                 style={styles.projectImage}
               />
               <Text style={styles.projectTitle}>{item.city}</Text>

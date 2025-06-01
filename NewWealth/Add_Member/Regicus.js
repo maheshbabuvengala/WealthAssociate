@@ -510,6 +510,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "#ccc",
+    paddingBottom:300,
+    padding:10
   },
   smallScreenContainer: {
     // width: 300,

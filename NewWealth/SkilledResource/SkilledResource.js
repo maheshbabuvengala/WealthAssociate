@@ -9,6 +9,7 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
+  Alert
 } from "react-native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -170,7 +171,7 @@ export default function SkilledLaboursScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.heading}>My Skilled Resources</Text>
+        <Text style={styles.heading}>My Skilled Resources:{agents.length>0?agents.length:"0"}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.gridContainer}>

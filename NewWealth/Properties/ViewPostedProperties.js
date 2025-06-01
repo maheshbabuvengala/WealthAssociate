@@ -61,48 +61,74 @@ const ViewPostedProperties = () => {
     }
   };
 
-  const handlePropertyPress = async (property) => {
-    if (!property?._id) {
-      console.error("Property ID is missing");
-      return;
-    }
+  const PropertyImageSlider = ({ images }) => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const scrollRef = useRef(null);
 
-    let formattedPrice = "Price not available";
-    try {
-      const priceValue = parseInt(property.price);
-      if (!isNaN(priceValue)) {
-        formattedPrice = `₹${priceValue.toLocaleString()}`;
-      }
-    } catch (e) {
-      console.error("Error formatting price:", e);
-    }
+    useEffect(() => {
+      if (images.length <= 1) return;
 
-    try {
-      // Store the property in AsyncStorage before navigating
-      await AsyncStorage.setItem(
-        "currentProperty",
-        JSON.stringify({
-          ...property,
-          id: property._id,
-          price: formattedPrice,
-          images: property.images,
-        })
+      const interval = setInterval(() => {
+        const nextIndex = (currentImageIndex + 1) % images.length;
+        setCurrentImageIndex(nextIndex);
+        scrollRef.current?.scrollTo({
+          x: nextIndex * width,
+          animated: true,
+        });
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }, [currentImageIndex, images.length]);
+
+    if (images.length === 0) {
+      return (
+        <Image
+          source={logo1}
+          style={styles.propertyImage}
+          resizeMode="contain"
+        />
       );
-
-      navigation.navigate("PropertyDetails", {
-        property: {
-          ...property,
-          id: property._id,
-          price: formattedPrice,
-          images: property.images,
-        },
-      });
-    } catch (error) {
-      console.error("Error storing property:", error);
-      Alert.alert("Error", "Failed to navigate to property details");
     }
-  };
 
+    return (
+      <View style={styles.imageSliderContainer}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const offsetX = e.nativeEvent.contentOffset.x;
+            const newIndex = Math.round(offsetX / width);
+            setCurrentImageIndex(newIndex);
+          }}
+        >
+          {images.map((image, index) => (
+            <Image
+              key={index}
+              source={image}
+              style={styles.propertyImage}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+
+        {images.length > 1 && (
+          <View style={styles.pagination}>
+            {images.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.paginationDot,
+                  index === currentImageIndex && styles.activeDot,
+                ]}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
   const fetchProperties = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -143,28 +169,6 @@ const ViewPostedProperties = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatImages = (property) => {
-    if (!property) return [];
-
-    if (Array.isArray(property.photo) && property.photo.length > 0) {
-      return property.photo.map((photo) => ({
-        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
-      }));
-    }
-
-    if (typeof property.photo === "string") {
-      return [
-        {
-          uri: property.photo.startsWith("http")
-            ? property.photo
-            : `${API_URL}${property.photo}`,
-        },
-      ];
-    }
-
-    return [logo1];
   };
 
   const handleFilterChange = (value) => {
@@ -235,75 +239,6 @@ const ViewPostedProperties = () => {
   const getLastFourCharss = (id) => {
     if (!id) return "N/A";
     return id.length > 4 ? id.slice(-4) : id;
-  };
-
-  const PropertyImageSlider = ({ images }) => {
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const scrollRef = useRef(null);
-
-    useEffect(() => {
-      if (images.length <= 1) return;
-
-      const interval = setInterval(() => {
-        const nextIndex = (currentImageIndex + 1) % images.length;
-        setCurrentImageIndex(nextIndex);
-        scrollRef.current?.scrollTo({
-          x: nextIndex * width,
-          animated: true,
-        });
-      }, 3000);
-
-      return () => clearInterval(interval);
-    }, [currentImageIndex, images.length]);
-
-    if (images.length === 0) {
-      return (
-        <Image
-          source={logo1}
-          style={styles.propertyImage}
-          resizeMode="contain"
-        />
-      );
-    }
-
-    return (
-      <View style={styles.imageSliderContainer}>
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => {
-            const offsetX = e.nativeEvent.contentOffset.x;
-            const newIndex = Math.round(offsetX / width);
-            setCurrentImageIndex(newIndex);
-          }}
-        >
-          {images.map((image, index) => (
-            <Image
-              key={index}
-              source={image}
-              style={styles.propertyImage}
-              resizeMode="cover"
-            />
-          ))}
-        </ScrollView>
-
-        {images.length > 1 && (
-          <View style={styles.pagination}>
-            {images.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.paginationDot,
-                  index === currentImageIndex && styles.activeDot,
-                ]}
-              />
-            ))}
-          </View>
-        )}
-      </View>
-    );
   };
 
   return (

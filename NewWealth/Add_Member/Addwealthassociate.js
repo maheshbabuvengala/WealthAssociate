@@ -596,14 +596,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F9FAFB",
-    paddingBottom: "10%",
+    // paddingBottom: "10%",
   },
   scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 30,
+    // flexGrow: 1,
+    // justifyContent: "center",
+    // alignItems: "center",
+    // backgroundColor: "#F9FAFB",
+    // borderRadius: 30,
+    // paddingBottom:300,
+    padding: 10,
   },
   register_main: {
     display: "flex",
@@ -634,6 +636,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: Platform.OS === "web" ? 0 : 1,
     borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
+    paddingBottom:300
   },
   webInputWrapper: {
     width: "100%",

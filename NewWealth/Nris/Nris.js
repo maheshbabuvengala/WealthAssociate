@@ -10,152 +10,114 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  FlatList,
+  LogBox,
 } from "react-native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import avatar from "../../Admin_Pan/assets/man.png";
 
+// Ignore specific warnings (optional)
+LogBox.ignoreLogs(["VirtualizedLists should never be nested"]);
+
 const { width } = Dimensions.get("window");
 
-export default function ViewNri() {
+export default function ViewNri({ navigation }) {
   const [nriMembers, setNriMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
   const [userType, setUserType] = useState("");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchNriMembers();
+    let isMounted = true;
+
+    const fetchData = async () => {
+      try {
+        await fetchNriMembers();
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message);
+          console.error("Component error:", err);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const fetchNriMembers = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const storedUserType = await AsyncStorage.getItem("userType");
+      const storedUserType = (await AsyncStorage.getItem("userType")) || "";
 
       if (!token) {
-        console.error("No token found in AsyncStorage");
-        setLoading(false);
-        return;
+        throw new Error("Authentication token not found");
       }
 
-      setUserType(storedUserType || "");
+      setUserType(storedUserType);
 
       const response = await fetch(`${API_URL}/nri/getmynris`, {
         method: "GET",
         headers: {
-          token: `${token}` || "",
+          token: `${token}`,
+          "Content-Type": "application/json",
         },
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setNriMembers(data.referredMembers || []);
-      } else {
-        setNriMembers([]);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch NRI members");
       }
+
+      const data = await response.json();
+      if (!data || !Array.isArray(data.referredMembers)) {
+        throw new Error("Invalid data format received");
+      }
+
+      setNriMembers(data.referredMembers);
+      setError(null);
     } catch (error) {
-      console.error("Error fetching NRI members:", error);
-    } finally {
-      setLoading(false);
+      console.error("Fetch error:", error);
+      setError(error.message);
+      setNriMembers([]);
+      Alert.alert("Error", error.message || "Failed to load NRI members");
     }
   };
-
-
-  // const handleDelete = (id) => {
-  //   if (Platform.OS === "web") {
-  //     const isConfirmed = window.confirm(
-  //       "Are you sure you want to delete this member?"
-  //     );
-  //     if (isConfirmed) {
-  //       fetch(`${API_URL}/nri/deletenri/${id}`, {
-  //         method: "DELETE",
-  //       })
-  //         .then(() => {
-  //           setNriMembers(nriMembers.filter((member) => member._id !== id));
-  //         })
-  //         .catch((error) => console.error("Error deleting member:", error));
-  //     }
-  //   } else {
-  //     Alert.alert(
-  //       "Confirm Delete",
-  //       "Are you sure you want to delete this member?",
-  //       [
-  //         { text: "Cancel", style: "cancel" },
-  //         {
-  //           text: "Delete",
-  //           onPress: () => {
-  //             fetch(`${API_URL}/nri/deletenri/${id}`, {
-  //               method: "DELETE",
-  //             })
-  //               .then(() => {
-  //                 setNriMembers(
-  //                   nriMembers.filter((member) => member._id !== id)
-  //                 );
-  //               })
-  //               .catch((error) =>
-  //                 console.error("Error deleting member:", error)
-  //               );
-  //           },
-  //           style: "destructive",
-  //         },
-  //       ]
-  //     );
-  //   }
-  // };
 
   const handleDelete = async (id) => {
     try {
       setDeletingId(id);
       const token = await AsyncStorage.getItem("authToken");
+
       if (!token) {
-        console.error("No token found in AsyncStorage");
-        return;
+        throw new Error("Authentication required");
       }
 
       const response = await fetch(`${API_URL}/nri/deletenri/${id}`, {
         method: "DELETE",
+        headers: {
+          token: `${token}`,
+        },
       });
 
-      // First check if the response is OK (status 200-299)
-      if (response.ok) {
-        // Try to parse as JSON only if content-type is JSON
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const data = await response.json();
-          setNriMembers(nriMembers.filter((member) => member._id !== id));
-          Alert.alert(
-            "Success",
-            data.message || "NRI member deleted successfully"
-          );
-        } else {
-          // Handle non-JSON response (though DELETE should typically return empty body)
-          setNriMembers(nriMembers.filter((member) => member._id !== id));
-          Alert.alert("Success", "NRI member deleted successfully");
-        }
-      } else {
-        // Handle non-OK responses
+      if (!response.ok) {
         const errorText = await response.text();
-        try {
-          // Try to parse error as JSON if possible
-          const errorData = JSON.parse(errorText);
-          Alert.alert(
-            "Error",
-            errorData.message ||
-              `Failed to delete NRI member (Status: ${response.status})`
-          );
-        } catch (e) {
-          // If not JSON, show the raw error text
-          Alert.alert(
-            "Error",
-            errorText ||
-              `Failed to delete NRI member (Status: ${response.status})`
-          );
-        }
+        throw new Error(errorText || "Failed to delete member");
       }
+
+      // Success case
+      setNriMembers((prev) => prev.filter((member) => member._id !== id));
+      Alert.alert("Success", "Member deleted successfully");
     } catch (error) {
-      console.error("Error deleting NRI member:", error);
-      Alert.alert("Error", "An error occurred while deleting NRI member");
+      console.error("Delete error:", error);
+      Alert.alert("Error", error.message || "Failed to delete member");
     } finally {
       setDeletingId(null);
     }
@@ -175,18 +137,18 @@ export default function ViewNri() {
     ]);
   };
 
-  const renderMemberCard = (item) => (
-    <View key={item._id} style={styles.card}>
+  const renderMemberCard = ({ item }) => (
+    <View style={styles.card}>
       <Image source={avatar} style={styles.avatar} />
       <View style={styles.infoContainer}>
         <View style={styles.row}>
           <Text style={styles.label}>Name</Text>
-          <Text style={styles.value}>: {item.Name}</Text>
+          <Text style={styles.value}>: {item.Name || "N/A"}</Text>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>Mobile (IN)</Text>
-          <Text style={styles.value}>: {item.MobileIN}</Text>
+          <Text style={styles.value}>: {item.MobileIN || "N/A"}</Text>
         </View>
 
         {item.MobileCountryNo && (
@@ -198,17 +160,17 @@ export default function ViewNri() {
 
         <View style={styles.row}>
           <Text style={styles.label}>Occupation</Text>
-          <Text style={styles.value}>: {item.Occupation}</Text>
+          <Text style={styles.value}>: {item.Occupation || "N/A"}</Text>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>Location</Text>
-          <Text style={styles.value}>: {item.Locality}</Text>
+          <Text style={styles.value}>: {item.Locality || "N/A"}</Text>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>Country</Text>
-          <Text style={styles.value}>: {item.Country}</Text>
+          <Text style={styles.value}>: {item.Country || "N/A"}</Text>
         </View>
 
         <TouchableOpacity
@@ -226,25 +188,42 @@ export default function ViewNri() {
     </View>
   );
 
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchNriMembers}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.heading}>NRI Members</Text>
+      <Text style={styles.heading}>
+        NRI Members: {nriMembers.length > 0 ? nriMembers.length : "0"}
+      </Text>
 
-      {loading ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#0000ff" />
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.gridContainer}>
-          {nriMembers.length > 0 ? (
-            <View style={width > 600 ? styles.rowWrapper : null}>
-              {nriMembers.map(renderMemberCard)}
-            </View>
-          ) : (
-            <Text style={styles.emptyText}>No NRI members found.</Text>
-          )}
-        </ScrollView>
-      )}
+      <FlatList
+        data={nriMembers}
+        renderItem={renderMemberCard}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.gridContainer}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No NRI members found.</Text>
+        }
+        numColumns={width > 600 ? 2 : 1}
+        columnWrapperStyle={width > 600 ? styles.rowWrapper : null}
+      />
     </SafeAreaView>
   );
 }
@@ -260,6 +239,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorText: {
+    color: "red",
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: "#007bff",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  retryButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
   heading: {
     fontSize: 20,
     fontWeight: "bold",
@@ -268,19 +269,16 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
   },
   gridContainer: {
-    alignItems: "center",
     paddingBottom: 20,
+    alignItems: "center",
   },
   rowWrapper: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     justifyContent: "space-between",
-    width: "100%",
   },
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    width: width > 600 ? "35%" : "10`0%",
+    width: width > 600 ? "48%" : "95%",
     paddingVertical: 20,
     paddingHorizontal: 15,
     alignItems: "center",
@@ -311,10 +309,10 @@ const styles = StyleSheet.create({
   },
   label: {
     fontWeight: "bold",
-    width: 120, // Fixed width for labels
+    width: 120,
   },
   value: {
-    flexShrink: 1, // Prevents text from expanding card
+    flexShrink: 1,
   },
   emptyText: {
     textAlign: "center",

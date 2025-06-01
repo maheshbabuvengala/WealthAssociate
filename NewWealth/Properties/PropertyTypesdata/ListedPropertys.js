@@ -43,6 +43,30 @@ const ListedPropertiesScreen = () => {
     }
   };
 
+  // Update the formatImages function to use newImageUrls instead of photo
+  const formatImages = (property) => {
+    if (!property) return [];
+
+    // Handle array of newImageUrls
+    if (
+      Array.isArray(property.newImageUrls) &&
+      property.newImageUrls.length > 0
+    ) {
+      return property.newImageUrls.map((url) => ({
+        uri: url, // Assuming URLs are already complete
+      }));
+    }
+
+    // Handle single image as string
+    if (typeof property.newImageUrls === "string") {
+      return [{ uri: property.newImageUrls }];
+    }
+
+    // Fallback to default logo
+    return [require("../../../assets/logo.png")];
+  };
+
+  // Update the fetchProperties function to use the updated formatImages
   const fetchProperties = async () => {
     try {
       const response = await fetch(`${API_URL}/properties/getApproveProperty`);
@@ -54,7 +78,7 @@ const ListedPropertiesScreen = () => {
         setProperties(
           listedProps.map((property) => ({
             ...property,
-            images: formatImages(property),
+            images: formatImages(property), // This now uses newImageUrls
           }))
         );
       }
@@ -63,32 +87,6 @@ const ListedPropertiesScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Format images for display (handles both array and single image)
-  const formatImages = (property) => {
-    if (!property) return [];
-
-    // Handle array of photos
-    if (Array.isArray(property.photo) && property.photo.length > 0) {
-      return property.photo.map((photo) => ({
-        uri: photo.startsWith("http") ? photo : `${API_URL}${photo}`,
-      }));
-    }
-
-    // Handle single photo string
-    if (typeof property.photo === "string") {
-      return [
-        {
-          uri: property.photo.startsWith("http")
-            ? property.photo
-            : `${API_URL}${property.photo}`,
-        },
-      ];
-    }
-
-    // Fallback to default image
-    return [require("../../../assets/logo.png")];
   };
 
   const getPropertyTag = (createdAt) => {

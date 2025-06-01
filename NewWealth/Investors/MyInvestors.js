@@ -192,7 +192,7 @@ export default function ViewInvesters() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.heading}>{getHeaderTitle()}</Text>
+      <Text style={styles.heading}>{getHeaderTitle()}:{investors.length>0?investors.length:"0"}</Text>
       <ScrollView contentContainerStyle={styles.gridContainer}>
         {loading ? (
           <ActivityIndicator size="large" color="#0000ff" />

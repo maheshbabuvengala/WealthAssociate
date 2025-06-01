@@ -64,7 +64,7 @@ const CoreProjects = () => {
               onPress={() => handleOpenLink(item.website)}
             >
               <Image
-                source={{ uri: `${API_URL}${item.photo}` }}
+                source={{ uri: item.newImageUrl }}
                 style={styles.projectImage}
               />
               <Text style={styles.projectTitle}>{item.city}</Text>
