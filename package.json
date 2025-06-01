@@ -31,7 +31,6 @@
     "expo-clipboard": "~7.0.1",
     "expo-device": "~7.0.3",
     "expo-firebase-messaging": "^2.0.0",
-    "expo-image-manipulator": "^13.1.7",
     "expo-image-picker": "~16.0.6",
     "expo-intent-launcher": "~12.0.2",
     "expo-media-library": "^17.0.6",
