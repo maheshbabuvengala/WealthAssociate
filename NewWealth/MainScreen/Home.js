@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  TextInput,
   Image,
   TouchableOpacity,
   ScrollView,
@@ -17,10 +16,310 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import PropertyCard from "./PropertyCard";
-import { FlatList } from "react-native-gesture-handler";
+import * as FileSystem from "expo-file-system";
 
 const { width } = Dimensions.get("window");
+
+// Image caching directory and functions
+const IMAGE_CACHE_DIR = FileSystem.cacheDirectory + "image-cache/";
+
+const ensureDirExists = async () => {
+  const dirInfo = await FileSystem.getInfoAsync(IMAGE_CACHE_DIR);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(IMAGE_CACHE_DIR, {
+      intermediates: true,
+    });
+  }
+};
+
+const cacheImage = async (uri, cacheKey) => {
+  try {
+    await ensureDirExists();
+    const localUri = IMAGE_CACHE_DIR + cacheKey;
+    const fileInfo = await FileSystem.getInfoAsync(localUri);
+
+    if (!fileInfo.exists) {
+      await FileSystem.downloadAsync(uri, localUri);
+      await AsyncStorage.setItem(`imageCache_${cacheKey}`, localUri);
+    }
+
+    return localUri;
+  } catch (error) {
+    console.error("Error caching image:", error);
+    return uri;
+  }
+};
+
+const getCachedImage = async (uri, cacheKey) => {
+  try {
+    const localUri = await AsyncStorage.getItem(`imageCache_${cacheKey}`);
+    if (localUri) {
+      const fileInfo = await FileSystem.getInfoAsync(localUri);
+      if (fileInfo.exists) {
+        return { uri: localUri, fromCache: true };
+      }
+    }
+    return { uri, fromCache: false };
+  } catch (error) {
+    console.error("Error getting cached image:", error);
+    return { uri, fromCache: false };
+  }
+};
+
+const clearExpiredCache = async () => {
+  try {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const files = await FileSystem.readDirectoryAsync(IMAGE_CACHE_DIR);
+    for (const file of files) {
+      const fileInfo = await FileSystem.getInfoAsync(IMAGE_CACHE_DIR + file);
+      if (
+        fileInfo.exists &&
+        fileInfo.modificationTime < oneWeekAgo.getTime() / 1000
+      ) {
+        await FileSystem.deleteAsync(IMAGE_CACHE_DIR + file);
+        await AsyncStorage.removeItem(`imageCache_${file}`);
+      }
+    }
+  } catch (error) {
+    console.error("Error clearing expired cache:", error);
+  }
+};
+
+// Improved LazyImage component
+// Updated LazyImage component with better loading and error handling
+const LazyImage = ({ source, style, resizeMode = "cover", cacheKey }) => {
+  const [imageUri, setImageUri] = useState(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
+
+  useEffect(() => {
+    let isMounted = true;
+    let retryTimeout;
+
+    const loadImage = async () => {
+      try {
+        if (typeof source === "number") {
+          // Local image resource
+          if (isMounted) {
+            setImageUri(source);
+            setIsLoaded(true);
+          }
+          return;
+        }
+
+        if (!source?.uri) {
+          if (isMounted) setIsError(true);
+          return;
+        }
+
+        // Check if URI is valid
+        if (!source.uri.startsWith("http") && !source.uri.startsWith("file")) {
+          if (isMounted) setIsError(true);
+          return;
+        }
+
+        if (cacheKey) {
+          // First try to get from cache
+          const cached = await getCachedImage(source.uri, cacheKey);
+          if (cached.fromCache && isMounted) {
+            setImageUri(cached.uri);
+            setIsLoaded(true);
+            return;
+          }
+
+          // If not in cache or cache failed, try to download
+          const localUri = await cacheImage(source.uri, cacheKey);
+          if (isMounted) {
+            setImageUri(localUri);
+            setIsLoaded(true);
+          }
+        } else {
+          // No caching, load directly
+          if (isMounted) {
+            setImageUri(source.uri);
+            setIsLoaded(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading image:", error);
+        if (isMounted && retryCount < maxRetries) {
+          // Retry after a delay if failed
+          retryTimeout = setTimeout(() => {
+            setRetryCount((prev) => prev + 1);
+          }, 1000 * (retryCount + 1)); // Exponential backoff
+        } else if (isMounted) {
+          setIsError(true);
+        }
+      }
+    };
+
+    loadImage();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(retryTimeout);
+    };
+  }, [source, cacheKey, retryCount]);
+
+  // Handle image loading errors
+  const handleError = () => {
+    if (retryCount < maxRetries) {
+      setRetryCount((prev) => prev + 1);
+    } else {
+      setIsError(true);
+    }
+  };
+
+  if (isError) {
+    return (
+      <View style={[style, styles.imagePlaceholder]}>
+        <Image
+          source={require("../../assets/logo.png")}
+          style={[style, { resizeMode: "contain" }]}
+        />
+      </View>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <View style={[style, styles.imagePlaceholder]}>
+        <ActivityIndicator size="small" color="#D81B60" />
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={typeof imageUri === "number" ? imageUri : { uri: imageUri }}
+      style={style}
+      resizeMode={resizeMode}
+      onLoad={() => setIsLoaded(true)}
+      onError={handleError}
+    />
+  );
+};
+// Utility function to normalize image sources
+const normalizeImageSources = (property) => {
+  if (!property) return [];
+
+  // Check newImageUrls first
+  if (Array.isArray(property.newImageUrls)) {
+    return property.newImageUrls.filter(
+      (url) => url && typeof url === "string"
+    );
+  } else if (
+    typeof property.newImageUrls === "string" &&
+    property.newImageUrls
+  ) {
+    return [property.newImageUrls];
+  }
+
+  // Fallback to imageUrls if newImageUrls not available
+  if (Array.isArray(property.imageUrls)) {
+    return property.imageUrls.filter((url) => url && typeof url === "string");
+  } else if (typeof property.imageUrls === "string" && property.imageUrls) {
+    return [property.imageUrls];
+  }
+
+  // Return empty array if no valid images found
+  return [];
+};
+
+// PropertyImageSlider component
+const PropertyImageSlider = ({ property, width }) => {
+  const scrollRef = useRef(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const images = normalizeImageSources(property);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+
+    const interval = setInterval(() => {
+      const nextIndex = (currentIndex + 1) % images.length;
+      setCurrentIndex(nextIndex);
+      scrollRef.current?.scrollTo({
+        x: nextIndex * width,
+        animated: true,
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [currentIndex, images.length, width]);
+
+  if (images.length === 0) {
+    return (
+      <LazyImage
+        source={require("../../assets/logo.png")}
+        style={{ width, height: 200, borderRadius: 10 }}
+        resizeMode="contain"
+      />
+    );
+  }
+
+  if (images.length === 1) {
+    return (
+      <LazyImage
+        source={{ uri: images[0] }}
+        style={{ width:260, height: 200, borderRadius: 10 }}
+        resizeMode="cover"
+        cacheKey={`property_${property._id}_0`}
+      />
+    );
+  }
+
+  return (
+    <View style={{ marginBottom: 10 }}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => {
+          const offsetX = e.nativeEvent.contentOffset.x;
+          const newIndex = Math.round(offsetX / width);
+          setCurrentIndex(newIndex);
+        }}
+      >
+        {images.map((uri, index) => (
+          <LazyImage
+            key={index}
+            source={{ uri }}
+            style={{ width, height: 200, borderRadius: 10 }}
+            resizeMode="cover"
+            cacheKey={`property_${property._id}_${index}`}
+          />
+        ))}
+      </ScrollView>
+
+      {images.length > 1 && (
+        <View style={styles.pagination}>
+          {images.map((_, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.dot,
+                index === currentIndex ? styles.activeDot : null,
+              ]}
+              onPress={() => {
+                setCurrentIndex(index);
+                scrollRef.current?.scrollTo({
+                  x: index * width,
+                  animated: true,
+                });
+              }}
+            />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
 
 const HomeScreen = () => {
   const [details, setDetails] = useState({});
@@ -34,17 +333,18 @@ const HomeScreen = () => {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
   const [likedProperties, setLikedProperties] = useState([]);
-  const [property, setProperty] = useState(null);
   const [referralCount, setReferralCount] = useState(0);
   const [referredInfo, setReferredInfo] = useState({
     name: "",
     mobileNumber: "",
   });
 
-  const SCREEN_WIDTH = Dimensions.get("window").width;
-
   const navigation = useNavigation();
-  const [postedProperty, setPostedProperty] = useState(null);
+
+  useEffect(() => {
+    ensureDirExists();
+    clearExpiredCache();
+  }, []);
 
   const getDetails = async () => {
     try {
@@ -52,14 +352,12 @@ const HomeScreen = () => {
       const type = await AsyncStorage.getItem("userType");
       setUserType(type);
 
-      // Load liked properties from storage
       const storedLikes = await AsyncStorage.getItem("likedProperties");
       if (storedLikes) {
         setLikedProperties(JSON.parse(storedLikes));
       }
 
       let endpoint = "";
-
       switch (type) {
         case "WealthAssociate":
           endpoint = `${API_URL}/agent/AgentDetails`;
@@ -129,17 +427,11 @@ const HomeScreen = () => {
       }
 
       const data = await response.json();
-
-      // The response might be an array of agents, so count them
       if (Array.isArray(data)) {
         setReferralCount(data.length);
-      }
-      // Or it might be an object with a count property
-      else if (data.count !== undefined) {
+      } else if (data.count !== undefined) {
         setReferralCount(data.count);
-      }
-      // Or it might be an object with a valueAgents array
-      else if (Array.isArray(data.valueAgents)) {
+      } else if (Array.isArray(data.valueAgents)) {
         setReferralCount(data.valueAgents.length);
       } else {
         setReferralCount(0);
@@ -175,6 +467,7 @@ const HomeScreen = () => {
       console.error("Error fetching core projects:", error);
     }
   };
+
   const fetchValueProjects = async () => {
     try {
       const response = await fetch(
@@ -317,21 +610,9 @@ const HomeScreen = () => {
   };
 
   const handleShare = (property) => {
-    let shareImage;
+    const images = normalizeImageSources(property);
+    let shareImage = images.length > 0 ? images[0] : null;
 
-    // Handle images - ONLY from newImageUrls (ignore photo field)
-    if (
-      Array.isArray(property.newImageUrls) &&
-      property.newImageUrls.length > 0
-    ) {
-      shareImage = property.newImageUrls[0]; // Use first image (assumes URLs are complete)
-    } else if (typeof property.newImageUrls === "string") {
-      shareImage = property.newImageUrls;
-    } else {
-      shareImage = null; // No image available
-    }
-
-    // Format price if available
     let formattedPrice = "Price not available";
     if (property.price) {
       try {
@@ -348,7 +629,7 @@ const HomeScreen = () => {
       property: {
         photo: shareImage,
         location: property.location || "Location not specified",
-        price: formattedPrice, // Use formatted price
+        price: formattedPrice,
         propertyType: property.propertyType || "Property",
         PostedBy: property.PostedBy || details?.Number || "",
         fullName: property.fullName || details?.name || "Wealth Associate",
@@ -390,11 +671,8 @@ const HomeScreen = () => {
         }
 
         const data = await response.json();
-
         if (data.status === "success") {
           setReferredInfo(data.referredByDetails);
-        } else {
-          console.error("API returned unsuccessful status:", data);
         }
       } catch (error) {
         console.error("Error fetching referredBy info:", error);
@@ -420,20 +698,10 @@ const HomeScreen = () => {
       return;
     }
 
-    // Handle images - ONLY from newImageUrls (ignore photo field)
-    let images = [];
-    if (Array.isArray(property.newImageUrls)) {
-      images = property.newImageUrls.map((url) => ({
-        uri: url, // Assuming URLs are already complete (no need for API_URL prefix)
-      }));
-    } else if (typeof property.newImageUrls === "string") {
-      images = [{ uri: property.newImageUrls }];
-    } else {
-      // Fallback to default logo if no newImageUrls
-      images = [require("../../assets/logo.png")];
-    }
+    const images = normalizeImageSources(property).map((uri) => ({
+      uri: uri,
+    }));
 
-    // Format price
     let formattedPrice = "Price not available";
     try {
       const priceValue = parseInt(property.price);
@@ -449,7 +717,7 @@ const HomeScreen = () => {
         ...property,
         id: property._id,
         price: formattedPrice,
-        images: images, // Now only contains newImageUrls or fallback
+        images: images.length > 0 ? images : [require("../../assets/logo.png")],
       },
     });
   };
@@ -474,111 +742,6 @@ const HomeScreen = () => {
     "ReferralAssociate",
   ].includes(userType);
 
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#D81B60" />
-      </View>
-    );
-  }
-
-  const renderPropertyImage = (property) => {
-    const scrollRef = useRef(null);
-    const [currentIndex, setCurrentIndex] = useState(0);
-
-    // Handle both array and string cases for newImageUrls only
-    const images = Array.isArray(property.newImageUrls)
-      ? property.newImageUrls
-      : typeof property.newImageUrls === "string"
-      ? [property.newImageUrls]
-      : [];
-
-    // Auto-scroll every 3 seconds
-    useEffect(() => {
-      if (!images.length) return;
-
-      const interval = setInterval(() => {
-        const nextIndex = (currentIndex + 1) % images.length;
-        setCurrentIndex(nextIndex);
-        scrollRef.current?.scrollTo({
-          x: nextIndex * (SCREEN_WIDTH - 40),
-          animated: true,
-        });
-      }, 3000);
-
-      return () => clearInterval(interval);
-    }, [currentIndex, images.length]);
-
-    if (images.length > 0) {
-      return (
-        <View style={{ marginBottom: 10 }}>
-          <ScrollView
-            ref={scrollRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            style={{ marginBottom: 10 }}
-            onMomentumScrollEnd={(e) => {
-              const offsetX = e.nativeEvent.contentOffset.x;
-              const newIndex = Math.round(offsetX / (SCREEN_WIDTH - 40));
-              setCurrentIndex(newIndex);
-            }}
-            onScrollBeginDrag={() => {
-              // Clear interval when user starts scrolling manually
-              clearInterval(interval);
-            }}
-          >
-            {images.map((item, index) => (
-              <Image
-                key={index}
-                source={{ uri: item }}
-                style={{
-                  width: SCREEN_WIDTH - 40,
-                  height: 200,
-                  borderRadius: 10,
-                }}
-                resizeMode="cover"
-              />
-            ))}
-          </ScrollView>
-
-          {/* Pagination dots */}
-          <View style={styles.pagination}>
-            {images.map((_, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.dot,
-                  index === currentIndex ? styles.activeDot : null,
-                ]}
-                onPress={() => {
-                  setCurrentIndex(index);
-                  scrollRef.current?.scrollTo({
-                    x: index * (SCREEN_WIDTH - 40),
-                    animated: true,
-                  });
-                }}
-              />
-            ))}
-          </View>
-        </View>
-      );
-    }
-
-    // Fallback image (only shown if no newImageUrls exist)
-    return (
-      <Image
-        source={require("../../assets/logo.png")}
-        style={{
-          width: SCREEN_WIDTH - 40,
-          height: 200,
-          borderRadius: 10,
-        }}
-        resizeMode="contain"
-      />
-    );
-  };
-
   const RenderPropertyCard = ({ property }) => {
     const propertyTag = getPropertyTag(property.createdAt);
     const propertyId = getLastFourChars(property._id);
@@ -593,7 +756,6 @@ const HomeScreen = () => {
           await AsyncStorage.getItem("userDetails")
         );
 
-        // Optimistically update the UI
         const newLikedStatus = !isLiked;
         setIsLiked(newLikedStatus);
 
@@ -605,14 +767,12 @@ const HomeScreen = () => {
         }
         setLikedProperties(updatedLikes);
 
-        // Save to AsyncStorage
         await AsyncStorage.setItem(
           "likedProperties",
           JSON.stringify(updatedLikes)
         );
 
-        // Send API request
-        const response = await fetch(`${API_URL}/properties/like`, {
+        await fetch(`${API_URL}/properties/like`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -626,16 +786,6 @@ const HomeScreen = () => {
               userDetails?.MobileNumber || details?.MobileNumber || "",
           }),
         });
-
-        if (!response.ok) {
-          // Revert changes if API call fails
-          setIsLiked(!newLikedStatus);
-          const storedLikes = await AsyncStorage.getItem("likedProperties");
-          if (storedLikes) {
-            setLikedProperties(JSON.parse(storedLikes));
-          }
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
       } catch (error) {
         console.error("Error toggling like:", error);
       }
@@ -647,7 +797,7 @@ const HomeScreen = () => {
         activeOpacity={0.8}
       >
         <View style={styles.propertyCard}>
-          {renderPropertyImage(property)}
+          <PropertyImageSlider property={property} width={width - 40} />
 
           <View
             style={[
@@ -717,13 +867,18 @@ const HomeScreen = () => {
       </TouchableOpacity>
     );
   };
+
   const RequestedPropertyCard = ({ item }) => {
     const propertyTag = getPropertyTag(item.createdAt);
     const propertyId = getLastFourCharss(item.id);
 
     return (
       <View style={styles.requestedCard}>
-        <Image source={item.image} style={styles.requestedImage} />
+        <LazyImage
+          source={item.image}
+          style={styles.requestedImage}
+          cacheKey={`requested_${item.id}`}
+        />
         <View style={styles.propertyIdContainer}>
           <Text style={styles.propertyId}>ID: {propertyId}</Text>
         </View>
@@ -773,6 +928,14 @@ const HomeScreen = () => {
     </TouchableOpacity>
   );
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#D81B60" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
@@ -780,9 +943,10 @@ const HomeScreen = () => {
           details?.AgentType === "ValueAssociate" &&
           details?.photo && (
             <View style={styles.agentPhotoContainer}>
-              <Image
+              <LazyImage
                 source={{ uri: details.photo }}
                 style={styles.agentPhoto}
+                cacheKey={`agent_${details._id}`}
               />
               <Text
                 style={styles.agentName}
@@ -848,26 +1012,24 @@ const HomeScreen = () => {
             <Text style={styles.compactButtonText}>Skilled Resources</Text>
           </TouchableOpacity>
         </View>
-        {(userType === "WealthAssociate" ||
-          userType === "ReferralAssociate" ||
-          userType === "CoreMember") &&
-          regularProperties.length > 0 && (
-            <>
-              <SectionHeader
-                title="Regular Properties"
-                onViewAll={() => navigation.navigate("regularprop")}
-              />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalScroll}
-              >
-                {regularProperties.map((property, index) => (
-                  <RenderPropertyCard key={index} property={property} />
-                ))}
-              </ScrollView>
-            </>
-          )}
+
+        {regularProperties.length > 0 && (
+          <>
+            <SectionHeader
+              title="Regular Properties"
+              onViewAll={() => navigation.navigate("regularprop")}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {regularProperties.map((property, index) => (
+                <RenderPropertyCard key={index} property={property} />
+              ))}
+            </ScrollView>
+          </>
+        )}
 
         {approvedProperties.length > 0 && (
           <>
@@ -955,9 +1117,10 @@ const HomeScreen = () => {
                   style={styles.clientCard}
                   onPress={() => handleOpenLink(client.website)}
                 >
-                  <Image
+                  <LazyImage
                     source={{ uri: client.newImageUrl }}
                     style={styles.clientImage}
+                    cacheKey={`client_${client._id}`}
                   />
                 </TouchableOpacity>
               ))}
@@ -979,9 +1142,10 @@ const HomeScreen = () => {
                   style={styles.projectCard}
                   onPress={() => handleOpenLink(project.website)}
                 >
-                  <Image
+                  <LazyImage
                     source={{ uri: project.newImageUrl }}
                     style={styles.projectImage}
+                    cacheKey={`project_${project._id}`}
                   />
                   <Text style={styles.projectTitle}>{project.city}</Text>
                 </TouchableOpacity>
@@ -989,6 +1153,7 @@ const HomeScreen = () => {
             </ScrollView>
           </>
         )}
+
         {valueprojects.length > 0 && (
           <>
             <SectionHeader title="Value Projects" />
@@ -1003,9 +1168,10 @@ const HomeScreen = () => {
                   style={styles.projectCard}
                   onPress={() => handleOpenLink(project.website)}
                 >
-                  <Image
+                  <LazyImage
                     source={{ uri: project.newImageUrl }}
                     style={styles.projectImage}
+                    cacheKey={`valueproject_${project._id}`}
                   />
                   <Text style={styles.projectTitle}>{project.city}</Text>
                 </TouchableOpacity>
@@ -1024,7 +1190,7 @@ const HomeScreen = () => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <>
-              <Image
+              <LazyImage
                 source={require("../../assets/man.png")}
                 style={styles.agentLogo}
               />
@@ -1102,7 +1268,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 6,
   },
-
   scrollView: {
     flex: 1,
     marginBottom: 60,
@@ -1139,16 +1304,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  propertyImage: {
-    width: Dimensions.get("window").width - 30,
-    height: 200,
-    borderRadius: 10,
-    marginRight: 10,
-  },
-
-  imageScrollContainer: {
-    marginBottom: 10,
-  },
   statusTag: {
     position: "absolute",
     top: 20,
@@ -1165,7 +1320,6 @@ const styles = StyleSheet.create({
   propertyIdContainer: {
     alignItems: "flex-end",
     paddingRight: 5,
-    // marginBottom: 5,
     marginTop: 5,
   },
   propertyId: {
@@ -1235,7 +1389,6 @@ const styles = StyleSheet.create({
   requestedImage: {
     width: "100%",
     height: 120,
-    resizeMode: "cover",
   },
   requestedTitle: {
     fontSize: 14,
@@ -1277,9 +1430,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   clientImage: {
-    width: "80%",
-    height: "80%",
-    resizeMode: "contain",
+    width: "60%",
+    height: "60%",
+    resizeMode: "cover",
   },
   projectCard: {
     width: 150,
@@ -1294,10 +1447,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   projectImage: {
-    width: 120,
-    height: 80,
-    resizeMode: "contain",
+    width: 100,
+    height: 60,
     marginBottom: 10,
+    resizeMode:"cover"
   },
   projectTitle: {
     fontSize: 12,
@@ -1393,8 +1546,8 @@ const styles = StyleSheet.create({
     color: "#333",
     alignItems: "flex-end",
     marginLeft: 20,
-    flex: 1, // Let the text take up remaining space
-    flexShrink: 1, // Allow it to shrink
+    flex: 1,
+    flexShrink: 1,
   },
   skillTag: {
     backgroundColor: "#f0f8ff",
@@ -1406,7 +1559,12 @@ const styles = StyleSheet.create({
   skillText: {
     fontSize: 10,
     color: "#2c3e50",
-    fontWeight: 600,
+    fontWeight: "600",
+  },
+  imagePlaceholder: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
   },
 });
 
