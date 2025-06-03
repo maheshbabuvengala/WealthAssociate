@@ -7,6 +7,7 @@ import {
   Platform,
   Linking,
 } from "react-native";
+import "./global.css";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
