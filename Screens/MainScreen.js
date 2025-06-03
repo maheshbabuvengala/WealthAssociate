@@ -7,6 +7,7 @@ import {
   ImageBackground,
   Image,
   Platform,
+  width
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import logo1 from "../assets/exp_and.jpg";
@@ -14,6 +15,7 @@ import logo2 from "../assets/exp.jpg";
 import logo3 from "../assets/wlogo2.png";
 import logo4 from "../assets/quote.png";
 import logo5 from "../assets/cardbg.png";
+const isSmallDevice = width < 450;
 
 const LoginScreen = () => {
   const navigation = useNavigation();
@@ -121,7 +123,7 @@ const styles = StyleSheet.create({
     width: Platform.OS === "android" || Platform.OS === "ios" ? 150 : 200,
     height: Platform.OS === "android" || Platform.OS === "ios" ? 68 : 80,
     position: "relative",
-    right: Platform.OS === "android" || Platform.OS === "ios" ? -113 : -680,
+    right: Platform.OS === "android" || Platform.OS === "ios"||isSmallDevice ? -113 : -680,
   },
   quoteContainer: {
     position: "absolute",
