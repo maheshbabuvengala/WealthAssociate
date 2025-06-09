@@ -142,7 +142,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
     } else if (userType === "Customer") {
       requestData.PostedBy = Details.MobileNumber;
     } else if (userType === "CoreMember") {
-      requestData.PostedBy = Details.MobileNumber;  
+      requestData.PostedBy = Details.MobileNumber;
     } else if (userType === "Investor") {
       requestData.PostedBy = Details.MobileNumber;
     } else if (userType === "NRI") {
@@ -188,12 +188,11 @@ const RequestedPropertyForm = ({ closeModal }) => {
 
   return (
     <TouchableWithoutFeedback onPress={closeModal}>
+            <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.modalOverlay}>
+        <Text style={styles.header}>Request Property</Text>
         <TouchableWithoutFeedback>
           <View style={styles.modalContainer} ref={modalRef}>
-            <ScrollView contentContainerStyle={styles.container}>
-              <Text style={styles.header}>Requested Property</Text>
-
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Property Type</Text>
                 <TouchableOpacity
@@ -217,7 +216,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                           setShowPropertyTypeDropdown(false);
                         }}
                       >
-                        <Text>{item.name}</Text>
+                        <Text style={styles.listItemText}>{item.name}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -230,6 +229,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                   <TextInput
                     style={styles.input}
                     placeholder="Ex. Vijayawada"
+                    placeholderTextColor="#888"
                     value={locationSearch}
                     onChangeText={(text) => {
                       setLocationSearch(text);
@@ -250,7 +250,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                               setShowLocationList(false);
                             }}
                           >
-                            <Text>{item.name}</Text>
+                            <Text style={styles.listItemText}>{item.name}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
@@ -263,7 +263,8 @@ const RequestedPropertyForm = ({ closeModal }) => {
                 <Text style={styles.label}>Property Location</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="BhavaniPurama"
+                  placeholder="BhavaniPuram"
+                  placeholderTextColor="#888"
                   value={islocation}
                   onChangeText={setlocation}
                 />
@@ -274,6 +275,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your budget"
+                  placeholderTextColor="#888"
                   value={budget}
                   onChangeText={setBudget}
                   keyboardType="numeric"
@@ -285,6 +287,7 @@ const RequestedPropertyForm = ({ closeModal }) => {
                 <TextInput
                   style={styles.input}
                   placeholder="Ex. Need 10 acres land"
+                  placeholderTextColor="#888"
                   value={propertyTitle}
                   onChangeText={setPropertyTitle}
                 />
@@ -309,66 +312,79 @@ const RequestedPropertyForm = ({ closeModal }) => {
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
           </View>
         </TouchableWithoutFeedback>
       </View>
+            </ScrollView>
     </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "white",
-    padding: 10,
-    width: "100%",
-    alignSelf: "center",
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "#D8E3E7",
+    justifyContent: "center",
+    alignItems: "center",
+  paddingBottom:"30%"
+  },
+  modalContainer: {
+    width: "90%",
+    maxWidth: 500,
+    maxHeight: "90%",
+    backgroundColor: "#FDFDFD",
+    borderRadius: 20,
+    padding: 30,
     shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
     elevation: 5,
-    borderWidth: 0.5,
-    borderColor: "black",
+  },
+  container: {
+    paddingBottom: 20,
   },
   header: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: "bold",
-    color: "white",
     textAlign: "center",
-    backgroundColor: "#e91e63",
-    padding: 12,
-    width: "100%",
+    color: "#2B2D42",
+    marginBottom: 20,
   },
   inputContainer: {
-    marginTop: 12,
+    marginBottom: 15,
   },
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
-    marginBottom: 5,
+    color: "#2B2D42",
+    marginBottom: 8,
+    marginLeft: 5,
   },
   input: {
-    borderWidth: 2,
-    borderColor: "#bbb",
-    padding: 10,
+    borderWidth: 1,
+    borderColor: "#E0E6ED",
+    padding: 12,
     borderRadius: 25,
-    fontSize: 14,
+    fontSize: 16,
     backgroundColor: "#fff",
+    color: "#333",
   },
   dropdownContainer: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
+    borderColor: "#3E5C76",
+    borderRadius: 8,
     marginTop: 5,
-    maxHeight: 300,
-    overflow: "scroll",
-    backgroundColor: "#e6708e",
+    maxHeight: 200,
+    backgroundColor: "#FDFDFD",
   },
   listItem: {
-    padding: 10,
+    padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
+    borderBottomColor: "#D8E3E7",
+  },
+  listItemText: {
+    color: "#3E5C76",
   },
   buttonContainer: {
     flexDirection: "row",
@@ -376,36 +392,50 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   postButton: {
-    backgroundColor: "#e91e63",
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    borderRadius: 25,
+    backgroundColor: "#3E5C76",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
     flex: 1,
     marginRight: 10,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   postButtonText: {
-    color: "white",
+    color: "#FDFDFD",
     fontWeight: "bold",
     textAlign: "center",
+    fontSize: 16,
   },
   cancelButton: {
-    backgroundColor: "#333",
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    borderRadius: 25,
+    backgroundColor: "#3E5C76",
+    borderWidth: 1,
+    borderColor: "#3E5C76",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
     flex: 1,
     marginLeft: 10,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   cancelButtonText: {
-    color: "white",
+    color: "#FDFDFD",
     fontWeight: "bold",
     textAlign: "center",
+    fontSize: 16,
   },
   disabledButton: {
-    backgroundColor: "#ccc",
+    backgroundColor: "#888",
   },
   placeholderText: {
-    color: "rgba(0, 0, 0, 0.5)",
+    color: "#888",
   },
 });
 

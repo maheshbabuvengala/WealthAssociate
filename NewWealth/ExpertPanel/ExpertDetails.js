@@ -102,9 +102,15 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => onSwitch(null)}>
-        <Text style={styles.backButton}>Back</Text>
-      </TouchableOpacity>
+      <View style={styles.headerContainer}>
+        <TouchableOpacity
+          onPress={() => onSwitch(null)}
+          style={styles.backButton}
+        >
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.header}>{expertType} Experts</Text>
 
       {loading ? (
@@ -112,7 +118,10 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
       ) : error ? (
         <Text style={styles.errorText}>{error}</Text>
       ) : experts.length > 0 ? (
-        <ScrollView contentContainerStyle={styles.cardContainer}>
+        <ScrollView
+          contentContainerStyle={styles.cardContainer}
+          style={styles.scrollView}
+        >
           {experts.map((item, index) => (
             <View key={item._id} style={styles.expertCard}>
               <Image
@@ -146,27 +155,54 @@ const ExpertDetails = ({ expertType, onSwitch }) => {
           No experts found for this category.
         </Text>
       )}
+
+      {/* Bottom spacing */}
+      <View style={styles.bottomSpacing} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 16 },
-  backButton: { fontSize: 16, color: "blue", marginBottom: 10 },
+  container: {
+    flex: 1,
+    backgroundColor: "#D8E3E7",
+    padding: 16,
+    width: Platform.OS === "web" ? "80%" : "100%",
+    alignSelf: "center",
+  },
+  headerContainer: {
+    width: "100%",
+    alignItems: "flex-start",
+    marginBottom: 15,
+  },
+  backButton: {
+    padding: 5,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: "blue",
+  },
   header: {
     fontSize: 22,
     fontWeight: "bold",
-    marginBottom: 15,
+    marginBottom: 20,
     textAlign: "center",
+    width: "100%",
+  },
+  scrollView: {
+    width: "100%",
+    marginBottom: 20,
   },
   cardContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
+    width: "100%",
+    paddingBottom: 20,
   },
   expertCard: {
     width: Platform.OS === "web" ? "30%" : "90%",
-    backgroundColor: "#fff",
+    backgroundColor: "#FDFDFD",
     padding: 16,
     margin: 10,
     borderRadius: 12,
@@ -177,25 +213,56 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  profileImage: { width: 80, height: 80, borderRadius: 40, marginBottom: 10 },
-  expertName: { fontSize: 18, fontWeight: "bold", marginBottom: 5 },
-  expertDetails: { fontSize: 14, color: "#555", textAlign: "center" },
-  label: { fontWeight: "bold", color: "#333" },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 10,
+  },
+  expertName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  expertDetails: {
+    fontSize: 14,
+    color: "#555",
+    textAlign: "center",
+  },
+  label: {
+    fontWeight: "bold",
+    color: "#333",
+  },
   noExperts: {
     textAlign: "center",
     fontSize: 16,
     color: "#666",
     marginTop: 20,
+    marginBottom: 20,
   },
-  errorText: { textAlign: "center", fontSize: 16, color: "red", marginTop: 20 },
+  errorText: {
+    textAlign: "center",
+    fontSize: 16,
+    color: "red",
+    marginTop: 20,
+    marginBottom: 20,
+  },
   requestButton: {
-    backgroundColor: "#007bff",
+    backgroundColor: "#3E5C76",
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
     marginTop: 10,
+    width: "100%",
   },
-  requestButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  requestButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  bottomSpacing: {
+    height: 20,
+  },
 });
 
 export default ExpertDetails;

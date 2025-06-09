@@ -7,6 +7,7 @@ import {
   Platform,
   Linking,
 } from "react-native";
+import "./global.css";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -73,6 +74,7 @@ import ViewAllRequestedProperties from "./NewWealth/Properties/AllrequestedPrope
 import ViewLikedProperties from "./NewWealth/Properties/ViewLikedProperties";
 import { createNavigationContainerRef } from "@react-navigation/native";
 import myAgents from "./NewWealth/Myagents/Myagents";
+import LoadingScreen from "./NewWealth/MainScreen/Loadingscreen";
 
 const Stack = createStackNavigator();
 const APP_VERSION = "1.2.1";
@@ -304,7 +306,8 @@ export default function App() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        {/* <ActivityIndicator size="large" color="#0000ff" /> */}
+        <LoadingScreen/>
       </View>
     );
   }

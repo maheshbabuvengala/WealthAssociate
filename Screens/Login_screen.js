@@ -20,10 +20,9 @@ import { API_URL } from "../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import logo1 from "../assets/logo2.png";
-import logo2 from "../assets/logo.png";
-// import { useNavigation } from "@react-navigation/native";
+import logo2 from "../assets/logosub.png";
 
-export default function Login_screen() {
+export default function LoginScreen() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,13 +32,12 @@ export default function Login_screen() {
   const navigation = useNavigation();
   const [adminData, setAdminData] = useState(null);
   const [clickCount, setClickCount] = useState(0);
-  // const navigation = useNavigation();
 
   useEffect(() => {
     if (clickCount === 5) {
-      setClickCount(0); // Reset count
+      setClickCount(0);
       Alert.alert("Welcome to call center dashboard");
-      navigation.navigate("CallCenterLogin"); // Replace with your actual screen name
+      navigation.navigate("CallCenterLogin");
     }
   }, [clickCount]);
 
@@ -80,7 +78,6 @@ export default function Login_screen() {
   };
 
   const handleLogin = async () => {
-    // Admin login check
     if (
       mobileNumber === `${adminData?.UserName}` &&
       password === `${adminData?.Password}`
@@ -90,7 +87,7 @@ export default function Login_screen() {
     }
 
     if (!mobileNumber || !password) {
-      setErrorMessage("Please enter both mobile number and password.");
+      setErrorMessage("Please enter both mobile number and password");
       return;
     }
 
@@ -101,7 +98,6 @@ export default function Login_screen() {
       let endpoint = "";
       let userType = "";
 
-      // Determine API endpoint based on login type
       switch (loginType) {
         case "WealthAssociate":
           endpoint = `${API_URL}/agent/AgentLogin`;
@@ -158,7 +154,6 @@ export default function Login_screen() {
         const token = data.token;
         await AsyncStorage.setItem("authToken", token);
         await AsyncStorage.setItem("userType", userType);
-        console.log("Token stored in AsyncStorage:", token);
 
         if (userType === "CallCenter") {
           navigation.navigate("CallCenterDashboard");
@@ -167,11 +162,11 @@ export default function Login_screen() {
         }
       } else {
         setErrorMessage(
-          data.message || "Mobile number or password is incorrect."
+          data.message || "Mobile number or password is incorrect"
         );
       }
     } catch (error) {
-      setErrorMessage("An error occurred. Please try again.");
+      setErrorMessage("An error occurred. Please try again");
       console.error("Login error:", error);
     } finally {
       setLoading(false);
@@ -198,126 +193,118 @@ export default function Login_screen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
+      style={styles.keyboardAvoidingView}
     >
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
-        <SafeAreaView style={styles.container}>
-          <View style={styles.card}>
-            {Platform.OS !== "android" && Platform.OS !== "ios" && (
-              <View style={styles.leftSection}>
-                <TouchableOpacity onPress={handleLogoPress}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.container}>
+            <View style={styles.card}>
+              {Platform.OS !== "android" && Platform.OS !== "ios" && (
+                <View style={styles.leftSection}>
+                  <TouchableOpacity onPress={handleLogoPress}>
+                    <Image
+                      source={logo1}
+                      style={styles.logo}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={styles.rightSection}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => navigation.goBack()}
+                >
+                  <Icon name="arrow-back" size={24} color="#3E5C76" />
+                </TouchableOpacity>
+
+                <View style={styles.header}>
                   <Image
-                    source={logo1}
-                    style={styles.logo}
+                    source={logo2}
+                    style={styles.appLogo}
                     resizeMode="contain"
                   />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <View
-              style={[
-                styles.rightSection,
-                Platform.OS === "android" || Platform.OS === "ios"
-                  ? { flex: 1 }
-                  : null,
-              ]}
-            >
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.goBack()}
-              >
-                <Icon name="arrow-back" size={24} color="#E82E5F" />
-              </TouchableOpacity>
-              {/* <TouchableOpacity onPress={handleLogoPress}> */}
-                <Image
-                  source={
-                    Platform.OS === "android" || Platform.OS === "ios"
-                      ? logo2
-                      : logo2
-                  }
-                  style={styles.illustration}
-                  resizeMode="contain"
-                />
-              {/* </TouchableOpacity> */}
-              <Text style={styles.tagline}>
-                Your Trusted Property Consultant
-              </Text>
-              <TouchableOpacity onPress={handleLogoPress}>
-                <Text style={styles.welcomeText}>
-                  Welcome back! Log in to your {loginType} account.
-                </Text>
-              </TouchableOpacity>
-
-              {errorMessage ? (
-                <Text style={styles.errorText}>{errorMessage}</Text>
-              ) : null}
-
-              <Text style={styles.label}>Mobile Number</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex. 9063392872"
-                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                  value={mobileNumber}
-                  onChangeText={setMobileNumber}
-                  keyboardType="phone-pad"
-                />
-                <Icon
-                  name="call-outline"
-                  size={20}
-                  color="red"
-                  style={styles.icon}
-                />
-              </View>
-
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter Your Password"
-                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Icon
-                    name={showPassword ? "eye-outline" : "eye-off-outline"}
-                    size={20}
-                    color="red"
-                    style={styles.icon}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.actionContainer}>
-                <TouchableOpacity
-                  style={styles.loginButton}
-                  onPress={handleLogin}
-                  disabled={loading}
-                >
-                  <Text style={styles.loginButtonText}>
-                    {loading ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      "Login"
-                    )}
+                  <Text style={styles.welcomeText}>
+                    Welcome back! Log in to your {loginType} account
                   </Text>
-                </TouchableOpacity>
+                </View>
 
-                <TouchableOpacity
-                  onPress={() => navigation.navigate("Forgetpassword")}
-                >
-                  <Text style={styles.forgotPassword}>
-                    Forgot your Password?
-                  </Text>
-                </TouchableOpacity>
+                {errorMessage ? (
+                  <Text style={styles.errorText}>{errorMessage}</Text>
+                ) : null}
+
+                <View style={styles.form}>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Mobile Number</Text>
+                    <View style={styles.inputContainer}>
+                      <TextInput
+                        style={styles.inputField}
+                        placeholder="Ex. 9063392872"
+                        placeholderTextColor="#999"
+                        value={mobileNumber}
+                        onChangeText={setMobileNumber}
+                        keyboardType="phone-pad"
+                        autoCapitalize="none"
+                      />
+                      <Icon
+                        name="call-outline"
+                        size={20}
+                        color="#3E5C76"
+                        style={styles.inputIcon}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Password</Text>
+                    <View style={styles.inputContainer}>
+                      <TextInput
+                        style={styles.inputField}
+                        placeholder="Enter your password"
+                        placeholderTextColor="#999"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.eyeIcon}
+                      >
+                        <Icon
+                          name={showPassword ? "eye-outline" : "eye-off-outline"}
+                          size={20}
+                          color="#3E5C76"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.actions}>
+                    <TouchableOpacity
+                      style={[styles.loginButton, loading && styles.disabledButton]}
+                      onPress={handleLogin}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.buttonText}>Login</Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.forgotPassword}
+                      onPress={() => navigation.navigate("Forgetpassword")}
+                    >
+                      <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
@@ -328,145 +315,157 @@ export default function Login_screen() {
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
-    alignItems: "center",
-    justifyContent: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
   },
   card: {
-    width: "90%",
-    maxWidth: 980,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 25,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 4,
-      height: 4,
-    },
-    shadowOpacity: 0.25,
+    width: '100%',
+    maxWidth: Platform.select({
+      web: 800,
+      default: '100%',
+    }),
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 8,
-    flexDirection: "row",
-    padding: 20,
+    elevation: 3,
+    padding: 24,
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
   },
   leftSection: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingRight: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingRight: 24,
   },
   rightSection: {
     flex: 1,
-    paddingLeft: 20,
-  },
-  logo: {
-    width: 247,
-    height: 169,
-  },
-  tagline: {
-    marginTop: -35,
-    marginBottom: 20,
-    fontFamily: "Cairo",
-    fontSize: 10,
-    color: "#000000",
-    textAlign: "center",
-  },
-  illustration: {
-    width: 144,
-    height: 120,
-    alignSelf: "center",
-    marginBottom: 20,
+    position: 'relative',
   },
   backButton: {
-    position: "absolute",
-    top: 10,
-    left: 10,
+    position: 'absolute',
+    top: 0,
+    left: 0,
     zIndex: 1,
-    padding: 10,
+    padding: 8,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logo: {
+    width: 200,
+    height: 150,
+  },
+  appLogo: {
+    width: 120,
+    height: 100,
+    marginBottom: 16,
+  },
+  tagline: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'Cairo-Medium',
+    marginBottom: 8,
   },
   welcomeText: {
-    fontFamily: "Cairo",
-    fontSize: 16,
-    color: "#E82E5F",
+    fontSize: 18,
+    color: '#1F2937',
+    fontFamily: 'Cairo-SemiBold',
+    textAlign: 'center',
+  },
+  form: {
+    width: '100%',
+  },
+  inputGroup: {
     marginBottom: 20,
-    textAlign: "center",
   },
   label: {
-    fontFamily: "Cairo",
-    fontSize: 16,
-    color: "#191919",
-    marginBottom: 5,
+    fontSize: 14,
+    color: '#374151',
+    fontFamily: 'Cairo-SemiBold',
+    marginBottom: 8,
+    marginLeft: 4,
   },
   inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 4,
-      height: 4,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
-    elevation: 4,
-    marginBottom: 20,
-    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 52,
   },
-  input: {
-    fontFamily: "Cairo",
-    fontSize: 16,
-    padding: 15,
-    height: 47,
+  inputField: {
     flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
+    fontFamily: 'Cairo-Regular',
+    paddingVertical: 14,
   },
-  icon: {
-    marginLeft: 10,
+  inputIcon: {
+    marginLeft: 8,
   },
-  actionContainer: {
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    marginTop: 10,
+  eyeIcon: {
+    padding: 8,
+  },
+  actions: {
+    marginTop: 24,
+    alignItems: 'center',
   },
   loginButton: {
-    backgroundColor: "#E82E5F",
-    borderRadius: 15,
-    width: 100,
-    height: 48,
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#3E5C76',
+    borderRadius: 12,
+    width: '100%',
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  loginButtonText: {
-    color: "#FFFFFF",
-    fontFamily: "Cairo",
+  disabledButton: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    alignItems: "center",
+    fontFamily: 'Cairo-SemiBold',
   },
   forgotPassword: {
-    color: "#E82E5F",
-    fontFamily: "Cairo",
-    fontSize: 16,
-    marginTop: 20,
+    marginTop: 16,
   },
-  signupContainer: {
-    marginTop: 10,
-    alignItems: "center",
-  },
-  signupText: {
-    fontFamily: "Cairo",
-    fontSize: 16,
-    color: "#191919",
-  },
-  signupLink: {
-    color: "#E82E5F",
+  forgotPasswordText: {
+    color: '#3E5C76',
+    fontSize: 14,
+    fontFamily: 'Cairo-SemiBold',
+    textDecorationLine: 'underline',
   },
   errorText: {
-    fontFamily: "Cairo",
+    color: '#EF4444',
     fontSize: 14,
-    color: "red",
-    marginBottom: 10,
-    textAlign: "center",
+    fontFamily: 'Cairo-Regular',
+    textAlign: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
 });

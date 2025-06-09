@@ -1,53 +1,74 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  Image,
   StyleSheet,
-  Dimensions,
-  ScrollView,
   Platform,
+  ScrollView,
+  StatusBar,
+  Dimensions,
   Alert,
   ActivityIndicator,
-  Image,
+  KeyboardAvoidingView,
+  Modal,
+  FlatList,
 } from "react-native";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { API_URL } from "../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
-import logo1 from "../assets/logo.png";
-import { useNavigation } from "@react-navigation/native";
+import logo1 from "../assets/logosub.png";
+import { Ionicons } from "@expo/vector-icons";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 const RegisterCustomer = () => {
   const [fullname, setFullname] = useState("");
   const [mobile, setMobile] = useState("");
-  const [email, setEmail] = useState("");
   const [district, setDistrict] = useState("");
   const [constituency, setConstituency] = useState("");
   const [occupation, setOccupation] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [location, setLocation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [responseStatus, setResponseStatus] = useState(null);
   const [districtSearch, setDistrictSearch] = useState("");
   const [constituencySearch, setConstituencySearch] = useState("");
   const [occupationSearch, setOccupationSearch] = useState("");
-  const [showDistrictList, setShowDistrictList] = useState(false);
-  const [showConstituencyList, setShowConstituencyList] = useState(false);
-  const [showOccupationList, setShowOccupationList] = useState(false);
+  const [showDistrictModal, setShowDistrictModal] = useState(false);
+  const [showConstituencyModal, setShowConstituencyModal] = useState(false);
+  const [showOccupationModal, setShowOccupationModal] = useState(false);
   const [districts, setDistricts] = useState([]);
   const [constituencies, setConstituencies] = useState([]);
   const [occupationOptions, setOccupationOptions] = useState([]);
   const [Details, setDetails] = useState({});
   const [errorMessage, setErrorMessage] = useState("");
+
+  const mobileRef = useRef(null);
+  const districtRef = useRef(null);
   const navigation = useNavigation();
+
+  const filteredDistricts = districts.filter((item) =>
+    item.parliament.toLowerCase().includes(districtSearch.toLowerCase())
+  );
+
+  const filteredConstituencies = constituencies.filter((item) =>
+    item.name.toLowerCase().includes(constituencySearch.toLowerCase())
+  );
+
+  const filteredOccupations = occupationOptions.filter((item) =>
+    item.name.toLowerCase().includes(occupationSearch.toLowerCase())
+  );
+
   // Fetch all districts and constituencies
   const fetchDistrictsAndConstituencies = async () => {
     try {
       const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
       const data = await response.json();
-      setDistricts(data); // Set the fetched data to districts
+      setDistricts(data);
     } catch (error) {
       console.error("Error fetching districts and constituencies:", error);
     }
@@ -63,24 +84,6 @@ const RegisterCustomer = () => {
       console.error("Error fetching occupations:", error);
     }
   };
-
-  useEffect(() => {
-    fetchDistrictsAndConstituencies();
-    fetchOccupations();
-  }, []);
-
-  // Filter districts based on search input
-  const filteredDistricts = districts.filter((item) =>
-    item.parliament.toLowerCase().includes(districtSearch.toLowerCase())
-  );
-
-  // Filter constituencies based on the selected district
-  const filteredConstituencies =
-    districts
-      .find((item) => item.parliament === district)
-      ?.assemblies.filter((assembly) =>
-        assembly.name.toLowerCase().includes(constituencySearch.toLowerCase())
-      ) || [];
 
   // Fetch agent details
   const getDetails = async () => {
@@ -100,6 +103,8 @@ const RegisterCustomer = () => {
   };
 
   useEffect(() => {
+    fetchDistrictsAndConstituencies();
+    fetchOccupations();
     getDetails();
   }, []);
 
@@ -109,11 +114,16 @@ const RegisterCustomer = () => {
     }
   }, [Details]);
 
-  const closeAllDropdowns = () => {
-    setShowDistrictList(false);
-    setShowConstituencyList(false);
-    setShowOccupationList(false);
-  };
+  useEffect(() => {
+    if (district) {
+      const selectedDistrict = districts.find(
+        (item) => item.parliament === district
+      );
+      if (selectedDistrict) {
+        setConstituencies(selectedDistrict.assemblies);
+      }
+    }
+  }, [district]);
 
   const handleRegister = async () => {
     if (
@@ -132,7 +142,7 @@ const RegisterCustomer = () => {
     setErrorMessage("");
 
     const selectedDistrict = districts.find((d) => d.parliament === district);
-    const selectedConstituency = selectedDistrict?.assemblies.find(
+    const selectedConstituency = constituencies.find(
       (a) => a.name === constituency
     );
 
@@ -184,260 +194,405 @@ const RegisterCustomer = () => {
     }
   };
 
+  const renderDistrictItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setDistrict(item.parliament);
+        setShowDistrictModal(false);
+        setDistrictSearch("");
+      }}
+    >
+      <Text style={styles.listItemText}>{item.parliament}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderConstituencyItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setConstituency(item.name);
+        setShowConstituencyModal(false);
+        setConstituencySearch("");
+      }}
+    >
+      <Text style={styles.listItemText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderOccupationItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setOccupation(item.name);
+        setShowOccupationModal(false);
+        setOccupationSearch("");
+      }}
+    >
+      <Text style={styles.listItemText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        nestedScrollEnabled={true}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
       >
-        <View style={styles.card}>
-          <Image source={logo1} style={styles.logo} />
-          <Text style={styles.tagline}>Your Trusted Property Consultant</Text>
-          <Text style={styles.title}>REGISTER CUSTOMER</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          nestedScrollEnabled={true}
+        >
+          <View style={styles.headerContainer}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={20} color="#2B2D42" />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.screenTitle}>REGISTER CUSTOMER</Text>
+            </View>
+            <Image source={logo1} style={styles.logo} />
+          </View>
+          <View style={styles.card}>
+            {errorMessage && (
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            )}
 
-          {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
-
-          <View style={styles.webInputWrapper}>
-            {/* Row 1 */}
-            <View style={styles.inputRow}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Full Name</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Full name"
-                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                    value={fullname}
-                    onChangeText={setFullname}
-                    onFocus={closeAllDropdowns}
-                  />
-                  <FontAwesome
-                    name="user"
-                    size={20}
-                    color="#E82E5F"
-                    style={styles.icon}
-                  />
+            <View style={styles.webInputWrapper}>
+              {/* Row 1 */}
+              <View style={styles.inputRow}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Full Name</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Full name"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={fullname}
+                      onChangeText={setFullname}
+                      returnKeyType="next"
+                      onSubmitEditing={() => mobileRef.current.focus()}
+                    />
+                    <FontAwesome
+                      name="user"
+                      size={20}
+                      color="#3E5C76"
+                      style={styles.icon}
+                    />
+                  </View>
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Mobile Number</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      ref={mobileRef}
+                      style={styles.input}
+                      placeholder="Mobile Number"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={mobile}
+                      onChangeText={setMobile}
+                      keyboardType="number-pad"
+                      returnKeyType="next"
+                      onSubmitEditing={() => districtRef.current.focus()}
+                    />
+                    <MaterialIcons
+                      name="phone"
+                      size={20}
+                      color="#3E5C76"
+                      style={styles.icon}
+                    />
+                  </View>
                 </View>
               </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Mobile Number</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Mobile Number"
-                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                    value={mobile}
-                    onChangeText={setMobile}
-                    keyboardType="number-pad"
-                    onFocus={closeAllDropdowns}
-                  />
-                  <MaterialIcons
-                    name="phone"
-                    size={20}
-                    color="#E82E5F"
-                    style={styles.icon}
-                  />
+
+              {/* Row 2 */}
+              <View style={styles.inputRow}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Select Parliament</Text>
+                  <TouchableOpacity
+                    style={styles.inputWrapper}
+                    onPress={() => setShowDistrictModal(true)}
+                  >
+                    <TextInput
+                      ref={districtRef}
+                      style={styles.input}
+                      placeholder="Select parliament"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={district}
+                      editable={false}
+                      pointerEvents="none"
+                    />
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#3E5C76"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Select Assemblie</Text>
+                  <TouchableOpacity
+                    style={styles.inputWrapper}
+                    onPress={() => setShowConstituencyModal(true)}
+                    disabled={!district}
+                  >
+                    <TextInput
+                      style={styles.input}
+                      placeholder={
+                        district
+                          ? "Select Assemblie"
+                          : "Select parliament first"
+                      }
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={constituency}
+                      editable={false}
+                      pointerEvents="none"
+                    />
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#3E5C76"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select parliament </Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Search parliament"
-                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                    value={districtSearch}
-                    onChangeText={(text) => {
-                      setDistrictSearch(text);
-                      setShowDistrictList(true);
-                    }}
-                    onFocus={() => {
-                      closeAllDropdowns();
-                      setShowDistrictList(true);
-                    }}
-                  />
-                  {showDistrictList && (
-                    <View style={styles.dropdownContainer}>
-                      <ScrollView style={styles.scrollView}>
-                        {filteredDistricts.map((item) => (
-                          <TouchableOpacity
-                            key={item._id}
-                            style={styles.listItem}
-                            onPress={() => {
-                              setDistrict(item.parliament);
-                              setDistrictSearch(item.parliament);
-                              setShowDistrictList(false);
-                              setConstituencySearch(""); // Reset constituency search
-                              setConstituency(""); // Reset selected constituency
-                            }}
-                          >
-                            <Text>{item.parliament}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
+
+              {/* Row 3 */}
+              <View style={styles.inputRow}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Select Occupation</Text>
+                  <TouchableOpacity
+                    style={styles.inputWrapper}
+                    onPress={() => setShowOccupationModal(true)}
+                  >
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Select Occupation"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={occupation}
+                      editable={false}
+                      pointerEvents="none"
+                    />
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#3E5C76"
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Location</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Location"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={location}
+                      onChangeText={setLocation}
+                    />
+                    <MaterialIcons
+                      name="location-on"
+                      size={20}
+                      color="#3E5C76"
+                      style={styles.icon}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Row 4 */}
+              <View style={styles.inputRow}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Referral Code</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Referral Code"
+                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                      value={referralCode || "WA0000000001"}
+                      onChangeText={setReferralCode}
+                      editable={false}
+                    />
+                    <MaterialIcons
+                      name="card-giftcard"
+                      size={20}
+                      color="#3E5C76"
+                      style={styles.icon}
+                    />
+                  </View>
                 </View>
               </View>
             </View>
 
-            {/* Row 2 */}
-            <View style={styles.inputRow}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select Assemblie</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Select Assemblie"
-                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                    value={constituencySearch}
-                    onChangeText={(text) => {
-                      setConstituencySearch(text);
-                      setShowConstituencyList(true);
-                    }}
-                    onFocus={() => {
-                      closeAllDropdowns();
-                      setShowConstituencyList(true);
-                    }}
-                  />
-                  {showConstituencyList && (
-                    <View style={styles.dropdownContainer}>
-                      <ScrollView style={styles.scrollView}>
-                        {filteredConstituencies.map((item, index) => (
-                          <TouchableOpacity
-                            key={index}
-                            style={styles.listItem}
-                            onPress={() => {
-                              setConstituency(item.name);
-                              setConstituencySearch(item.name);
-                              setShowConstituencyList(false);
-                            }}
-                          >
-                            <Text>{item.name}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-              </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Select Occupation</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Select Occupation"
-                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                    value={occupationSearch}
-                    onChangeText={(text) => {
-                      setOccupationSearch(text);
-                      setShowOccupationList(true);
-                    }}
-                    onFocus={() => {
-                      closeAllDropdowns();
-                      setShowOccupationList(true);
-                    }}
-                  />
-                  {showOccupationList && (
-                    <View style={styles.dropdownContainer}>
-                      <ScrollView style={styles.scrollView}>
-                        {occupationOptions.map((item) => (
-                          <TouchableOpacity
-                            key={item.code}
-                            style={styles.listItem}
-                            onPress={() => {
-                              setOccupation(item.name);
-                              setOccupationSearch(item.name);
-                              setShowOccupationList(false);
-                            }}
-                          >
-                            <Text>{item.name}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-              </View>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Location</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Location"
-                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                    value={location}
-                    onChangeText={setLocation}
-                    onFocus={closeAllDropdowns}
-                  />
-                  <MaterialIcons
-                    name="location-on"
-                    size={20}
-                    color="#E82E5F"
-                    style={styles.icon}
-                  />
-                </View>
-              </View>
+            <View style={styles.row}>
+              <TouchableOpacity
+                style={styles.registerButton}
+                onPress={handleRegister}
+                disabled={isLoading}
+              >
+                <Text style={styles.buttonText}>Register</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => navigation.navigate("RegisterAS")}
+                disabled={isLoading}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Row 3 */}
-            <View
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+            {isLoading && (
+              <ActivityIndicator
+                size="large"
+                color="#3E5C76"
+                style={styles.loadingIndicator}
+              />
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* District Modal */}
+      <Modal
+        visible={showDistrictModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDistrictModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Parliament</Text>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search parliament..."
+                placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                onChangeText={setDistrictSearch}
+                value={districtSearch}
+                autoFocus={true}
+              />
+              <MaterialIcons
+                name="search"
+                size={24}
+                color="#3E5C76"
+                style={styles.searchIcon}
+              />
+            </View>
+            <FlatList
+              data={filteredDistricts}
+              renderItem={renderDistrictItem}
+              keyExtractor={(item) => item._id}
+              style={styles.modalList}
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setShowDistrictModal(false);
+                setDistrictSearch("");
               }}
             >
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Referral Code</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Referral Code"
-                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                    // value={referralCode}
-                    onChangeText={setReferralCode}
-                    onFocus={closeAllDropdowns}
-                    defaultValue="WA0000000001"
-                    editable={false}
-                  />
-                  <MaterialIcons
-                    name="card-giftcard"
-                    size={20}
-                    color="#E82E5F"
-                    style={styles.icon}
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <TouchableOpacity
-              style={styles.registerButton}
-              onPress={handleRegister}
-              disabled={isLoading}
-            >
-              <Text style={styles.buttonText}>Register</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => navigation.navigate("Starting Screen")}
-              disabled={isLoading}
-            >
-              <Text style={styles.buttonText}>Cancel</Text>
+              <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
-
-          {isLoading && (
-            <ActivityIndicator
-              size="large"
-              color="#E82E5F"
-              style={styles.loadingIndicator}
-            />
-          )}
         </View>
-      </ScrollView>
+      </Modal>
+
+      {/* Constituency Modal */}
+      <Modal
+        visible={showConstituencyModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowConstituencyModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Assemblies</Text>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search assemblies..."
+                placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                onChangeText={setConstituencySearch}
+                value={constituencySearch}
+                autoFocus={true}
+              />
+              <MaterialIcons
+                name="search"
+                size={24}
+                color="#3E5C76"
+                style={styles.searchIcon}
+              />
+            </View>
+            <FlatList
+              data={filteredConstituencies}
+              renderItem={renderConstituencyItem}
+              keyExtractor={(item, index) => index.toString()}
+              style={styles.modalList}
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setShowConstituencyModal(false);
+                setConstituencySearch("");
+              }}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Occupation Modal */}
+      <Modal
+        visible={showOccupationModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowOccupationModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Occupation</Text>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search occupation..."
+                placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                onChangeText={setOccupationSearch}
+                value={occupationSearch}
+                autoFocus={true}
+              />
+              <MaterialIcons
+                name="search"
+                size={24}
+                color="#3E5C76"
+                style={styles.searchIcon}
+              />
+            </View>
+            <FlatList
+              data={filteredOccupations}
+              renderItem={renderOccupationItem}
+              keyExtractor={(item) => item.code}
+              style={styles.modalList}
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setShowOccupationModal(false);
+                setOccupationSearch("");
+              }}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <StatusBar style="auto" />
     </View>
   );
 };
@@ -445,7 +600,18 @@ const RegisterCustomer = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#D8E3E7",
+  },
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   scrollContainer: {
     justifyContent: "center",
@@ -455,8 +621,7 @@ const styles = StyleSheet.create({
     display: "flex",
     justifyContent: "center",
     width: Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
-    marginTop: Platform.OS === "web" ? "3%" : 0,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FDFDFD",
     padding: 20,
     borderRadius: 25,
     shadowColor: "#000",
@@ -466,7 +631,6 @@ const styles = StyleSheet.create({
     elevation: 8,
     alignItems: "center",
     margin: 20,
-    marginTop: 20,
     borderWidth: Platform.OS === "web" ? 0 : 1,
     borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
   },
@@ -477,17 +641,14 @@ const styles = StyleSheet.create({
     gap: 20,
     marginTop: 25,
   },
-  scrollView: {
-    maxHeight: 200,
-  },
   inputRow: {
     flexDirection:
       Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
     justifyContent: "space-between",
-    gap: 5,
+    gap: 15,
   },
   inputContainer: {
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "30%",
+    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "48%",
     position: "relative",
     zIndex: 1,
   },
@@ -509,42 +670,55 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     borderWidth: 1,
     borderColor: "#ccc",
+    fontFamily: "Roboto-Regular",
   },
   logo: {
-    width: Platform.OS === "android" ? 200 : 200,
-    height: Platform.OS === "android" ? 200 : 200,
+    width: Platform.OS === "android" ? 105 : 100,
+    height: Platform.OS === "android" ? 105 : 100,
+    resizeMode: "contain",
+    marginRight: 7,
+    marginBottom: 20,
+    left: Platform.OS === "android" ? -105 : -700,
   },
   icon: {
     position: "absolute",
     right: 10,
     top: 13,
+    color: "#3E5C76",
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     color: "#191919",
+    marginBottom: 8,
+    fontFamily: "Roboto-Medium",
   },
   row: {
     flexDirection: "row",
     justifyContent: "space-evenly",
     width: "100%",
     marginTop: 20,
+    gap: 15,
   },
   registerButton: {
-    backgroundColor: "#E82E5F",
+    backgroundColor: "#3E5C76",
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderRadius: 15,
+    flex: 1,
   },
   cancelButton: {
-    backgroundColor: "#424242",
+    backgroundColor: "#3E5C76",
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
     borderRadius: 15,
+    flex: 1,
   },
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "400",
+    fontWeight: "500",
+    textAlign: "center",
+    fontFamily: "Roboto-Medium",
   },
   loadingIndicator: {
     marginTop: 20,
@@ -554,33 +728,81 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 10,
     textAlign: "center",
+    fontFamily: "Roboto-Regular",
   },
-  dropdownContainer: {
-    position: "absolute",
-    bottom: "100%",
-    left: 0,
-    right: 0,
-    zIndex: 1000,
+  screenTitle: {
+    fontWeight: "700",
+    fontSize: 17,
+    color: "#2B2D42",
+    top: 50,
+    left: 50,
+    textAlign: "center",
+    fontFamily: "Roboto-Bold",
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
     backgroundColor: "#FFF",
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 5,
-    backgroundColor: "#e6708e",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: height * 0.7,
   },
-  listItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+    color: "#2B2D42",
+    fontFamily: "Roboto-Bold",
   },
-  tagline: {
-    marginTop: -30,
+  searchContainer: {
+    position: "relative",
     marginBottom: 15,
   },
-  title: {
-    fontWeight: "700",
-    fontSize: 23,
-    marginBottom: -10,
+  searchInput: {
+    width: "100%",
+    height: 40,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 40,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    fontFamily: "Roboto-Regular",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 10,
+    top: 8,
+    color: "#3E5C76",
+  },
+  modalList: {
+    marginBottom: 15,
+  },
+  listItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  listItemText: {
+    fontSize: 16,
+    fontFamily: "Roboto-Regular",
+  },
+  closeButton: {
+    backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
+    fontFamily: "Roboto-Bold",
   },
 });
 

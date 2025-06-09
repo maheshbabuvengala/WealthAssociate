@@ -10,11 +10,11 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
-import { FontAwesome } from "@expo/vector-icons";
+import LoadingScreen from "./Loadingscreen";
 
 // Cache for user data
 let userDataCache = null;
@@ -35,6 +35,40 @@ const Header = () => {
     userType: "",
     loading: true,
   });
+  const [activeTab, setActiveTab] = useState("newhome");
+
+  const tabs = [
+    {
+      label: "Home",
+      icon: "home-outline",
+      screenName: "newhome",
+      iconActive: "home",
+    },
+    {
+      label: "Add Member",
+      icon: "person-add-outline",
+      screenName: "addmember",
+      iconActive: "person-add",
+    },
+    {
+      label: "Property",
+      icon: "business-outline",
+      screenName: "propertyhome",
+      iconActive: "business",
+    },
+    {
+      label: "Expert Panel",
+      icon: "people-outline",
+      screenName: "expertpanel",
+      iconActive: "people",
+    },
+    {
+      label: "Core Client",
+      icon: "star-outline",
+      screenName: "coreclipro",
+      iconActive: "star",
+    },
+  ];
 
   useFocusEffect(
     useCallback(() => {
@@ -42,21 +76,28 @@ const Header = () => {
         "newhome",
         "Main Screen",
         "Starting Screen",
-        "Home", // Admin panel
+        "Home",
         "Admin",
         "CallCenterDashboard",
       ];
 
-      // Check if current screen is in the noBackScreens list
       const shouldHideBackButton = noBackScreens.includes(route.name);
-
-      // Also hide back button if we're at the initial route of a navigator
       const state = navigation.getState();
       const isInitialRoute =
         state?.routes[state?.index || 0]?.name === route.name;
 
       setShowBackButton(!shouldHideBackButton && !isInitialRoute);
-    }, [route.name, navigation])
+
+      // Update active tab based on current route
+      if (route.params?.setActiveTab) {
+        setActiveTab(route.params.setActiveTab);
+      } else {
+        const currentTab = tabs.find((tab) => tab.screenName === route.name);
+        if (currentTab) {
+          setActiveTab(currentTab.screenName);
+        }
+      }
+    }, [route.name, navigation, route.params])
   );
 
   const fetchReferredDetails = useCallback(async (referredBy, addedBy) => {
@@ -123,7 +164,7 @@ const Header = () => {
 
       let endpoint = "";
       let finalUserType = userType;
-      
+
       switch (userType) {
         case "WealthAssociate":
         case "ReferralAssociate":
@@ -153,10 +194,12 @@ const Header = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
 
       const details = await response.json();
-      
+
       // Check if user is agent and has AgentType "ValueAssociate"
-      if ((userType === "WealthAssociate" || userType === "ReferralAssociate") && 
-          details.AgentType === "ValueAssociate") {
+      if (
+        (userType === "WealthAssociate" || userType === "ReferralAssociate") &&
+        details.AgentType === "ValueAssociate"
+      ) {
         finalUserType = "ValueAssociate";
         await AsyncStorage.setItem("userTypevalue", "ValueAssociate");
       }
@@ -260,87 +303,160 @@ const Header = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="small" color="#555" />
+        {/* <LoadingScreen/> */}
+      </View>
+    );
+  }
+
+  const handleTabPress = (screenName) => {
+    setActiveTab(screenName);
+    navigation.navigate("Main", { screen: screenName });
+  };
+
+  const isActive = (screenName) => {
+    return activeTab === screenName || route.name === screenName;
+  };
+
+  if (userData.loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="small" color="#555" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {showBackButton && (
-        <TouchableOpacity
-          onPress={() => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              // Fallback to home screen if can't go back
-              navigation.navigate("Main", {
-                screen: "newhome",
-                params: { setActiveTab: "newhome" },
-              });
-            }
-          }}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={26} color="#555" />
-        </TouchableOpacity>
-      )}
-      <TouchableOpacity
-        onPress={() => navigation.navigate("Main", { screen: "newhome" })}
-        style={styles.logoContainer}
-      >
-        <Image
-          source={require("../../assets/logo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </TouchableOpacity>
-      <View style={styles.userInfoContainer}>
-        <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
-          {userData.details?.FullName ||
-            userData.details?.Name ||
-            "Welcome User"}
-        </Text>
-        {showReferralCode && (
-          <Text style={styles.userRef} numberOfLines={1} ellipsizeMode="tail">
-            Ref: {userData.details?.MyRefferalCode || "N/A"}
-          </Text>
+    <View style={styles.headerWrapper}>
+      <View style={styles.container}>
+        {showBackButton && (
+          <TouchableOpacity
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate("Main", {
+                  screen: "newhome",
+                  params: { setActiveTab: "newhome" },
+                });
+              }
+            }}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={26} color="#555" />
+          </TouchableOpacity>
         )}
-      </View>
-      <TouchableOpacity
-        onPress={() => navigation.navigate("Main", { screen: "liked" })}
-        style={styles.heartButton}
-      >
-        <FontAwesome name="heart-o" size={23} color="#D81B60" />
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={handleProfilePress}
-        style={styles.profileButton}
-      >
-        <View style={styles.profileInitialsContainer}>
-          <Text style={styles.profileInitials}>{getUserInitials()}</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Main", { screen: "newhome" })}
+          style={styles.logoContainer}
+        >
+          <Image
+            source={require("../../assets/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+        <View style={styles.userInfoContainer}>
+          <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
+            {userData.details?.FullName ||
+              userData.details?.Name ||
+              "Welcome User"}
+          </Text>
+          {showReferralCode && (
+            <Text style={styles.userRef} numberOfLines={1} ellipsizeMode="tail">
+              Ref: {userData.details?.MyRefferalCode || "N/A"}
+            </Text>
+          )}
         </View>
-      </TouchableOpacity>
-      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+
+        {/* Web-only navigation tabs */}
+        {Platform.OS === "web" && (
+          <View style={styles.webNavContainer}>
+            {tabs.map((tab, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.webNavItem,
+                  isActive(tab.screenName) && styles.webNavItemActive,
+                ]}
+                onPress={() => handleTabPress(tab.screenName)}
+              >
+                <Ionicons
+                  name={isActive(tab.screenName) ? tab.iconActive : tab.icon}
+                  size={20}
+                  color={isActive(tab.screenName) ? "#3E5C76" : "#555"}
+                />
+                <Text
+                  style={[
+                    styles.webNavLabel,
+                    { color: isActive(tab.screenName) ? "#3E5C76" : "#555" },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Main", { screen: "liked" })}
+          style={styles.heartButton}
+        >
+          <FontAwesome name="heart-o" size={23} color="#D81B60" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleProfilePress}
+          style={styles.profileButton}
+        >
+          <View style={styles.profileInitialsContainer}>
+            <Text style={styles.profileInitials}>{getUserInitials()}</Text>
+          </View>
+        </TouchableOpacity>
+        <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+      </View>
     </View>
   );
 };
-
 const styles = StyleSheet.create({
+  headerWrapper: {
+    width: "100%",
+    alignItems: "center",
+  },
   container: {
     flexDirection: "row",
     alignItems: "center",
     height: 70,
     paddingHorizontal: 16,
-    backgroundColor: "#fff",
+    backgroundColor: "#FDFDFD",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    marginTop: Platform.OS == "ios" ? "10%" : "auto",
+    marginTop: Platform.OS === "ios" ? "10%" : "auto",
+    ...Platform.select({
+      web: {
+        width: "100%",
+        borderBottomWidth: 0,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        borderBottomLeftRadius: 40,
+        borderBottomRightRadius: 40,
+      },
+    }),
   },
   loadingContainer: {
     height: 60,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
+    ...Platform.select({
+      web: {
+        width: "80%",
+        marginLeft: "auto",
+        marginRight: "auto",
+      },
+    }),
   },
   backButton: {
     paddingRight: 10,
@@ -352,20 +468,23 @@ const styles = StyleSheet.create({
   logo: {
     width: 50,
     height: 50,
+    left: Platform.OS === "web" ? 20 : 0,
+    bottom: Platform.OS === "web" ? 5 : 0,
   },
   userInfoContainer: {
     flex: 1,
     marginLeft: 12,
     justifyContent: "center",
+    left: Platform.OS === "web" ? 20 : 0,
   },
   userName: {
     fontWeight: "600",
     fontSize: 16,
-    color: "#333",
+    color: "#3E5C76",
   },
   userRef: {
     fontSize: 12,
-    color: "#666",
+    color: "#3E5C76",
     marginTop: 2,
   },
   profileButton: {
@@ -388,6 +507,29 @@ const styles = StyleSheet.create({
   heartButton: {
     padding: 0,
     marginRight: 3,
+  },
+  webNavContainer: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    right: "20%",
+  },
+  webNavItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginHorizontal: 4,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  webNavItemActive: {
+    backgroundColor: "#FDFDFD",
+    opacity: 2,
+  },
+  webNavLabel: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
 

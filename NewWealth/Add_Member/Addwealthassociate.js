@@ -13,15 +13,21 @@ import {
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
+  FlatList,
 } from "react-native";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import useFontsLoader from "../../assets/Hooks/useFontsLoader";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
+const isTablet = width >= 768;
+const isWeb = Platform.OS === "web";
 
 const Add_Agent = ({ closeModal }) => {
+  const fontsLoaded = useFontsLoader();
   const [fullname, setFullname] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
@@ -46,7 +52,7 @@ const Add_Agent = ({ closeModal }) => {
   const [expertiseOptions, setExpertiseOptions] = useState([]);
   const [Details, setDetails] = useState({});
   const [userType, setUserType] = useState("");
-  const [valuemember, setValuemember] = useState(""); // New state for valuemember
+  const [valuemember, setValuemember] = useState("");
 
   const mobileRef = useRef(null);
   const emailRef = useRef(null);
@@ -54,15 +60,14 @@ const Add_Agent = ({ closeModal }) => {
 
   const navigation = useNavigation();
 
-  // Fetch user type from AsyncStorage
   useEffect(() => {
     const fetchData = async () => {
       const storedUserType = await AsyncStorage.getItem("userType");
-      console.log("Stored userType:", storedUserType); // Debug log
+      console.log("Stored userType:", storedUserType);
       setUserType(storedUserType);
 
       if (storedUserType) {
-        console.log("Fetching details for userType:", storedUserType); // Debug log
+        console.log("Fetching details for userType:", storedUserType);
         await getDetails();
       }
     };
@@ -70,18 +75,16 @@ const Add_Agent = ({ closeModal }) => {
     fetchData();
   }, []);
 
-  // Fetch all districts and constituencies from the API
   const fetchDistrictsAndConstituencies = async () => {
     try {
       const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
       const data = await response.json();
-      setDistricts(data); // Set the fetched data to districts
+      setDistricts(data);
     } catch (error) {
       console.error("Error fetching districts and constituencies:", error);
     }
   };
 
-  // Fetch expertise
   const fetchExpertise = async () => {
     try {
       const response = await fetch(`${API_URL}/discons/expertise`);
@@ -108,12 +111,10 @@ const Add_Agent = ({ closeModal }) => {
     { name: "25+ years", code: "08" },
   ];
 
-  // Filter districts based on search input
   const filteredDistricts = districts.filter((item) =>
     item.parliament.toLowerCase().includes(districtSearch.toLowerCase())
   );
 
-  // Filter constituencies based on the selected district
   const filteredConstituencies =
     districts
       .find((item) => item.parliament === district)
@@ -121,7 +122,6 @@ const Add_Agent = ({ closeModal }) => {
         assembly.name.toLowerCase().includes(constituencySearch.toLowerCase())
       ) || [];
 
-  // Filter expertise and experience
   const filteredExpertise = expertiseOptions.filter((item) =>
     item.name.toLowerCase().includes(expertiseSearch.toLowerCase())
   );
@@ -155,7 +155,6 @@ const Add_Agent = ({ closeModal }) => {
       const newDetails = await response.json();
       setDetails(newDetails);
 
-      // Set valuemember to "yes" if it exists in the details
       if (newDetails.valuemember) {
         setValuemember(newDetails.valuemember);
       }
@@ -256,19 +255,314 @@ const Add_Agent = ({ closeModal }) => {
     }
   };
 
+  const renderBottomSheet = (type) => {
+    let data = [];
+    let searchValue = "";
+    let setSearch = () => {};
+    let setSelected = () => {};
+    let setShow = () => {};
+
+    switch (type) {
+      case "district":
+        data = filteredDistricts;
+        searchValue = districtSearch;
+        setSearch = setDistrictSearch;
+        setSelected = setDistrict;
+        setShow = setShowDistrictList;
+        break;
+      case "constituency":
+        data = filteredConstituencies;
+        searchValue = constituencySearch;
+        setSearch = setConstituencySearch;
+        setSelected = setConstituency;
+        setShow = setShowConstituencyList;
+        break;
+      case "expertise":
+        data = filteredExpertise;
+        searchValue = expertiseSearch;
+        setSearch = setExpertiseSearch;
+        setSelected = setExpertise;
+        setShow = setShowExpertiseList;
+        break;
+      case "experience":
+        data = filteredExperience;
+        searchValue = experienceSearch;
+        setSearch = setExperienceSearch;
+        setSelected = setExperience;
+        setShow = setShowExperienceList;
+        break;
+      default:
+        return null;
+    }
+
+    return (
+      <Modal
+        visible={
+          type === "district"
+            ? showDistrictList
+            : type === "constituency"
+            ? showConstituencyList
+            : type === "expertise"
+            ? showExpertiseList
+            : showExperienceList
+        }
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShow(false)}
+      >
+        <View style={styles.bottomSheetContainer}>
+          <View style={styles.bottomSheet}>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder={`Search ${type}`}
+                placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                value={searchValue}
+                onChangeText={setSearch}
+                autoFocus={true}
+              />
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShow(false)}
+              >
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={data}
+              keyExtractor={(item, index) =>
+                type === "district"
+                  ? item.parliament
+                  : type === "constituency"
+                  ? index.toString()
+                  : item.code
+              }
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.bottomSheetItem}
+                  onPress={() => {
+                    setSelected(
+                      type === "district"
+                        ? item.parliament
+                        : type === "constituency"
+                        ? item.name
+                        : item.name
+                    );
+                    setSearch(
+                      type === "district"
+                        ? item.parliament
+                        : type === "constituency"
+                        ? item.name
+                        : item.name
+                    );
+                    setShow(false);
+                  }}
+                >
+                  <Text style={styles.bottomSheetItemText}>
+                    {type === "district"
+                      ? item.parliament
+                      : type === "constituency"
+                      ? item.name
+                      : item.name}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              keyboardShouldPersistTaps="handled"
+            />
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: "#D8E3E7",
+      width: Platform.OS === "web" ? "80%" : "100%",
+      paddingBottom: isWeb ? 0 : 20,
+      alignSelf: "center",
+      paddingBottom: Platform.OS === "android" ? 120 : 20,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      padding: isWeb ? (width > 1024 ? 20 : 10) : 10,
+    },
+    register_main: {
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "#D8E3E7",
+      width: "100%",
+      height: isWeb ? 60 : 70,
+      paddingVertical: 10,
+    },
+    register_text: {
+      fontSize: isWeb ? 28 : 24,
+      color: "#2B2D42",
+      fontWeight: "bold",
+      fontFamily: "OpenSanssemibold",
+    },
+    card: {
+      width: isWeb ? (width > 1024 ? "80%" : "90%") : "100%",
+      maxWidth: 1200,
+      alignSelf: "center",
+      backgroundColor: "#FDFDFD",
+      shadowColor: "#000",
+      shadowOffset: { width: 4, height: 1 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 8,
+      borderRadius: 20,
+      padding: isWeb ? 30 : 20,
+      paddingBottom: isWeb ? 40 : 70,
+      marginVertical: isWeb ? 20 : 0,
+    },
+    webInputWrapper: {
+      width: "100%",
+      flexDirection: "column",
+      gap: isWeb ? 25 : 15,
+      marginTop: 25,
+    },
+    scrollView: {
+      maxHeight: 200,
+      paddingBottom: Platform.OS === "android" ? 120 : 20,
+    },
+    inputRow: {
+      flexDirection: isWeb ? "row" : "column",
+      justifyContent: "space-between",
+      gap: isWeb ? 20 : 15,
+    },
+    inputContainer: {
+      width: isWeb ? (isTablet ? "32%" : "100%") : "100%",
+      marginBottom: isWeb ? 0 : 10,
+      position: "relative",
+      zIndex: 1,
+    },
+    inputWrapper: {
+      position: "relative",
+      zIndex: 1,
+    },
+    input: {
+      width: "100%",
+      height: isWeb ? 50 : 47,
+      backgroundColor: "#FFF",
+      borderRadius: 25,
+      paddingHorizontal: 15,
+      paddingRight: 40,
+      borderWidth: 2,
+      borderColor: "#E0E6ED",
+      color: "#2B2D42",
+      fontSize: isWeb ? 16 : 14,
+      fontFamily: "OpenSanssemibold",
+    },
+    icon: {
+      position: "absolute",
+      right: 15,
+      top: isWeb ? 15 : 13,
+    },
+    label: {
+      fontSize: isWeb ? 18 : 16,
+      color: "#2B2D42",
+      marginBottom: 8,
+      fontWeight: isWeb ? "500" : "normal",
+      fontFamily: "OpenSanssemibold",
+    },
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-evenly",
+      width: "100%",
+      marginTop: 30,
+    },
+    registerButton: {
+      backgroundColor: "#3E5C76",
+      paddingVertical: isWeb ? 15 : 12,
+      paddingHorizontal: isWeb ? 30 : 20,
+      borderRadius: 15,
+      minWidth: isWeb ? 150 : 120,
+    },
+    cancelButton: {
+      backgroundColor: "#3E5C76",
+      paddingVertical: isWeb ? 15 : 12,
+      paddingHorizontal: isWeb ? 30 : 20,
+      borderRadius: 15,
+      minWidth: isWeb ? 150 : 120,
+    },
+    buttonText: {
+      color: "#FFFFFF",
+      fontSize: isWeb ? 18 : 16,
+      fontWeight: "500",
+      textAlign: "center",
+    },
+    loadingIndicator: {
+      marginTop: 20,
+    },
+    errorText: {
+      color: "red",
+      fontSize: isWeb ? 16 : 14,
+      marginBottom: 10,
+      textAlign: "center",
+    },
+    bottomSheetContainer: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: "rgba(0,0,0,0.5)",
+    },
+    bottomSheet: {
+      backgroundColor: "#FFF",
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: height * 0.7,
+      padding: 20,
+    },
+    searchContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    searchInput: {
+      flex: 1,
+      height: 50,
+      backgroundColor: "#F5F5F5",
+      borderRadius: 10,
+      paddingHorizontal: 15,
+      marginRight: 10,
+    },
+    closeButton: {
+      backgroundColor: "#3E5C76",
+      paddingVertical: 10,
+      paddingHorizontal: 15,
+      borderRadius: 10,
+    },
+    closeButtonText: {
+      color: "#FFF",
+      fontWeight: "bold",
+    },
+    bottomSheetItem: {
+      padding: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: "#EEE",
+    },
+    bottomSheetItemText: {
+      fontSize: 16,
+      color: "#333",
+    },
+  });
+
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.container}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.register_main}>
+            <Text style={styles.register_text}>Register Wealth Associate</Text>
+          </View>
           <View style={styles.card}>
-            <View style={styles.register_main}>
-              <Text style={styles.register_text}>
-                Register Wealth Associate
-              </Text>
-            </View>
             {responseStatus === 400 && (
               <Text style={styles.errorText}>
                 Mobile number already exists.
@@ -291,8 +585,8 @@ const Add_Agent = ({ closeModal }) => {
                     />
                     <FontAwesome
                       name="user"
-                      size={20}
-                      color="#E82E5F"
+                      size={isWeb ? 22 : 20}
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -309,17 +603,11 @@ const Add_Agent = ({ closeModal }) => {
                       keyboardType="number-pad"
                       returnKeyType="next"
                       onSubmitEditing={() => emailRef.current.focus()}
-                      onFocus={() => {
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                        setShowExpertiseList(false);
-                        setShowExperienceList(false);
-                      }}
                     />
                     <MaterialIcons
                       name="phone"
-                      size={20}
-                      color="#E82E5F"
+                      size={isWeb ? 22 : 20}
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -335,17 +623,13 @@ const Add_Agent = ({ closeModal }) => {
                       onChangeText={setEmail}
                       returnKeyType="next"
                       onSubmitEditing={() => districtRef.current.focus()}
-                      onFocus={() => {
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                        setShowExpertiseList(false);
-                        setShowExperienceList(false);
-                      }}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
                     />
                     <MaterialIcons
                       name="email"
-                      size={20}
-                      color="#E82E5F"
+                      size={isWeb ? 22 : 20}
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -360,36 +644,22 @@ const Add_Agent = ({ closeModal }) => {
                     <TextInput
                       ref={districtRef}
                       style={styles.input}
-                      placeholder="Search Parliament"
+                      placeholder="Select Parliament"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={districtSearch}
-                      onChangeText={(text) => {
-                        setDistrictSearch(text);
-                        setShowDistrictList(true);
-                      }}
+                      value={district}
                       onFocus={() => setShowDistrictList(true)}
+                      editable={false}
                     />
-                    {showDistrictList && (
-                      <View style={styles.dropdownContainer}>
-                        <ScrollView style={styles.scrollView}>
-                          {filteredDistricts.map((item) => (
-                            <TouchableOpacity
-                              key={item.parliament}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setDistrict(item.parliament);
-                                setDistrictSearch(item.parliament);
-                                setShowDistrictList(false);
-                                setConstituencySearch(""); // Reset constituency search
-                                setConstituency(""); // Reset selected constituency
-                              }}
-                            >
-                              <Text>{item.parliament}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
+                    <TouchableOpacity
+                      style={styles.icon}
+                      onPress={() => setShowDistrictList(true)}
+                    >
+                      <MaterialIcons
+                        name="arrow-drop-down"
+                        size={isWeb ? 28 : 24}
+                        color="#3E5C76"
+                      />
+                    </TouchableOpacity>
                   </View>
                 </View>
                 <View style={styles.inputContainer}>
@@ -397,37 +667,36 @@ const Add_Agent = ({ closeModal }) => {
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
-                      placeholder="Search Assembly"
+                      placeholder="Select Assembly"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={constituencySearch}
-                      onChangeText={(text) => {
-                        setConstituencySearch(text);
-                        setShowConstituencyList(true);
-                      }}
-                      onFocus={() => {
-                        setShowConstituencyList(true);
-                        setShowDistrictList(false);
-                      }}
+                      value={constituency}
+                      onFocus={() =>
+                        district
+                          ? setShowConstituencyList(true)
+                          : Alert.alert(
+                              "Error",
+                              "Please select Parliament first"
+                            )
+                      }
+                      editable={false}
                     />
-                    {showConstituencyList && (
-                      <View style={styles.dropdownContainer}>
-                        <ScrollView style={styles.scrollView}>
-                          {filteredConstituencies.map((item, index) => (
-                            <TouchableOpacity
-                              key={index}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setConstituency(item.name);
-                                setConstituencySearch(item.name);
-                                setShowConstituencyList(false);
-                              }}
-                            >
-                              <Text>{item.name}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
+                    <TouchableOpacity
+                      style={styles.icon}
+                      onPress={() =>
+                        district
+                          ? setShowConstituencyList(true)
+                          : Alert.alert(
+                              "Error",
+                              "Please select Parliament first"
+                            )
+                      }
+                    >
+                      <MaterialIcons
+                        name="arrow-drop-down"
+                        size={isWeb ? 28 : 24}
+                        color="#3E5C76"
+                      />
+                    </TouchableOpacity>
                   </View>
                 </View>
                 <View style={styles.inputContainer}>
@@ -437,36 +706,20 @@ const Add_Agent = ({ closeModal }) => {
                       style={styles.input}
                       placeholder="Select Experience"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={experienceSearch}
-                      onChangeText={(text) => {
-                        setExperienceSearch(text);
-                        setShowExperienceList(true);
-                      }}
-                      onFocus={() => {
-                        setShowExperienceList(true);
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                      }}
+                      value={experience}
+                      onFocus={() => setShowExperienceList(true)}
+                      editable={false}
                     />
-                    {showExperienceList && (
-                      <View style={styles.dropdownContainer}>
-                        <ScrollView style={styles.scrollView}>
-                          {filteredExperience.map((item) => (
-                            <TouchableOpacity
-                              key={item.code}
-                              style={styles.listItem}
-                              onPress={() => {
-                                setExperience(item.name);
-                                setExperienceSearch(item.name);
-                                setShowExperienceList(false);
-                              }}
-                            >
-                              <Text>{item.name}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      </View>
-                    )}
+                    <TouchableOpacity
+                      style={styles.icon}
+                      onPress={() => setShowExperienceList(true)}
+                    >
+                      <MaterialIcons
+                        name="arrow-drop-down"
+                        size={isWeb ? 28 : 24}
+                        color="#3E5C76"
+                      />
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -480,35 +733,20 @@ const Add_Agent = ({ closeModal }) => {
                       style={styles.input}
                       placeholder="Select Expertise"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={expertiseSearch}
-                      onChangeText={(text) => {
-                        setExpertiseSearch(text);
-                        setShowExpertiseList(true);
-                      }}
-                      onFocus={() => {
-                        setShowExpertiseList(true);
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                        setShowExperienceList(false);
-                      }}
+                      value={expertise}
+                      onFocus={() => setShowExpertiseList(true)}
+                      editable={false}
                     />
-                    {showExpertiseList && (
-                      <View style={styles.dropdownContainer}>
-                        {filteredExpertise.map((item) => (
-                          <TouchableOpacity
-                            key={item.code}
-                            style={styles.listItem}
-                            onPress={() => {
-                              setExpertise(item.name);
-                              setExpertiseSearch(item.name);
-                              setShowExpertiseList(false);
-                            }}
-                          >
-                            <Text>{item.name}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
+                    <TouchableOpacity
+                      style={styles.icon}
+                      onPress={() => setShowExpertiseList(true)}
+                    >
+                      <MaterialIcons
+                        name="arrow-drop-down"
+                        size={isWeb ? 28 : 24}
+                        color="#3E5C76"
+                      />
+                    </TouchableOpacity>
                   </View>
                 </View>
                 <View style={styles.inputContainer}>
@@ -519,17 +757,11 @@ const Add_Agent = ({ closeModal }) => {
                       placeholder="Location"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setLocation}
-                      onFocus={() => {
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                        setShowExpertiseList(false);
-                        setShowExperienceList(false);
-                      }}
                     />
                     <MaterialIcons
                       name="location-on"
-                      size={20}
-                      color="#E82E5F"
+                      size={isWeb ? 22 : 20}
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
@@ -543,211 +775,50 @@ const Add_Agent = ({ closeModal }) => {
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
                       onChangeText={setReferralCode}
                       editable={false}
-                      onFocus={() => {
-                        setShowDistrictList(false);
-                        setShowConstituencyList(false);
-                        setShowExpertiseList(false);
-                        setShowExperienceList(false);
-                      }}
                       value={referralCode}
                     />
                     <MaterialIcons
                       name="card-giftcard"
-                      size={20}
-                      color="#E82E5F"
+                      size={isWeb ? 22 : 20}
+                      color="#3E5C76"
                       style={styles.icon}
                     />
                   </View>
                 </View>
               </View>
-            </View>
 
-            <View style={styles.row}>
-              <TouchableOpacity
-                style={styles.registerButton}
-                onPress={handleRegister}
-                disabled={isLoading}
-              >
-                <Text style={styles.buttonText}>Register</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                disabled={isLoading}
-                onPress={() => navigation.navigate("addmember")}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
+              <View style={styles.row}>
+                <TouchableOpacity
+                  style={styles.registerButton}
+                  onPress={handleRegister}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.buttonText}>Register</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  disabled={isLoading}
+                  onPress={() => navigation.navigate("addmember")}
+                >
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            {isLoading && (
-              <ActivityIndicator
-                size="large"
-                color="#E82E5F"
-                style={styles.loadingIndicator}
-              />
-            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Bottom Sheets */}
+      {renderBottomSheet("district")}
+      {renderBottomSheet("constituency")}
+      {renderBottomSheet("expertise")}
+      {renderBottomSheet("experience")}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-    // paddingBottom: "10%",
-  },
-  scrollContainer: {
-    // flexGrow: 1,
-    // justifyContent: "center",
-    // alignItems: "center",
-    // backgroundColor: "#F9FAFB",
-    // borderRadius: 30,
-    // paddingBottom:300,
-    padding: 10,
-  },
-  register_main: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#E82E5F",
-    width: Platform.OS === "web" ? "100%" : "100%",
-    height: 40,
-  },
-  register_text: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    alignContent: "center",
-    fontSize: 20,
-    color: "#ccc",
-  },
-  card: {
-    display: "flex",
-    justifyContent: "center",
-    width: Platform.OS === "web" ? (width > 1024 ? "100%" : "100%") : "100%",
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-    alignItems: "center",
-    borderWidth: Platform.OS === "web" ? 0 : 1,
-    borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
-    paddingBottom:300
-  },
-  webInputWrapper: {
-    width: "100%",
-    display: "flex",
-    flexDirection: "column",
-    gap: 20,
-    marginTop: 25,
-  },
-  scrollView: {
-    maxHeight: 200,
-  },
-  inputRow: {
-    flexDirection:
-      Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
-    justifyContent: "space-between",
-    gap: 5,
-  },
-  inputContainer: {
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "90%" : "30%",
-    position: "relative",
-    zIndex: 1,
-    left: "5%",
-  },
-  inputWrapper: {
-    position: "relative",
-    zIndex: 1,
-  },
-  input: {
-    width: "100%",
-    height: 47,
-    backgroundColor: "#FFF",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
-    elevation: 2,
-    marginBottom: 5,
-    borderWidth: 1,
-    borderColor: "#ccc",
-  },
-  icon: {
-    position: "absolute",
-    right: 10,
-    top: 13,
-  },
-  label: {
-    fontSize: 16,
-    color: "#191919",
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    width: "100%",
-    marginTop: 20,
-  },
-  registerButton: {
-    backgroundColor: "#E82E5F",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 15,
-  },
-  cancelButton: {
-    backgroundColor: "#424242",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 15,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "400",
-  },
-  loginText: {
-    marginTop: 20,
-    fontSize: 16,
-    color: "#E82E5F",
-  },
-  loginLink: {
-    fontWeight: "bold",
-  },
-  loadingIndicator: {
-    marginTop: 20,
-  },
-  errorText: {
-    color: "red",
-    fontSize: 14,
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  dropdownContainer: {
-    position: "absolute",
-    bottom: "100%",
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 5,
-    backgroundColor: "#e6708e",
-  },
-  list: {
-    maxHeight: 150,
-  },
-  listItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-  },
-});
 
 export default Add_Agent;

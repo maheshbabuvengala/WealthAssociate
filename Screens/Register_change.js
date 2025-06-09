@@ -91,7 +91,7 @@ const RegisterAsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#D8E3E7",
     alignItems: "center",
     paddingTop: Platform.OS === "ios" ? hp("2%") : hp("5%"),
   },
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
         ? hp("2.59%")
         : hp("3%"),
     fontWeight: "bold",
-    color: "#D81B60",
+    color: "#3E5C76",
     marginBottom: hp("1%"),
   },
   registerAsText: {
@@ -116,9 +116,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom:
       Platform.OS === "android" || Platform.OS === "ios" ? hp("2%") : hp("2%"),
+    color: "#2B2D42",
   },
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FDFDFD",
     padding: hp("3%"),
     borderRadius: 15,
     shadowColor: "#000",
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
     maxWidth: Platform.OS === "web" ? 200 : 180,
     height: hp("12%"),
     maxHeight: 120,
-    backgroundColor: "#D81B60",
+    backgroundColor: "#3E5C76",
     borderRadius: Platform.OS === "web" ? 15 : wp("3%"),
     alignItems: "center",
     justifyContent: "center",

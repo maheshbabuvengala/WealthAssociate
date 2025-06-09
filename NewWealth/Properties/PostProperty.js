@@ -21,28 +21,29 @@ import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import PropertyCard from "./PropertyCard";
 import { useNavigation } from "@react-navigation/native";
+import useFontsLoader from "../../assets/Hooks/useFontsLoader";
 
 const { width } = Dimensions.get("window");
-
 const PostProperty = ({ closeModal }) => {
+  const fontsLoaded = useFontsLoader();
   // State declarations
   const [propertyType, setPropertyType] = useState("");
   const [location, setLocation] = useState("");
   const [price, setPrice] = useState("");
-  const [photos, setPhotos] = useState([]);
-  const [files, setFiles] = useState([]);
+  const [photos, setPhotos] = useState([]); // Initialize photos array
+  const [files, setFiles] = useState([]); // Initialize files array
   const [errors, setErrors] = useState({});
   const [userDetails, setUserDetails] = useState({});
   const [userType, setUserType] = useState("");
   const [loading, setLoading] = useState(false);
   const [propertyTypes, setPropertyTypes] = useState([]);
   const [propertyTypeSearch, setPropertyTypeSearch] = useState("");
-  const [showPropertyTypeList, setShowPropertyTypeList] = useState(false);
   const [postedProperty, setPostedProperty] = useState(null);
   const [constituencies, setConstituencies] = useState([]);
   const [locationSearch, setLocationSearch] = useState("");
-  const [showLocationList, setShowLocationList] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [dropdownModalVisible, setDropdownModalVisible] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const navigation = useNavigation();
@@ -335,6 +336,88 @@ const PostProperty = ({ closeModal }) => {
     });
   };
 
+  // Dropdown modal handlers
+  const handlePropertyTypePress = () => {
+    setActiveDropdown("propertyType");
+    setDropdownModalVisible(true);
+  };
+
+  const handleLocationPress = () => {
+    setActiveDropdown("location");
+    setDropdownModalVisible(true);
+  };
+
+  const handleDropdownClose = () => {
+    setDropdownModalVisible(false);
+    setActiveDropdown(null);
+  };
+
+  const handlePropertyTypeSelect = (item) => {
+    setPropertyType(item.name);
+    setPropertyTypeSearch(item.name);
+    handleDropdownClose();
+  };
+
+  const handleLocationSelect = (item) => {
+    setLocation(item.name);
+    setLocationSearch(item.name);
+    handleDropdownClose();
+  };
+
+  // Render dropdown content
+  const renderDropdownContent = () => {
+    if (activeDropdown === "propertyType") {
+      return (
+        <View style={styles.dropdownContent}>
+          <Text style={styles.dropdownTitle}>Select Property Type</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search property types..."
+            value={propertyTypeSearch}
+            onChangeText={setPropertyTypeSearch}
+            autoFocus={true}
+          />
+          <ScrollView style={styles.dropdownScrollView}>
+            {filteredPropertyTypes.map((item) => (
+              <TouchableOpacity
+                key={`${item.code}-${item.name}`}
+                style={styles.dropdownItem}
+                onPress={() => handlePropertyTypeSelect(item)}
+              >
+                <Text>{item.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      );
+    } else if (activeDropdown === "location") {
+      return (
+        <View style={styles.dropdownContent}>
+          <Text style={styles.dropdownTitle}>Select Location</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search locations..."
+            value={locationSearch}
+            onChangeText={setLocationSearch}
+            autoFocus={true}
+          />
+          <ScrollView style={styles.dropdownScrollView}>
+            {filteredConstituencies.map((item) => (
+              <TouchableOpacity
+                key={`${item.code}-${item.name}`}
+                style={styles.dropdownItem}
+                onPress={() => handleLocationSelect(item)}
+              >
+                <Text>{item.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      );
+    }
+    return null;
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -342,12 +425,12 @@ const PostProperty = ({ closeModal }) => {
       keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Post a Property</Text>
+        <Text style={styles.title}>Post a Property </Text>
         <View style={styles.formContainer}>
           {/* Photo Upload Section */}
           <Text style={styles.label}>Upload Photos (Max 4)</Text>
           <View style={styles.uploadSection}>
-            {photos.length > 0 ? (
+            {photos && photos.length > 0 ? (
               <View style={styles.photosContainer}>
                 {photos.map((photoUri, index) => (
                   <View key={index} style={styles.photoWrapper}>
@@ -403,7 +486,7 @@ const PostProperty = ({ closeModal }) => {
           </View>
           {errors.photo && <Text style={styles.errorText}>{errors.photo}</Text>}
 
-          {/* Property Type Dropdown */}
+          {/* Property Type Input */}
           <Text style={styles.label}>Property Type</Text>
           <View style={styles.inputWrapper}>
             <View style={styles.inputContainer}>
@@ -415,9 +498,8 @@ const PostProperty = ({ closeModal }) => {
                 onChangeText={(text) => {
                   setPropertyTypeSearch(text);
                   setPropertyType("");
-                  setShowPropertyTypeList(true);
                 }}
-                onFocus={() => setShowPropertyTypeList(true)}
+                onFocus={handlePropertyTypePress}
               />
               {propertyType && (
                 <TouchableOpacity
@@ -428,29 +510,12 @@ const PostProperty = ({ closeModal }) => {
                 </TouchableOpacity>
               )}
             </View>
-            {showPropertyTypeList && (
-              <View style={styles.dropdownContainer}>
-                {filteredPropertyTypes.map((item) => (
-                  <TouchableOpacity
-                    key={`${item.code}-${item.name}`}
-                    style={styles.listItem}
-                    onPress={() => {
-                      setPropertyType(item.name);
-                      setPropertyTypeSearch(item.name);
-                      setShowPropertyTypeList(false);
-                    }}
-                  >
-                    <Text>{item.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
           </View>
           {errors.propertyType && (
             <Text style={styles.errorText}>{errors.propertyType}</Text>
           )}
 
-          {/* Location Dropdown */}
+          {/* Location Input */}
           <Text style={styles.label}>Location</Text>
           <View style={styles.inputWrapper}>
             <View style={styles.inputContainer}>
@@ -461,9 +526,8 @@ const PostProperty = ({ closeModal }) => {
                 onChangeText={(text) => {
                   setLocationSearch(text);
                   setLocation("");
-                  setShowLocationList(true);
                 }}
-                onFocus={() => setShowLocationList(true)}
+                onFocus={handleLocationPress}
               />
               {location && (
                 <TouchableOpacity
@@ -474,23 +538,6 @@ const PostProperty = ({ closeModal }) => {
                 </TouchableOpacity>
               )}
             </View>
-            {showLocationList && (
-              <View style={styles.dropdownContainer}>
-                {filteredConstituencies.map((item) => (
-                  <TouchableOpacity
-                    key={`${item.code}-${item.name}`}
-                    style={styles.listItem}
-                    onPress={() => {
-                      setLocation(item.name);
-                      setLocationSearch(item.name);
-                      setShowLocationList(false);
-                    }}
-                  >
-                    <Text>{item.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
           </View>
           {errors.location && (
             <Text style={styles.errorText}>{errors.location}</Text>
@@ -529,6 +576,28 @@ const PostProperty = ({ closeModal }) => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Dropdown Modal */}
+      <Modal
+        visible={dropdownModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleDropdownClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.dropdownModalContainer}>
+            {renderDropdownContent()}
+            <TouchableOpacity
+              style={styles.closeDropdownButton}
+              onPress={handleDropdownClose}
+            >
+              <Text style={styles.closeDropdownButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
       <Modal
         visible={modalVisible}
         transparent={true}
@@ -548,13 +617,16 @@ const PostProperty = ({ closeModal }) => {
   );
 };
 
-// Styles remain the same as in the original code
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "40%",
-    borderRadius: 30,
-    paddingBottom:40
+    borderRadius: 5,
+    paddingBottom: 40,
+    padding: 30,
+    paddingRight: 30,
+    backgroundColor: "#D8E3E7",
+    alignSelf: "center",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -563,31 +635,36 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontWeight: "bold",
+    fontWeight: "400",
     textAlign: "center",
-    color: "#fff",
-    backgroundColor: "#D81B60",
-    width: "100%",
-    height: 40,
+    color: "#2B2D42",
+    backgroundColor: "#D8E3E7",
+    width: "115%",
+    left: -19.5,
+    height: 45,
+    top: 0,
+    borderRadius: 20,
     display: "flex",
     justifyContent: "center",
     alignContent: "center",
     alignItems: "center",
+    fontFamily: "OpenSanssemibold",
   },
   formContainer: {
     marginBottom: 10,
     backgroundColor: "#fff",
     padding: 20,
-    borderRadius: 12,
+    borderRadius: 20,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 3,
+    width: "100%",
   },
   label: {
     fontSize: 16,
     marginBottom: 8,
-    color: "#555",
+    color: "#2B2D42",
     fontWeight: "500",
   },
   inputContainer: {
@@ -597,7 +674,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 2,
-    borderColor: "#bbb",
+    borderColor: "#E0E6ED",
     borderRadius: 25,
     padding: 10,
     fontSize: 14,
@@ -610,20 +687,6 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     position: "relative",
-  },
-  dropdownContainer: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    marginTop: 5,
-    maxHeight: 300,
-    overflow: "scroll",
-    backgroundColor: "#e6708e",
-  },
-  listItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
   },
   uploadSection: {
     alignItems: "center",
@@ -650,7 +713,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 5,
     right: 5,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(74,111,165,0.8)",
     borderRadius: 10,
     width: 20,
     height: 20,
@@ -666,27 +729,27 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#E0E6ED",
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#F8F9FA",
   },
   addPhotoButton: {
     width: 80,
     height: 80,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#E0E6ED",
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#F8F9FA",
     marginRight: 10,
     marginBottom: 10,
   },
   uploadPlaceholderText: {
     fontSize: 14,
-    color: "#555",
+    color: "#6B7C93",
     marginTop: 8,
   },
   buttonContainer: {
@@ -697,8 +760,8 @@ const styles = StyleSheet.create({
   postButton: {
     flex: 1,
     marginRight: 10,
-    backgroundColor: "#D81B60",
-    borderRadius: 8,
+    backgroundColor: "#3E5C76",
+    borderRadius: 25,
     paddingVertical: 14,
     elevation: 2,
   },
@@ -711,8 +774,8 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     marginLeft: 10,
-    backgroundColor: "#333",
-    borderRadius: 8,
+    backgroundColor: "#3E5C76",
+    borderRadius: 25,
     paddingVertical: 14,
     elevation: 2,
   },
@@ -723,19 +786,72 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   errorText: {
-    color: "red",
+    color: "#E74C3C",
     fontSize: 12,
     marginTop: -5,
     marginBottom: 10,
   },
   disabledButton: {
-    backgroundColor: "#aaa",
+    backgroundColor: "#B8C2CC",
   },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  // Dropdown modal styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  dropdownModalContainer: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: "80%",
+    height: "80%",
+  },
+  dropdownContent: {
+    flex: 1,
+    width: "100%",
+  },
+  dropdownTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 15,
+    backgroundColor: "#fff",
+  },
+  dropdownScrollView: {
+    flex: 1,
+    width: "100%",
+    marginBottom: 15,
+  },
+  dropdownItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  closeDropdownButton: {
+    backgroundColor: "#3E5C76",
+    borderRadius: 25,
+    padding: 12,
+    alignItems: "center",
+  },
+  closeDropdownButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

@@ -458,7 +458,7 @@ const CustomInput = ({ label, icon, value }) => (
         editable={false}
         pointerEvents="none"
       />
-      <FontAwesome name={icon} size={20} color="#FF3366" style={styles.icon} />
+      <FontAwesome name={icon} size={20} color="#3E5C76" style={styles.icon} />
     </View>
   </View>
 );
@@ -474,19 +474,22 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 20,
+    // paddingBottom: 20,
   },
   container: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#D8E3E7",
     alignItems: "center",
     padding: 20,
-    width: "100%",
+    width: Platform.OS === "web" ? "80%" : "100%",
+    alignSelf: "center",
+    height: "100%",
   },
   agentProfileText: {
-    fontWeight: "600",
+    fontWeight: "bold",
     fontSize: 20,
     marginBottom: 10,
+    fontFamily: "OpenSanssemibold",
   },
   profileForm: {
     flexDirection: Platform.OS === "web" ? "row" : "column",
@@ -495,6 +498,8 @@ const styles = StyleSheet.create({
     width: "100%",
     fontWeight: "600",
     fontSize: 16,
+    fontFamily: "OpenSanssemibold",
+    backgroundColor: "FDFDFD",
   },
   inputWrapper: {
     width: Platform.OS === "web" ? "30%" : "100%",
@@ -503,7 +508,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#FDFDFD",
     padding: 10,
     borderRadius: 10,
     elevation: 3,
@@ -513,11 +518,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: "#333",
+    fontFamily: "OpenSanssemibold",
     width: Platform.OS === "web" ? "100%" : 200,
   },
   inputLabel: {
     marginBottom: 5,
     fontWeight: "600",
+    fontFamily: "OpenSanssemibold",
   },
   icon: {
     marginLeft: 10,
@@ -525,14 +532,14 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#fff",
     fontSize: 16,
-    backgroundColor: "#E82E5F",
+    backgroundColor: "#3E5C76",
     padding: 10,
     borderRadius: 15,
   },
   buttonTexts: {
     color: "#fff",
     fontSize: 16,
-    backgroundColor: "#333",
+    backgroundColor: "#3E5C76",
     padding: 10,
     borderRadius: 15,
   },
@@ -574,12 +581,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 3,
+    paddingBottom: 20,
   },
   cameraButton: {
     position: "absolute",
     right: 10,
     bottom: 10,
-    backgroundColor: "#FF3366",
+    backgroundColor: "#3E5C76",
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -590,7 +598,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 10,
     bottom: 10,
-    backgroundColor: "#ff4444",
+    backgroundColor: "#3E5C76",
     width: 40,
     height: 40,
     borderRadius: 20,

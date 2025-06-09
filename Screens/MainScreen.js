@@ -6,35 +6,43 @@ import {
   StyleSheet,
   ImageBackground,
   Image,
+  Platform,
+  width,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import logo1 from "../assets/exp_and.jpg";
 import logo2 from "../assets/exp.jpg";
-import logo3 from "../assets/wlogo2.png";
+import logo3 from "../assets/logosub.png";
 import logo4 from "../assets/quote.png";
 import logo5 from "../assets/cardbg.png";
+const isSmallDevice = width < 450;
 
 const LoginScreen = () => {
   const navigation = useNavigation();
   return (
     <ImageBackground
-      source={logo1}
-      className="flex-1 w-full h-full justify-center items-center bg-black"
+      source={
+        Platform.OS === "ios"
+          ? logo1
+          : Platform.OS === "android"
+          ? logo1
+          : logo2
+      }
+      style={styles.container}
       resizeMode="cover"
     >
       {/* Logo */}
-      <View className="absolute top-12 left-0 right-0 items-start">
+      <View style={styles.logoContainer}>
         <Image
-          source={logo3}
-          className="w-[150px] h-[68px] md:w-[200px] md:h-[80px] right-[-113px] md:right-[-680px]"
+          source={logo3} // Company logo
+          style={styles.logo}
           resizeMode="contain"
         />
       </View>
-
-      <View className="absolute top-40 left-0 right-0 items-start">
+      <View style={styles.quoteContainer}>
         <Image
           source={require("../assets/quote.png")}
-          className="w-[250px] h-[128px] md:w-[500px] md:h-[280px] right-[113px] md:right-[630px] left-[75px] md:left-[324px]"
+          style={styles.quote}
           resizeMode="contain"
         />
       </View>
@@ -42,48 +50,164 @@ const LoginScreen = () => {
       {/* Card with PNG background */}
       <ImageBackground
         source={require("../assets/cardbg.png")}
-        className="relative top-24 w-[325px] h-[200px] md:w-[580px] md:h-[330px] items-center justify-center"
+        style={styles.card}
         resizeMode="stretch"
       >
-        <Text className="text-white font-bold text-[15px] md:text-[18px] relative bottom-[-25px] md:bottom-[-30px] shadow-md shadow-black">
-          Welcome to Wealth Associates
-        </Text>
+        <Text style={styles.welcomeText}>Welcome to Wealth Associates</Text>
 
         {/* Buttons */}
-        <View className="flex-row w-full mt-[20%] md:mt-2 justify-evenly ml-2 md:ml-4">
+        <View style={styles.buttonContainer}>
           <TouchableOpacity
-            className="bg-[#e6005c] py-2.5 px-6 md:py-4 md:px-11 rounded-lg shadow-lg shadow-[#e6005c]"
+            style={styles.button}
             onPress={() => navigation.navigate("Starting Screen")}
           >
-            <Text className="text-white text-base font-bold">Login</Text>
+            <Text style={styles.buttonText}> Login </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className="bg-[#e6005c] py-2.5 px-6 md:py-4 md:px-11 rounded-lg shadow-lg shadow-[#e6005c]"
+            style={styles.button}
             onPress={() => navigation.navigate("RegisterAS")}
           >
-            <Text className="text-white text-base font-bold">Register</Text>
+            <Text style={styles.buttonText}>Register</Text>
           </TouchableOpacity>
         </View>
 
         {/* Footer Text */}
-        <View className="flex-row w-full mt-4">
-          <Text className="text-white text-xs md:text-sm ml-8 md:ml-28 mt-[-2px] md:mt-1 shadow-md shadow-black">
-            if already registered ?
-          </Text>
-          <Text className="text-white text-xs md:text-sm ml-14 md:ml-36 mt-[-2px] md:mt-1 shadow-md shadow-black">
-            new user ?
-          </Text>
+        <View style={styles.footerTextContainer}>
+          <Text style={styles.footerText}>if already registered ?</Text>
+          <Text style={styles.footerText2}>new user ?</Text>
         </View>
-
-        <Text className="z-10 top-[40%] text-white text-xl font-semibold mt-5">
+        <Text
+          style={{
+            zIndex: 10,
+            top: "40%",
+            color: "white",
+            fontSize: 20,
+            fontWeight: 600,
+            marginTop: 20,
+          }}
+        >
           Paritala Naresh
         </Text>
-        <Text className="z-10 top-[40%] text-white text-sm font-semibold mt-1">
+        <Text
+          style={{
+            zIndex: 10,
+            top: "40%",
+            color: "white",
+            fontSize: 14,
+            fontWeight: 600,
+            marginTop: 5,
+          }}
+        >
           Founder & Mentor
         </Text>
       </ImageBackground>
     </ImageBackground>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    height: "100%",
+    width: "100%",
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#000",
+  },
+  logoContainer: {
+    position: "absolute",
+    top: Platform.OS === "android" || Platform.OS === "ios" ? 50 : 18,
+    alignItems: "left",
+  },
+  logo: {
+    width: Platform.OS === "android" || Platform.OS === "ios" ? 250 : 200,
+    height: Platform.OS === "android" || Platform.OS === "ios" ? 90 : 80,
+    position: "relative",
+    right:
+      Platform.OS === "android" || Platform.OS === "ios" || isSmallDevice
+        ? -113
+        : -680,
+  },
+  quoteContainer: {
+    position: "absolute",
+    top: Platform.OS === "android" || Platform.OS === "ios" ? 160 : 30,
+    alignItems: "left",
+  },
+  quote: {
+    width: Platform.OS === "android" || Platform.OS === "ios" ? 250 : 500,
+    height: Platform.OS === "android" || Platform.OS === "ios" ? 128 : 280,
+    position: "relative",
+    right: Platform.OS === "android" || Platform.OS === "ios" ? 113 : 630,
+    left: Platform.OS === "android" || Platform.OS === "ios" ? 75 : 324,
+  },
+  card: {
+    position: "relative",
+    top: Platform.OS === "android" || Platform.OS === "ios" ? 90 : 100,
+    width: Platform.OS === "android" || Platform.OS === "ios" ? 325 : 580,
+    height: Platform.OS === "android" || Platform.OS === "ios" ? 200 : 330,
+    // marginLeft:10,
+    alignItems: "center", // Centers children (text + buttons)
+    justifyContent: "center", // Centers vertically
+  },
+  welcomeText: {
+    fontSize: Platform.OS === "android" || Platform.OS === "ios" ? 15 : 18,
+    color: "#fff",
+    fontWeight: "bold",
+    // marginBottom: 20,
+    position: "relative",
+    // left:155,
+    bottom: Platform.OS === "android" || Platform.OS === "ios" ? -25 : 30,
+    textShadowColor: "rgba(0, 0, 0, 0.7)",
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 5,
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    width: "100%",
+    marginTop: Platform.OS === "android" || Platform.OS === "ios" ? "20%" : 10,
+    justifyContent: "space-evenly",
+    marginLeft: Platform.OS === "android" || Platform.OS === "ios" ? 8 : 18,
+  },
+  button: {
+    backgroundColor: "#3E5C76",
+    paddingVertical:
+      Platform.OS === "android" || Platform.OS === "ios" ? 10 : 15,
+    paddingHorizontal:
+      Platform.OS === "android" || Platform.OS === "ios" ? 25 : 45,
+    borderWidth: 0.5, // Thickness of the border
+    borderColor: "#A9BCD0", // Color of the border
+    padding: 10,
+    borderRadius: 8,
+    elevation: 5,
+  },
+  buttonText: {
+    color: "#FDFDFD",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  footerTextContainer: {
+    flexDirection: "row",
+    width: "100%",
+    marginTop: 15,
+  },
+  footerText: {
+    color: "#fff",
+    fontSize: Platform.OS === "android" || Platform.OS === "ios" ? 12 : 14,
+    marginLeft: Platform.OS === "android" || Platform.OS === "ios" ? 34 : 110,
+    marginTop: Platform.OS === "android" || Platform.OS === "ios" ? -2 : 5,
+    textShadowColor: "rgba(0, 0, 0, 0.7)", // Dark shadow for depth
+    textShadowOffset: { width: 2, height: 2 }, // Slight offset for natural look
+    textShadowRadius: 5, // Smooth blur effect
+  },
+  footerText2: {
+    color: "#fff",
+    fontSize: Platform.OS === "android" || Platform.OS === "ios" ? 12 : 14,
+    marginTop: Platform.OS === "android" || Platform.OS === "ios" ? -2 : 5,
+    marginLeft: Platform.OS === "android" || Platform.OS === "ios" ? 59 : 140,
+    textShadowColor: "rgba(0, 0, 0, 0.7)", // Dark shadow for depth
+    textShadowOffset: { width: 2, height: 2 }, // Slight offset for natural look
+    textShadowRadius: 5, // Smooth blur effect
+  },
+});
 
 export default LoginScreen;

@@ -13,12 +13,16 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useNavigation } from "@react-navigation/native";
+import useFontsLoader from "../../assets/Hooks/useFontsLoader";
+
+const { width, height } = Dimensions.get("window");
 
 const expertTypes = [
   { label: "-- Select Type --", value: "" },
@@ -40,6 +44,8 @@ const expertTypes = [
 ];
 
 const RequestedExpert = ({ closeModal }) => {
+  const fontsLoaded = useFontsLoader();
+
   const [selectedExpert, setSelectedExpert] = useState("");
   const [reason, setReason] = useState("");
   const [Details, setDetails] = useState({});
@@ -127,10 +133,9 @@ const RequestedExpert = ({ closeModal }) => {
     const requestData = {
       expertType: selectedExpert,
       reason: reason.trim(),
-      UserType:userType,
+      UserType: userType,
     };
 
-    // Add user identifier based on user type
     if (userType === "WealthAssociate" || userType === "ReferralAssociate") {
       requestData.WantedBy = Details?.MobileNumber || "Unknown";
     } else if (userType === "Customer") {
@@ -279,29 +284,27 @@ const RequestedExpert = ({ closeModal }) => {
 
   if (isLoading) {
     return (
-      <View style={[styles.modalContent, styles.loadingContainer]}>
+      <View style={[styles.loadingContainer, styles.centeredContainer]}>
         <ActivityIndicator size="large" color="#E91E63" />
       </View>
     );
   }
 
   return (
-    <ScrollView>
-      <KeyboardAvoidingView>
-        <View
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignContent: "center",
-            height: "100vh",
-            backgroundColor: "white",
-          }}
+    <View style={styles.mainContainer}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoidingView}
+      >
+        <View style={styles.header}>
+          <Text style={styles.headerText}>Request Expert Assistance</Text>
+        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.modalContent} accessibilityViewIsModal={true}>
+          <View style={styles.modalContent}>
             {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.headerText}>Request Expert Assistance</Text>
-            </View>
 
             {/* Dropdown */}
             <Text style={styles.label}>Select Expert Type</Text>
@@ -353,47 +356,75 @@ const RequestedExpert = ({ closeModal }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  modalContent: {
-    backgroundColor: "white",
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "40%",
-    padding: 15,
+  mainContainer: {
+    flex: 1,
+    justifyContent: "flex-start", // Changed from 'center' to 'flex-start'
     alignItems: "center",
+    backgroundColor: "#D8E3E7",
+    width: "100%",
+    paddingTop: 20, // Added padding to move content up
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+    width: "100%",
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "flex-start", // Changed from 'center' to 'flex-start'
+    paddingVertical: 0, // Reduced from 20 to 0
+    width: "100%",
+    alignItems: "center",
+  },
+  centeredContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#FDFDFD",
+    width: "80%",
+    maxWidth: 600,
+    padding: 20,
+    borderRadius: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
-    top: "15%",
-    height: "100%",
+    marginTop: 3, // Added marginTop to position the container
+    marginBottom: 100,
   },
   loadingContainer: {
     justifyContent: "center",
     height: 200,
   },
   header: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#D8E3E7",
     width: "100%",
-    paddingVertical: 12,
+    paddingVertical: 15,
     alignItems: "center",
-    position: "absolute",
+    borderRadius: 8,
+    marginTop: 90,
   },
   headerText: {
-    color: "white",
+    color: "black",
     fontSize: 20,
+    fontFamily: "OpenSanssemibold",
     fontWeight: "bold",
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "bold",
     alignSelf: "flex-start",
-    marginTop: 60,
+    marginTop: 15,
+    marginBottom: 5,
     color: "#000",
   },
   pickerWrapper: {
@@ -403,11 +434,11 @@ const styles = StyleSheet.create({
     width: "100%",
     overflow: "hidden",
     marginTop: 5,
-    height: 60,
+    height: 50,
     backgroundColor: "#f8f8f8",
   },
   picker: {
-    height: 60,
+    height: 50,
     color: "#000",
     backgroundColor: "transparent",
   },
@@ -421,7 +452,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 15,
     flexDirection: "row",
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#D8E3E7",
     marginTop: 5,
   },
   dropdownText: {
@@ -434,7 +465,7 @@ const styles = StyleSheet.create({
   },
   dropdownContainerIOS: {
     position: "absolute",
-    backgroundColor: "white",
+    backgroundColor: "#D8E3E7",
     borderWidth: 1,
     borderColor: "#d1d1d6",
     borderRadius: 8,
@@ -447,6 +478,7 @@ const styles = StyleSheet.create({
   },
   dropdownList: {
     flex: 1,
+    backgroundColor: "#D8E3E7",
   },
   dropdownItem: {
     paddingVertical: 12,
@@ -468,39 +500,39 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     padding: 10,
     marginTop: 5,
-    fontSize: 14,
+    fontSize: 16,
     backgroundColor: "#f8f8f8",
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    marginTop: 15,
+    marginTop: 20,
   },
   requestButton: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 8,
     flex: 1,
     alignItems: "center",
-    marginRight: 5,
+    marginRight: 10,
   },
   cancelButton: {
-    backgroundColor: "#8e8e93",
+    backgroundColor: "#3E5C76",
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 8,
     flex: 1,
     alignItems: "center",
-    marginLeft: 5,
+    marginLeft: 10,
   },
   disabledButton: {
     opacity: 0.6,
   },
   buttonText: {
     color: "white",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "bold",
   },
 });

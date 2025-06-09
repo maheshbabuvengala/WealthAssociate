@@ -220,7 +220,7 @@ const CoreProfile = ({ onDetailsUpdates }) => {
         {loading ? (
           <ActivityIndicator
             size="large"
-            color="#FF3366"
+            color="#3E5C76"
             style={styles.loader}
           />
         ) : (
@@ -326,27 +326,29 @@ const CustomInput = ({ label, icon, value }) => (
         editable={false}
         pointerEvents="none"
       />
-      <FontAwesome name={icon} size={20} color="#FF3366" style={styles.icon} />
+      <FontAwesome name={icon} size={20} color="#3E5C76" style={styles.icon} />
     </View>
   </View>
 );
 
 const styles = StyleSheet.create({
   agentProfileText: {
-    fontWeight: 600,
+    fontWeight: "bold",
     fontSize: 20,
     marginBottom: 10,
+    fontFamily: "OpenSanssemibold",
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: "12%",
+    // paddingBottom: "12%",
   },
   container: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#D8E3E7",
     alignItems: "center",
     padding: 20,
-    width: "100%",
+    width: Platform.OS === "web" ? "80%" : "100%",
+    alignSelf:"center",
   },
   profileForm: {
     flexDirection: Platform.OS === "web" ? "row" : "column",
@@ -354,6 +356,7 @@ const styles = StyleSheet.create({
     justifyContent: Platform.OS === "web" ? "space-between" : "flex-start",
     width: "100%",
     fontWeight: 600,
+    backgroundColor:"FDFDFD",
     fontSize: 16,
   },
   inputWrapper: {
@@ -399,7 +402,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   closeButton: {
-    backgroundColor: "#FF3366",
+    backgroundColor: "#3E5C76",
     padding: 10,
     borderRadius: 5,
     width: "100%",
@@ -408,14 +411,14 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#fff",
     fontSize: 16,
-    backgroundColor: "#E82E5F",
+    backgroundColor: "#3E5C76",
     padding: 10,
     borderRadius: 15,
   },
   buttonTexts: {
     color: "#fff",
     fontSize: 16,
-    backgroundColor: "#333",
+    backgroundColor: "#3E5C76",
     padding: 10,
     borderRadius: 15,
   },
@@ -460,7 +463,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 10,
     bottom: 10,
-    backgroundColor: "#FF3366",
+    backgroundColor: "#3E5C76",
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -471,7 +474,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 10,
     bottom: 10,
-    backgroundColor: "#ff4444",
+    backgroundColor: "#3E5C76",
     width: 40,
     height: 40,
     borderRadius: 20,

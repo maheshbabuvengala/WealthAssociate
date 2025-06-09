@@ -1,325 +1,30 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
-  Text,
-  Image,
-  TouchableOpacity,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
   Dimensions,
   Linking,
-  Modal,
+  Platform,
+  ActivityIndicator,
+  TouchableOpacity,
+  Text,
+  Animated,
 } from "react-native";
-import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_URL } from "../../data/ApiUrl";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import * as FileSystem from "expo-file-system";
+import LottieView from "lottie-react-native";
+
+import { API_URL } from "../../data/ApiUrl";
+import LoadingScreen from "../../assets/animations/home[1].json";
+import ActionButtons from "../components/home/ActionButtons";
+import PropertyCard from "../components/home/PropertyCard";
+import RequestedPropertyCard from "../components/home/RequestedPropertyCard";
+import SectionHeader from "../components/home/SectionHeader";
+import PropertyModal from "../components/home/PropertyModal";
+import LazyImage from "../components/home/LazyImage";
 
 const { width } = Dimensions.get("window");
-
-// Image caching directory and functions
-const IMAGE_CACHE_DIR = FileSystem.cacheDirectory + "image-cache/";
-
-const ensureDirExists = async () => {
-  const dirInfo = await FileSystem.getInfoAsync(IMAGE_CACHE_DIR);
-  if (!dirInfo.exists) {
-    await FileSystem.makeDirectoryAsync(IMAGE_CACHE_DIR, {
-      intermediates: true,
-    });
-  }
-};
-
-const cacheImage = async (uri, cacheKey) => {
-  try {
-    await ensureDirExists();
-    const localUri = IMAGE_CACHE_DIR + cacheKey;
-    const fileInfo = await FileSystem.getInfoAsync(localUri);
-
-    if (!fileInfo.exists) {
-      await FileSystem.downloadAsync(uri, localUri);
-      await AsyncStorage.setItem(`imageCache_${cacheKey}`, localUri);
-    }
-
-    return localUri;
-  } catch (error) {
-    console.error("Error caching image:", error);
-    return uri;
-  }
-};
-
-const getCachedImage = async (uri, cacheKey) => {
-  try {
-    const localUri = await AsyncStorage.getItem(`imageCache_${cacheKey}`);
-    if (localUri) {
-      const fileInfo = await FileSystem.getInfoAsync(localUri);
-      if (fileInfo.exists) {
-        return { uri: localUri, fromCache: true };
-      }
-    }
-    return { uri, fromCache: false };
-  } catch (error) {
-    console.error("Error getting cached image:", error);
-    return { uri, fromCache: false };
-  }
-};
-
-const clearExpiredCache = async () => {
-  try {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-    const files = await FileSystem.readDirectoryAsync(IMAGE_CACHE_DIR);
-    for (const file of files) {
-      const fileInfo = await FileSystem.getInfoAsync(IMAGE_CACHE_DIR + file);
-      if (
-        fileInfo.exists &&
-        fileInfo.modificationTime < oneWeekAgo.getTime() / 1000
-      ) {
-        await FileSystem.deleteAsync(IMAGE_CACHE_DIR + file);
-        await AsyncStorage.removeItem(`imageCache_${file}`);
-      }
-    }
-  } catch (error) {
-    console.error("Error clearing expired cache:", error);
-  }
-};
-
-// Improved LazyImage component
-// Updated LazyImage component with better loading and error handling
-const LazyImage = ({ source, style, resizeMode = "cover", cacheKey }) => {
-  const [imageUri, setImageUri] = useState(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isError, setIsError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 3;
-
-  useEffect(() => {
-    let isMounted = true;
-    let retryTimeout;
-
-    const loadImage = async () => {
-      try {
-        if (typeof source === "number") {
-          // Local image resource
-          if (isMounted) {
-            setImageUri(source);
-            setIsLoaded(true);
-          }
-          return;
-        }
-
-        if (!source?.uri) {
-          if (isMounted) setIsError(true);
-          return;
-        }
-
-        // Check if URI is valid
-        if (!source.uri.startsWith("http") && !source.uri.startsWith("file")) {
-          if (isMounted) setIsError(true);
-          return;
-        }
-
-        if (cacheKey) {
-          // First try to get from cache
-          const cached = await getCachedImage(source.uri, cacheKey);
-          if (cached.fromCache && isMounted) {
-            setImageUri(cached.uri);
-            setIsLoaded(true);
-            return;
-          }
-
-          // If not in cache or cache failed, try to download
-          const localUri = await cacheImage(source.uri, cacheKey);
-          if (isMounted) {
-            setImageUri(localUri);
-            setIsLoaded(true);
-          }
-        } else {
-          // No caching, load directly
-          if (isMounted) {
-            setImageUri(source.uri);
-            setIsLoaded(true);
-          }
-        }
-      } catch (error) {
-        console.error("Error loading image:", error);
-        if (isMounted && retryCount < maxRetries) {
-          // Retry after a delay if failed
-          retryTimeout = setTimeout(() => {
-            setRetryCount((prev) => prev + 1);
-          }, 1000 * (retryCount + 1)); // Exponential backoff
-        } else if (isMounted) {
-          setIsError(true);
-        }
-      }
-    };
-
-    loadImage();
-
-    return () => {
-      isMounted = false;
-      clearTimeout(retryTimeout);
-    };
-  }, [source, cacheKey, retryCount]);
-
-  // Handle image loading errors
-  const handleError = () => {
-    if (retryCount < maxRetries) {
-      setRetryCount((prev) => prev + 1);
-    } else {
-      setIsError(true);
-    }
-  };
-
-  if (isError) {
-    return (
-      <View style={[style, styles.imagePlaceholder]}>
-        <Image
-          source={require("../../assets/logo.png")}
-          style={[style, { resizeMode: "contain" }]}
-        />
-      </View>
-    );
-  }
-
-  if (!isLoaded) {
-    return (
-      <View style={[style, styles.imagePlaceholder]}>
-        <ActivityIndicator size="small" color="#D81B60" />
-      </View>
-    );
-  }
-
-  return (
-    <Image
-      source={typeof imageUri === "number" ? imageUri : { uri: imageUri }}
-      style={style}
-      resizeMode={resizeMode}
-      onLoad={() => setIsLoaded(true)}
-      onError={handleError}
-    />
-  );
-};
-// Utility function to normalize image sources
-const normalizeImageSources = (property) => {
-  if (!property) return [];
-
-  // Check newImageUrls first
-  if (Array.isArray(property.newImageUrls)) {
-    return property.newImageUrls.filter(
-      (url) => url && typeof url === "string"
-    );
-  } else if (
-    typeof property.newImageUrls === "string" &&
-    property.newImageUrls
-  ) {
-    return [property.newImageUrls];
-  }
-
-  // Fallback to imageUrls if newImageUrls not available
-  if (Array.isArray(property.imageUrls)) {
-    return property.imageUrls.filter((url) => url && typeof url === "string");
-  } else if (typeof property.imageUrls === "string" && property.imageUrls) {
-    return [property.imageUrls];
-  }
-
-  // Return empty array if no valid images found
-  return [];
-};
-
-// PropertyImageSlider component
-const PropertyImageSlider = ({ property, width }) => {
-  const scrollRef = useRef(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const images = normalizeImageSources(property);
-
-  useEffect(() => {
-    if (images.length <= 1) return;
-
-    const interval = setInterval(() => {
-      const nextIndex = (currentIndex + 1) % images.length;
-      setCurrentIndex(nextIndex);
-      scrollRef.current?.scrollTo({
-        x: nextIndex * width,
-        animated: true,
-      });
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [currentIndex, images.length, width]);
-
-  if (images.length === 0) {
-    return (
-      <LazyImage
-        source={require("../../assets/logo.png")}
-        style={{ width, height: 200, borderRadius: 10 }}
-        resizeMode="contain"
-      />
-    );
-  }
-
-  if (images.length === 1) {
-    return (
-      <LazyImage
-        source={{ uri: images[0] }}
-        style={{ width:260, height: 200, borderRadius: 10 }}
-        resizeMode="cover"
-        cacheKey={`property_${property._id}_0`}
-      />
-    );
-  }
-
-  return (
-    <View style={{ marginBottom: 10 }}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={(e) => {
-          const offsetX = e.nativeEvent.contentOffset.x;
-          const newIndex = Math.round(offsetX / width);
-          setCurrentIndex(newIndex);
-        }}
-      >
-        {images.map((uri, index) => (
-          <LazyImage
-            key={index}
-            source={{ uri }}
-            style={{ width, height: 200, borderRadius: 10 }}
-            resizeMode="cover"
-            cacheKey={`property_${property._id}_${index}`}
-          />
-        ))}
-      </ScrollView>
-
-      {images.length > 1 && (
-        <View style={styles.pagination}>
-          {images.map((_, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.dot,
-                index === currentIndex ? styles.activeDot : null,
-              ]}
-              onPress={() => {
-                setCurrentIndex(index);
-                scrollRef.current?.scrollTo({
-                  x: index * width,
-                  animated: true,
-                });
-              }}
-            />
-          ))}
-        </View>
-      )}
-    </View>
-  );
-};
 
 const HomeScreen = () => {
   const [details, setDetails] = useState({});
@@ -340,12 +45,65 @@ const HomeScreen = () => {
   });
 
   const navigation = useNavigation();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(100)).current;
 
+  // Animation effect
   useEffect(() => {
-    ensureDirExists();
-    clearExpiredCache();
-  }, []);
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading]);
 
+  // Helper functions
+  const getPropertyTag = (createdAt) => {
+    const currentDate = new Date();
+    const propertyDate = new Date(createdAt);
+    const timeDifference = currentDate - propertyDate;
+    const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
+
+    if (daysDifference <= 3) return "Regular Property";
+    if (daysDifference >= 4 && daysDifference <= 17) return "Approved Property";
+    if (daysDifference >= 18 && daysDifference <= 25) return "Wealth Property";
+    return "Listed Property";
+  };
+
+  const getImageByPropertyType = (propertyType) => {
+    switch (propertyType.toLowerCase()) {
+      case "flat(apartment)":
+      case "apartment":
+        return require("../../assets/download.jpeg");
+      case "land(opensite)":
+      case "land":
+        return require("../../assets/Land.jpg");
+      case "house(individual)":
+      case "house":
+        return require("../../assets/house.png");
+      case "villa":
+        return require("../../assets/villa.jpg");
+      case "agriculture land":
+        return require("../../assets/agriculture.jpeg");
+      case "commercial property":
+        return require("../../assets/commercial.jpeg");
+      case "commercial land":
+        return require("../../assets/commland.jpeg");
+      default:
+        return require("../../assets/house.png");
+    }
+  };
+
+  // Data fetching functions
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -442,12 +200,6 @@ const HomeScreen = () => {
     }
   };
 
-  useEffect(() => {
-    if (details?.MyRefferalCode) {
-      fetchReferralCount();
-    }
-  }, [details?.MyRefferalCode]);
-
   const fetchCoreClients = async () => {
     try {
       const response = await fetch(`${API_URL}/coreclient/getallcoreclients`);
@@ -520,7 +272,11 @@ const HomeScreen = () => {
         type: item.propertyType,
         location: item.location,
         budget: `₹${item.Budget.toLocaleString()}`,
-        image: getImageByPropertyType(item.propertyType),
+        images: item.images
+          ? Array.isArray(item.images)
+            ? item.images
+            : [item.images]
+          : [getImageByPropertyType(item.propertyType)],
         createdAt: item.createdAt,
       }));
 
@@ -543,70 +299,35 @@ const HomeScreen = () => {
     }
   };
 
-  useEffect(() => {
-    if (isPropertyModalVisible) {
-      loadReferredInfoFromStorage();
+  // Handlers
+  const handlePropertyPress = (property) => {
+    if (!property?._id) {
+      console.error("Property ID is missing");
+      return;
     }
-  }, [isPropertyModalVisible]);
 
-  const getImageByPropertyType = (propertyType) => {
-    switch (propertyType.toLowerCase()) {
-      case "flat(apartment)":
-      case "apartment":
-        return require("../../assets/download.jpeg");
-      case "land(opensite)":
-      case "land":
-        return require("../../assets/Land.jpg");
-      case "house(individual)":
-      case "house":
-        return require("../../assets/house.png");
-      case "villa":
-        return require("../../assets/villa.jpg");
-      case "agriculture land":
-        return require("../../assets/agriculture.jpeg");
-      case "commercial property":
-        return require("../../assets/commercial.jpeg");
-      case "commercial land":
-        return require("../../assets/commland.jpeg");
-      default:
-        return require("../../assets/house.png");
+    const images = normalizeImageSources(property).map((uri) => ({
+      uri: uri,
+    }));
+
+    let formattedPrice = "Price not available";
+    try {
+      const priceValue = parseInt(property.price);
+      if (!isNaN(priceValue)) {
+        formattedPrice = `₹${priceValue.toLocaleString()}`;
+      }
+    } catch (e) {
+      console.error("Error formatting price:", e);
     }
-  };
 
-  const getPropertyTag = (createdAt) => {
-    const currentDate = new Date();
-    const propertyDate = new Date(createdAt);
-    const timeDifference = currentDate - propertyDate;
-    const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
-
-    if (daysDifference <= 3) {
-      return "Regular Property";
-    } else if (daysDifference >= 4 && daysDifference <= 17) {
-      return "Approved Property";
-    } else if (daysDifference >= 18 && daysDifference <= 25) {
-      return "Wealth Property";
-    } else {
-      return "Listed Property";
-    }
-  };
-
-  const getLastFourChars = (id) => {
-    return id ? id.slice(-4) : "N/A";
-  };
-
-  const getLastFourCharss = (id) => {
-    if (!id) return "N/A";
-    return id.length > 4 ? id.slice(-4) : id;
-  };
-
-  const handleOpenLink = (url) => {
-    if (url) {
-      Linking.openURL(url).catch((err) =>
-        console.error("Couldn't load page", err)
-      );
-    } else {
-      alert("Website link not available");
-    }
+    navigation.navigate("PropertyDetails", {
+      property: {
+        ...property,
+        id: property._id,
+        price: formattedPrice,
+        images: images.length > 0 ? images : [require("../../assets/logo.png")],
+      },
+    });
   };
 
   const handleShare = (property) => {
@@ -647,40 +368,28 @@ const HomeScreen = () => {
     setPropertyModalVisible(true);
   };
 
-  useEffect(() => {
-    const fetchReferredDetails = async () => {
-      if (!details?.ReferredBy) return;
+  const normalizeImageSources = (property) => {
+    if (!property) return [];
 
-      try {
-        const response = await fetch(
-          `${API_URL}/properties/getPropertyreffered`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              token: (await AsyncStorage.getItem("authToken")) || "",
-            },
-            body: JSON.stringify({
-              referredBy: details.ReferredBy,
-            }),
-          }
-        );
+    if (Array.isArray(property.newImageUrls)) {
+      return property.newImageUrls.filter(
+        (url) => url && typeof url === "string"
+      );
+    } else if (
+      typeof property.newImageUrls === "string" &&
+      property.newImageUrls
+    ) {
+      return [property.newImageUrls];
+    }
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+    if (Array.isArray(property.imageUrls)) {
+      return property.imageUrls.filter((url) => url && typeof url === "string");
+    } else if (typeof property.imageUrls === "string" && property.imageUrls) {
+      return [property.imageUrls];
+    }
 
-        const data = await response.json();
-        if (data.status === "success") {
-          setReferredInfo(data.referredByDetails);
-        }
-      } catch (error) {
-        console.error("Error fetching referredBy info:", error);
-      }
-    };
-
-    fetchReferredDetails();
-  }, [details?.ReferredBy]);
+    return [];
+  };
 
   useEffect(() => {
     getDetails();
@@ -692,35 +401,17 @@ const HomeScreen = () => {
     loadReferredInfoFromStorage();
   }, []);
 
-  const handlePropertyPress = (property) => {
-    if (!property?._id) {
-      console.error("Property ID is missing");
-      return;
+  useEffect(() => {
+    if (details?.MyRefferalCode) {
+      fetchReferralCount();
     }
+  }, [details?.MyRefferalCode]);
 
-    const images = normalizeImageSources(property).map((uri) => ({
-      uri: uri,
-    }));
-
-    let formattedPrice = "Price not available";
-    try {
-      const priceValue = parseInt(property.price);
-      if (!isNaN(priceValue)) {
-        formattedPrice = `₹${priceValue.toLocaleString()}`;
-      }
-    } catch (e) {
-      console.error("Error formatting price:", e);
+  useEffect(() => {
+    if (isPropertyModalVisible) {
+      loadReferredInfoFromStorage();
     }
-
-    navigation.navigate("PropertyDetails", {
-      property: {
-        ...property,
-        id: property._id,
-        price: formattedPrice,
-        images: images.length > 0 ? images : [require("../../assets/logo.png")],
-      },
-    });
-  };
+  }, [isPropertyModalVisible]);
 
   const regularProperties = properties.filter(
     (property) => getPropertyTag(property.createdAt) === "Regular Property"
@@ -743,8 +434,6 @@ const HomeScreen = () => {
   ].includes(userType);
 
   const RenderPropertyCard = ({ property }) => {
-    const propertyTag = getPropertyTag(property.createdAt);
-    const propertyId = getLastFourChars(property._id);
     const [isLiked, setIsLiked] = useState(
       likedProperties.includes(property._id)
     );
@@ -792,161 +481,90 @@ const HomeScreen = () => {
     };
 
     return (
-      <TouchableOpacity
+      <PropertyCard
+        property={property}
         onPress={() => handlePropertyPress(property)}
-        activeOpacity={0.8}
-      >
-        <View style={styles.propertyCard}>
-          <PropertyImageSlider property={property} width={width - 40} />
-
-          <View
-            style={[
-              styles.statusTag,
-              {
-                backgroundColor:
-                  propertyTag === "Approved Property" ? "#4CAF50" : "#FF9800",
-              },
-            ]}
-          >
-            <Text style={styles.statusText}>{propertyTag}</Text>
-          </View>
-
-          <View style={styles.propertyIdContainer}>
-            <Text style={styles.propertyId}>ID: {propertyId}</Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.likeButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              toggleLike();
-            }}
-          >
-            <Ionicons
-              name={isLiked ? "heart" : "heart-outline"}
-              size={24}
-              color={isLiked ? "#D81B60" : "#fff"}
-            />
-          </TouchableOpacity>
-
-          <Text style={styles.cardTitle}>{property.propertyType}</Text>
-          <Text style={styles.cardSubtitle}>Location: {property.location}</Text>
-          <Text style={styles.cardPrice}>
-            ₹ {parseInt(property.price).toLocaleString()}
-          </Text>
-
-          <View style={styles.cardButtons}>
-            <TouchableOpacity
-              style={styles.enquiryBtn}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleEnquiryNow(property);
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "bold" }}>
-                Enquiry Now
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.shareBtn}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleShare(property);
-              }}
-            >
-              <FontAwesome name="share" size={16} color="white" />
-              <Text
-                style={{ color: "white", marginLeft: 5, fontWeight: "bold" }}
-              >
-                Share
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
+        onEnquiryPress={() => handleEnquiryNow(property)}
+        onSharePress={() => handleShare(property)}
+        isLiked={isLiked}
+        onLikePress={toggleLike}
+      />
     );
   };
 
-  const RequestedPropertyCard = ({ item }) => {
-    const propertyTag = getPropertyTag(item.createdAt);
-    const propertyId = getLastFourCharss(item.id);
-
-    return (
-      <View style={styles.requestedCard}>
-        <LazyImage
-          source={item.image}
-          style={styles.requestedImage}
-          cacheKey={`requested_${item.id}`}
-        />
-        <View style={styles.propertyIdContainer}>
-          <Text style={styles.propertyId}>ID: {propertyId}</Text>
-        </View>
-        <View style={styles.details}>
-          <Text style={styles.requestedTitle}>{item.title}</Text>
-          <Text style={styles.requestedText}>Type: {item.type}</Text>
-          <Text style={styles.requestedText}>Location: {item.location}</Text>
-          <Text style={styles.requestedText}>Budget: {item.budget}</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.iHaveButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleIHave(item);
-          }}
-        >
-          <Text style={styles.buttonText}>I Have</Text>
-        </TouchableOpacity>
-      </View>
-    );
+  const handleOpenLink = (url) => {
+    if (url) {
+      Linking.openURL(url).catch((err) =>
+        console.error("Couldn't load page", err)
+      );
+    } else {
+      alert("Website link not available");
+    }
   };
 
-  const SectionHeader = ({ title, onViewAll }) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <TouchableOpacity onPress={onViewAll}>
-        <Text style={styles.viewAll}>View All</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const getImageSource = (item) => {
+    if (!item) return require("../../assets/logo.png");
 
-  const actionButton = (
-    iconName,
-    label,
-    bgColor,
-    IconComponent = Ionicons,
-    screenName
-  ) => (
-    <TouchableOpacity
-      style={{ alignItems: "center" }}
-      onPress={() => navigation.navigate(screenName)}
-    >
-      <View style={{ backgroundColor: bgColor, borderRadius: 50, padding: 15 }}>
-        <IconComponent name={iconName} size={30} color="#fff" />
-      </View>
-      <Text style={{ textAlign: "center", marginTop: 5 }}>{label}</Text>
-    </TouchableOpacity>
-  );
+    // First try newImageUrl
+    if (item.newImageUrl && typeof item.newImageUrl === "string") {
+      return { uri: item.newImageUrl };
+    }
+
+    // Then try imageUrl
+    if (item.imageUrl && typeof item.imageUrl === "string") {
+      return { uri: item.imageUrl };
+    }
+
+    // Default fallback
+    return require("../../assets/logo.png");
+  };
+
+  // const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Minimum 3 seconds loading
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+
+    // Cleanup timer on unmount
+    return () => clearTimeout(timer);
+  }, []);
 
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#D81B60" />
+        <LottieView
+          source={require("../../assets/animations/home[1].json")}
+          autoPlay
+          loop
+          style={{ width: 200, height: 200 }}
+        />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <Animated.ScrollView
+        style={[
+          styles.scrollView,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+        showsHorizontalScrollIndicator={false}
+      >
         {(userType === "WealthAssociate" || userType === "ReferralAssociate") &&
           details?.AgentType === "ValueAssociate" &&
           details?.photo && (
-            <View style={styles.agentPhotoContainer}>
+            <Animated.View style={styles.agentPhotoContainer}>
               <LazyImage
                 source={{ uri: details.photo }}
                 style={styles.agentPhoto}
                 cacheKey={`agent_${details._id}`}
+                resizeMode="cover"
               />
               <Text
                 style={styles.agentName}
@@ -969,49 +587,10 @@ const HomeScreen = () => {
                   </View>
                 </TouchableOpacity>
               </Text>
-            </View>
+            </Animated.View>
           )}
 
-        <View style={styles.actionRow}>
-          {actionButton(
-            "home",
-            "Post a\nProperty",
-            "#D81B60",
-            Ionicons,
-            "postproperty"
-          )}
-          {actionButton(
-            "home-search",
-            "Request a\nProperty",
-            "#009688",
-            MaterialCommunityIcons,
-            "requestproperty"
-          )}
-          {actionButton(
-            "account-check",
-            "Request\nExpert",
-            "#3F51B5",
-            MaterialCommunityIcons,
-            "requestexpert"
-          )}
-        </View>
-        <View style={styles.compactActionRow}>
-          <TouchableOpacity
-            style={[styles.compactButton, { backgroundColor: "#FF9800" }]}
-            onPress={() => navigation.navigate("suppliersvendors")}
-          >
-            <MaterialIcons name="store" size={20} color="#fff" />
-            <Text style={styles.compactButtonText}>Suppliers & Vendors</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.compactButton, { backgroundColor: "#607D8B" }]}
-            onPress={() => navigation.navigate("skilledresources")}
-          >
-            <Ionicons name="people" size={20} color="#fff" />
-            <Text style={styles.compactButtonText}>Skilled Resources</Text>
-          </TouchableOpacity>
-        </View>
+        <ActionButtons navigation={navigation} />
 
         {regularProperties.length > 0 && (
           <>
@@ -1024,13 +603,16 @@ const HomeScreen = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {regularProperties.map((property, index) => (
-                <RenderPropertyCard key={index} property={property} />
+              {regularProperties.slice(0, 10).map((property, index) => (
+                <View style={{ marginHorizontal: 5 }}>
+                  {" "}
+                  {/* Add this wrapper */}
+                  <RenderPropertyCard key={index} property={property} />
+                </View>
               ))}
             </ScrollView>
           </>
         )}
-
         {approvedProperties.length > 0 && (
           <>
             <SectionHeader
@@ -1042,8 +624,10 @@ const HomeScreen = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {approvedProperties.map((property, index) => (
-                <RenderPropertyCard key={index} property={property} />
+              {approvedProperties.slice(0, 10).map((property, index) => (
+                <View style={{ marginHorizontal: 5 }}>
+                  <RenderPropertyCard key={index} property={property} />
+                </View>
               ))}
             </ScrollView>
           </>
@@ -1060,8 +644,10 @@ const HomeScreen = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {wealthProperties.map((property, index) => (
-                <RenderPropertyCard key={index} property={property} />
+              {wealthProperties.slice(0, 10).map((property, index) => (
+                <View style={{ marginHorizontal: 5 }}>
+                  <RenderPropertyCard key={index} property={property} />
+                </View>
               ))}
             </ScrollView>
           </>
@@ -1078,8 +664,10 @@ const HomeScreen = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {listedProperties.map((property, index) => (
-                <RenderPropertyCard key={index} property={property} />
+              {listedProperties.slice(0, 10).map((property, index) => (
+                <View style={{ marginHorizontal: 5 }}>
+                  <RenderPropertyCard key={index} property={property} />
+                </View>
               ))}
             </ScrollView>
           </>
@@ -1098,11 +686,14 @@ const HomeScreen = () => {
             contentContainerStyle={styles.horizontalScroll}
           >
             {propertiess.map((item, index) => (
-              <RequestedPropertyCard key={index} item={item} />
+              <RequestedPropertyCard
+                key={index}
+                item={item}
+                onIHavePress={() => handleIHave(item)}
+              />
             ))}
           </ScrollView>
         )}
-
         {coreClients.length > 0 && (
           <>
             <SectionHeader title="Core Clients" />
@@ -1118,9 +709,10 @@ const HomeScreen = () => {
                   onPress={() => handleOpenLink(client.website)}
                 >
                   <LazyImage
-                    source={{ uri: client.newImageUrl }}
+                    source={getImageSource(client)}
                     style={styles.clientImage}
                     cacheKey={`client_${client._id}`}
+                    resizeMode="contain"
                   />
                 </TouchableOpacity>
               ))}
@@ -1143,9 +735,10 @@ const HomeScreen = () => {
                   onPress={() => handleOpenLink(project.website)}
                 >
                   <LazyImage
-                    source={{ uri: project.newImageUrl }}
+                    source={getImageSource(project)}
                     style={styles.projectImage}
                     cacheKey={`project_${project._id}`}
+                    resizeMode="cover"
                   />
                   <Text style={styles.projectTitle}>{project.city}</Text>
                 </TouchableOpacity>
@@ -1169,9 +762,10 @@ const HomeScreen = () => {
                   onPress={() => handleOpenLink(project.website)}
                 >
                   <LazyImage
-                    source={{ uri: project.newImageUrl }}
+                    source={getImageSource(project)}
                     style={styles.projectImage}
                     cacheKey={`valueproject_${project._id}`}
+                    resizeMode="cover"
                   />
                   <Text style={styles.projectTitle}>{project.city}</Text>
                 </TouchableOpacity>
@@ -1179,45 +773,13 @@ const HomeScreen = () => {
             </ScrollView>
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
-      <Modal
+      <PropertyModal
         visible={isPropertyModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setPropertyModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <>
-              <LazyImage
-                source={require("../../assets/man.png")}
-                style={styles.agentLogo}
-              />
-              <Text style={styles.modalTitle}>Referred By</Text>
-              <Text style={styles.modalText}>Name: {referredInfo.name}</Text>
-              <Text style={styles.modalText}>
-                Mobile: {referredInfo.mobileNumber}
-              </Text>
-              <TouchableOpacity
-                style={styles.callButton}
-                onPress={() =>
-                  Linking.openURL(`tel:${referredInfo.mobileNumber}`)
-                }
-              >
-                <Ionicons name="call" size={20} color="white" />
-                <Text style={styles.callButtonText}>Call Now</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setPropertyModalVisible(false)}
-              >
-                <Text style={styles.closeButtonText}>Close</Text>
-              </TouchableOpacity>
-            </>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setPropertyModalVisible(false)}
+        referredInfo={referredInfo}
+      />
     </View>
   );
 };
@@ -1225,48 +787,16 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f1f1f1",
+    backgroundColor: "#D8E3E7",
     paddingHorizontal: 15,
+    paddingTop: -10,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-  },
-  actionRow: {
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    marginVertical: 20,
-    gap: 30,
-  },
-  compactActionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginHorizontal: 15,
-    marginBottom: 15,
-    marginTop: 5,
-  },
-  compactButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginHorizontal: 5,
-    shadowColor: "#000",
-    height: "100%",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  compactButtonText: {
-    color: "white",
-    fontWeight: "700",
-    fontSize: 13,
-    marginLeft: 6,
+    width: "100%",
+    backgroundColor: "#D8E3E7",
   },
   scrollView: {
     flex: 1,
@@ -1274,257 +804,7 @@ const styles = StyleSheet.create({
   },
   horizontalScroll: {
     paddingVertical: 10,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 15,
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontWeight: "bold",
-    fontSize: 16,
-    color: "#333",
-  },
-  viewAll: {
-    color: "#2196F3",
-    fontWeight: "500",
-    fontSize: 14,
-  },
-  propertyCard: {
-    width: width * 0.8,
-    backgroundColor: "white",
-    borderRadius: 10,
-    marginRight: 15,
-    padding: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  statusTag: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  statusText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  propertyIdContainer: {
-    alignItems: "flex-end",
-    paddingRight: 5,
-    marginTop: 5,
-  },
-  propertyId: {
-    backgroundColor: "green",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    color: "#fff",
-    fontWeight: "600",
-  },
-  likeButton: {
-    position: "absolute",
-    top: 20,
-    right: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 20,
-    padding: 5,
-  },
-  cardTitle: {
-    fontWeight: "bold",
-    fontSize: 16,
-    color: "#333",
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 2,
-  },
-  cardPrice: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#4CAF50",
-    marginVertical: 8,
-  },
-  cardButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 5,
-  },
-  enquiryBtn: {
-    backgroundColor: "#D81B60",
-    padding: 10,
-    borderRadius: 5,
-    width: "48%",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-  },
-  shareBtn: {
-    backgroundColor: "#2196F3",
-    padding: 10,
-    borderRadius: 5,
-    width: "48%",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-  },
-  requestedCard: {
-    width: width * 0.8,
-    backgroundColor: "white",
-    borderRadius: 10,
-    marginRight: 15,
-    overflow: "hidden",
-    elevation: 3,
-  },
-  requestedImage: {
-    width: "100%",
-    height: 120,
-  },
-  requestedTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  requestedText: {
-    fontSize: 12,
-    color: "#666",
-  },
-  details: {
-    padding: 10,
-  },
-  iHaveButton: {
-    backgroundColor: "#4CAF50",
-    padding: 10,
-    borderRadius: 5,
-    alignSelf: "center",
-    margin: 10,
-    width: "90%",
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  clientCard: {
-    width: 150,
-    height: 80,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  clientImage: {
-    width: "60%",
-    height: "60%",
-    resizeMode: "cover",
-  },
-  projectCard: {
-    width: 150,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    marginRight: 15,
-    padding: 10,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  projectImage: {
-    width: 100,
-    height: 60,
-    marginBottom: 10,
-    resizeMode:"cover"
-  },
-  projectTitle: {
-    fontSize: 12,
-    textAlign: "center",
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  modalContent: {
-    margin: 20,
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 20,
-    elevation: 5,
-  },
-  pagination: {
-    flexDirection: "row",
-    position: "absolute",
-    bottom: 10,
-    alignSelf: "center",
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#ccc",
-    margin: 5,
-  },
-  activeDot: {
-    backgroundColor: "#000",
-  },
-  agentLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignSelf: "center",
-    marginBottom: 15,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  modalText: {
-    fontSize: 16,
-    marginVertical: 4,
-  },
-  callButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#28a745",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 15,
-  },
-  callButtonText: {
-    color: "white",
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  closeButton: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: "#dc3545",
-    alignItems: "center",
-  },
-  closeButtonText: {
-    color: "white",
-    fontSize: 16,
+    // paddingHorizontal: 10,
   },
   agentPhotoContainer: {
     alignItems: "flex-start",
@@ -1561,10 +841,47 @@ const styles = StyleSheet.create({
     color: "#2c3e50",
     fontWeight: "600",
   },
-  imagePlaceholder: {
+  clientCard: {
+    width: 150,
+    height: 100,
+    backgroundColor: "#fff",
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f5f5f5",
+    marginRight: 15,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+    padding: 10,
+  },
+  clientImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
+  },
+  projectCard: {
+    width: 150,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    marginRight: 15,
+    padding: 10,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  projectImage: {
+    width: 130,
+    height: 80,
+    marginBottom: 10,
+    borderRadius: 8,
+  },
+  projectTitle: {
+    fontSize: 12,
+    textAlign: "center",
+    fontWeight: "600",
   },
 });
 

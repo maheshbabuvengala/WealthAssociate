@@ -3,18 +3,26 @@ import {
   View,
   Text,
   TextInput,
-  ScrollView,
+  Platform,
   TouchableOpacity,
   StyleSheet,
-  Platform,
+  ScrollView,
   ActivityIndicator,
   KeyboardAvoidingView,
   Alert,
   Image,
+  Modal,
+  FlatList,
+  Dimensions,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../data/ApiUrl";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
+import logo1 from "../assets/logosub.png";
+import { Ionicons } from "@expo/vector-icons";
+
+const { width, height } = Dimensions.get("window");
 
 const Rskill = ({ closeModal }) => {
   const [fullName, setFullName] = useState("");
@@ -27,12 +35,13 @@ const Rskill = ({ closeModal }) => {
   const [loadingSkills, setLoadingSkills] = useState(true);
   const [constituencies, setConstituencies] = useState([]);
   const [locationSearch, setLocationSearch] = useState("");
-  const [showLocationList, setShowLocationList] = useState(false);
-  const [showSkillDropdown, setShowSkillDropdown] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showSkillModal, setShowSkillModal] = useState(false);
   const [skillSearch, setSkillSearch] = useState("");
   const [filteredSkills, setFilteredSkills] = useState([]);
   const [filteredConstituencies, setFilteredConstituencies] = useState([]);
   const navigation = useNavigation();
+
   const getDetails = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -148,315 +157,456 @@ const Rskill = ({ closeModal }) => {
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
+  const renderSkillItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setSkill(item);
+        setShowSkillModal(false);
+        setSkillSearch("");
+      }}
     >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
+      <Text style={styles.listItemText}>{item}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderLocationItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => {
+        setLocation(item.name);
+        setShowLocationModal(false);
+        setLocationSearch("");
+      }}
+    >
+      <Text style={styles.listItemText}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
       >
-        <View style={styles.container}>
-          <Image
-            source={require("../assets/logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <View style={styles.header}>
-            <Text style={styles.headerText}>Register Skilled Resource</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          nestedScrollEnabled={true}
+        >
+          <View style={styles.headerContainer}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#2B2D42" />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.screenTitle}>REGISTER SKILLED RESOURCE</Text>
+            </View>
+            <Image source={logo1} style={styles.logo} />
           </View>
-          <View style={styles.form}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              value={fullName}
-              onChangeText={setFullName}
-              style={styles.input}
-              placeholder="Enter full name"
-            />
 
-            <Text style={styles.label}>Select Skill</Text>
-            {loadingSkills ? (
-              <ActivityIndicator size="small" color="#E91E63" />
-            ) : (
-              <View style={styles.inputContainer}>
-                <View style={styles.searchInputContainer}>
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search and select skill"
-                    value={showSkillDropdown ? skillSearch : skill}
-                    onChangeText={(text) => {
-                      if (showSkillDropdown) {
-                        setSkillSearch(text);
-                      } else {
-                        setSkill(text);
-                        setSkillSearch(text);
-                        setShowSkillDropdown(true);
-                      }
-                    }}
-                    onFocus={() => {
-                      setShowSkillDropdown(true);
-                      setSkillSearch("");
-                    }}
-                  />
-                  {showSkillDropdown && (
-                    <TouchableOpacity
-                      onPress={() => setShowSkillDropdown(false)}
-                      style={styles.dropdownToggle}
-                    >
-                      <Text style={styles.dropdownToggleText}>▲</Text>
-                    </TouchableOpacity>
-                  )}
-                  {!showSkillDropdown && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setShowSkillDropdown(true);
-                        setSkillSearch("");
-                      }}
-                      style={styles.dropdownToggle}
-                    >
-                      <Text style={styles.dropdownToggleText}>▼</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                {showSkillDropdown && (
-                  <View style={styles.dropdownContainer}>
-                    <ScrollView style={styles.scrollContainer}>
-                      {filteredSkills.map((item) => (
-                        <TouchableOpacity
-                          key={item}
-                          style={styles.listItem}
-                          onPress={() => {
-                            setSkill(item);
-                            setSkillSearch("");
-                            setShowSkillDropdown(false);
-                          }}
-                        >
-                          <Text>{item}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
-            )}
-
-            <Text style={styles.label}>Location</Text>
+          <View style={styles.card}>
+            {/* Full Name Input */}
             <View style={styles.inputContainer}>
-              <View style={styles.searchInputContainer}>
+              <Text style={styles.label}>Full Name</Text>
+              <View style={styles.inputWrapper}>
                 <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search and select location"
-                  value={showLocationList ? locationSearch : location}
-                  onChangeText={(text) => {
-                    if (showLocationList) {
-                      setLocationSearch(text);
-                    } else {
-                      setLocation(text);
-                      setLocationSearch(text);
-                      setShowLocationList(true);
-                    }
-                  }}
-                  onFocus={() => {
-                    setShowLocationList(true);
-                    setLocationSearch("");
-                  }}
+                  style={styles.input}
+                  placeholder="Full Name"
+                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                  onChangeText={setFullName}
+                  value={fullName}
                 />
-                {showLocationList && (
-                  <TouchableOpacity
-                    onPress={() => setShowLocationList(false)}
-                    style={styles.dropdownToggle}
-                  >
-                    <Text style={styles.dropdownToggleText}>▲</Text>
-                  </TouchableOpacity>
-                )}
-                {!showLocationList && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShowLocationList(true);
-                      setLocationSearch("");
-                    }}
-                    style={styles.dropdownToggle}
-                  >
-                    <Text style={styles.dropdownToggleText}>▼</Text>
-                  </TouchableOpacity>
-                )}
+                <FontAwesome
+                  name="user"
+                  size={20}
+                  color="#3E5C76"
+                  style={styles.icon}
+                />
               </View>
-              {showLocationList && (
-                <View style={styles.dropdownContainer}>
-                  <ScrollView style={styles.scrollContainer}>
-                    {filteredConstituencies.map((item) => (
-                      <TouchableOpacity
-                        key={`${item.code}-${item.name}`}
-                        style={styles.listItem}
-                        onPress={() => {
-                          setLocation(item.name);
-                          setLocationSearch("");
-                          setShowLocationList(false);
-                        }}
-                      >
-                        <Text>{item.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
             </View>
 
-            <Text style={styles.label}>Mobile Number</Text>
-            <TextInput
-              value={mobileNumber}
-              onChangeText={setMobileNumber}
-              keyboardType="numeric"
-              style={styles.input}
-              placeholder="Enter mobile number"
-              maxLength={10}
-            />
-
-            <View style={styles.buttonContainer}>
+            {/* Skill Select */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Select Skill</Text>
               <TouchableOpacity
-                style={[
-                  styles.registerButton,
-                  loading && styles.disabledButton,
-                ]}
+                style={styles.inputWrapper}
+                onPress={() => setShowSkillModal(true)}
+              >
+                <TextInput
+                  style={styles.input}
+                  placeholder="Select Skill"
+                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                  value={skill}
+                  editable={false}
+                  pointerEvents="none"
+                />
+                <MaterialIcons
+                  name="arrow-drop-down"
+                  size={24}
+                  color="#3E5C76"
+                  style={styles.icon}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Location Select */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Location</Text>
+              <TouchableOpacity
+                style={styles.inputWrapper}
+                onPress={() => setShowLocationModal(true)}
+              >
+                <TextInput
+                  style={styles.input}
+                  placeholder="Select Location"
+                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                  value={location}
+                  editable={false}
+                  pointerEvents="none"
+                />
+                <MaterialIcons
+                  name="arrow-drop-down"
+                  size={24}
+                  color="#3E5C76"
+                  style={styles.icon}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Mobile Number Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Mobile Number</Text>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex. 9063392872"
+                  placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                  onChangeText={(text) =>
+                    setMobileNumber(text.replace(/[^0-9]/g, ""))
+                  }
+                  value={mobileNumber}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                />
+                <MaterialIcons
+                  name="phone"
+                  size={20}
+                  color="#3E5C76"
+                  style={styles.icon}
+                />
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <TouchableOpacity
+                style={styles.registerButton}
                 onPress={handleRegister}
                 disabled={loading}
               >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Register</Text>
-                )}
+                <Text style={styles.buttonText}>Register</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => navigation.navigate("RegisterAS")}
+                disabled={loading}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
+
+            {loading && (
+              <ActivityIndicator
+                size="large"
+                color="#3E5C76"
+                style={styles.loadingIndicator}
+              />
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Skill Modal */}
+      <Modal
+        visible={showSkillModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSkillModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Skill</Text>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search skill..."
+                placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                onChangeText={setSkillSearch}
+                value={skillSearch}
+                autoFocus={true}
+              />
+              <MaterialIcons
+                name="search"
+                size={24}
+                color="#3E5C76"
+                style={styles.searchIcon}
+              />
+            </View>
+            <FlatList
+              data={filteredSkills}
+              renderItem={renderSkillItem}
+              keyExtractor={(item, index) => index.toString()}
+              style={styles.modalList}
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setShowSkillModal(false);
+                setSkillSearch("");
+              }}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Location Modal */}
+      <Modal
+        visible={showLocationModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Location</Text>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search location..."
+                placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                onChangeText={setLocationSearch}
+                value={locationSearch}
+                autoFocus={true}
+              />
+              <MaterialIcons
+                name="search"
+                size={24}
+                color="#3E5C76"
+                style={styles.searchIcon}
+              />
+            </View>
+            <FlatList
+              data={filteredConstituencies}
+              renderItem={renderLocationItem}
+              keyExtractor={(item, index) => index.toString()}
+              style={styles.modalList}
+            />
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setShowLocationModal(false);
+                setLocationSearch("");
+              }}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    alignSelf: "center",
-    backgroundColor: "#fff",
-    borderRadius: 10,
+    flex: 1,
+    backgroundColor: "#D8E3E7",
+  },
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     width: "100%",
-    maxWidth: 400,
-    // marginTop: "20%",
-    // alignItems:"center",justifyContent:"center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
+    paddingHorizontal: 20,
     marginTop: 20,
   },
-  logo: {
-    width: 150,
-    height: 120,
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 10,
+  headerTextContainer: {
+    flex: 1,
   },
-  header: {
-    backgroundColor: "#E91E63",
-    padding: 15,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+  scrollContainer: {
+    justifyContent: "center",
+    alignItems: "center",
   },
-  headerText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-    color: "#fff",
-  },
-  form: {
+  card: {
+    display: "flex",
+    justifyContent: "center",
+    width: Platform.OS === "web" ? (width > 1024 ? "60%" : "80%") : "90%",
+    backgroundColor: "#FDFDFD",
     padding: 20,
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+    alignItems: "center",
+    margin: 20,
+    borderWidth: Platform.OS === "web" ? 0 : 1,
+    borderColor: Platform.OS === "web" ? "transparent" : "#ccc",
+  },
+  inputContainer: {
+    width: "100%",
+    position: "relative",
+    zIndex: 1,
+    marginBottom: 15,
+  },
+  inputWrapper: {
+    position: "relative",
+    zIndex: 1,
+  },
+  input: {
+    width: "100%",
+    height: 47,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 2,
+    marginBottom: 5,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    fontFamily: "Roboto-Regular",
+  },
+  logo: {
+    width: Platform.OS === "android" ? 105 : 100,
+    height: Platform.OS === "android" ? 105 : 100,
+    resizeMode: "contain",
+    marginRight: 7,
+    marginBottom: 40,
+    left: Platform.OS === "android" ? -102 : -700,
+  },
+  icon: {
+    position: "absolute",
+    left: Platform.OS === "web" ? 830 : 245,
+    top: 13,
+    color: "#3E5C76",
   },
   label: {
     fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 5,
+    color: "#191919",
+    marginBottom: 8,
+    fontFamily: "Roboto-Medium",
   },
-  inputContainer: {
-    marginBottom: 15,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 25,
-    padding: 12,
-  },
-  searchInputContainer: {
+  row: {
     flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 25,
-    paddingRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    padding: 12,
-  },
-  dropdownToggle: {
-    padding: 5,
-  },
-  dropdownToggleText: {
-    fontSize: 12,
-    color: "#666",
-  },
-  dropdownContainer: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    marginTop: 5,
-    maxHeight: 200,
-    backgroundColor: "#e6708e",
-  },
-  scrollContainer: {
-    maxHeight: 150,
-  },
-  listItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
+    justifyContent: "space-evenly",
+    width: "100%",
+    marginTop: 20,
+    gap: 15,
   },
   registerButton: {
-    backgroundColor: "#E91E63",
-    padding: 12,
-    borderRadius: 25,
+    backgroundColor: "#3E5C76",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 15,
     flex: 1,
-    marginRight: 10,
   },
   cancelButton: {
-    backgroundColor: "#000",
-    padding: 12,
-    borderRadius: 25,
+    backgroundColor: "#3E5C76",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 15,
     flex: 1,
   },
   buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "500",
     textAlign: "center",
-    color: "#fff",
+    fontFamily: "Roboto-Medium",
+  },
+  loadingIndicator: {
+    marginTop: 20,
+  },
+  screenTitle: {
+    fontWeight: "700",
+    fontSize: 18,
+    color: "#2B2D42",
+    top: 50,
+    left: 50,
+    textAlign: "center",
+    fontFamily: "Roboto-Bold",
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: height * 0.7,
+  },
+  modalTitle: {
+    fontSize: 18,
     fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+    color: "#2B2D42",
+    fontFamily: "Roboto-Bold",
   },
-  disabledButton: {
-    opacity: 0.6,
+  searchContainer: {
+    position: "relative",
+    marginBottom: 15,
   },
-  placeholderText: {
-    color: "rgba(0, 0, 0, 0.5)",
+  searchInput: {
+    width: "100%",
+    height: 40,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 40,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    fontFamily: "Roboto-Regular",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: 10,
+    top: 8,
+    color: "#3E5C76",
+  },
+  modalList: {
+    marginBottom: 15,
+  },
+  listItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  listItemText: {
+    fontSize: 16,
+    fontFamily: "Roboto-Regular",
+  },
+  closeButton: {
+    backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "bold",
+    fontFamily: "Roboto-Bold",
   },
 });
 

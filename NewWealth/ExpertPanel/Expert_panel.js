@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   useWindowDimensions,
   TouchableOpacity,
   ScrollView,
+  Platform,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -77,11 +79,21 @@ const data = [
 const ExpertPanel = ({ onSwitch, userType }) => {
   const [isCoreMember, setIsCoreMember] = useState(false);
   const { width } = useWindowDimensions();
-  const numColumns = width > 600 ? 4 : width > 300 ? 3 : 2;
-  const spacing = 8;
+  const navigation = useNavigation();
+
+  const numColumns = Platform.OS === "web" ? 3 : 2;
+  const spacing = 16;
   const itemSize = (width - spacing * (numColumns + 1)) / numColumns;
 
-  const navigation = useNavigation();
+  const containerStyle = useMemo(
+    () => ({
+      ...styles.mainContainer,
+      paddingHorizontal: spacing,
+      width: Platform.OS === "web" ? "80%" : "100%",
+      alignSelf: "center",
+    }),
+    [width]
+  );
 
   useEffect(() => {
     const checkUserType = async () => {
@@ -92,17 +104,13 @@ const ExpertPanel = ({ onSwitch, userType }) => {
         console.error("Error reading userType from AsyncStorage:", error);
       }
     };
-
     checkUserType();
   }, []);
 
   const handleRequestExpert = () => {
-    console.log("Attempting to navigate to requestexpert");
     try {
       navigation.navigate("requestexpert");
-      console.log("Navigation successful");
     } catch (error) {
-      console.error("Navigation error:", error);
       Alert.alert(
         "Navigation Error",
         `Failed to open request screen: ${error.message}`
@@ -111,12 +119,9 @@ const ExpertPanel = ({ onSwitch, userType }) => {
   };
 
   const handleAddExpert = () => {
-    console.log("Attempting to navigate to addexpert");
     try {
       navigation.navigate("addexpert");
-      console.log("Navigation successful");
     } catch (error) {
-      console.error("Navigation error:", error);
       Alert.alert(
         "Navigation Error",
         `Failed to open add expert screen: ${error.message}`
@@ -126,39 +131,39 @@ const ExpertPanel = ({ onSwitch, userType }) => {
 
   return (
     <ScrollView>
-      <View style={styles.mainContainer}>
-        <View style={{ display: "flex", flexDirection: "column" }}>
-          <Text style={styles.header}>Expert Panel</Text>
+      <View style={containerStyle}>
+        <Text style={styles.header}>Expert Panel</Text>
 
-          {/* Buttons Container */}
-          <View style={styles.buttonContainer}>
-            {/* Request Expert - Visible to all users */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.button, styles.requestButton]}
+            onPress={handleRequestExpert}
+          >
+            <Text style={styles.buttonText}>Request Expert</Text>
+          </TouchableOpacity>
+
+          {isCoreMember && (
             <TouchableOpacity
-              style={[styles.button, styles.requestButton]}
-              onPress={handleRequestExpert}
+              style={[styles.button, styles.addExpertButton]}
+              onPress={handleAddExpert}
             >
-              <Text style={styles.buttonText}>Request Expert</Text>
+              <Text style={styles.buttonText}>Add Expert</Text>
             </TouchableOpacity>
-
-            {/* Add Expert - Only for Core Members */}
-            {isCoreMember && (
-              <TouchableOpacity
-                style={[styles.button, styles.addExpertButton]}
-                onPress={handleAddExpert}
-              >
-                <Text style={styles.buttonText}>Add Expert</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          )}
         </View>
 
-        {/* Expert Categories Grid */}
-        <View style={styles.listContainer}>
+        <View style={styles.gridContainer}>
           {data.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={[styles.item, { width: itemSize }]}
+              style={[
+                styles.item,
+                {
+                  flexBasis: `${Platform.OS === "web" ? 33.33 : 50}%`,
+                },
+              ]}
               onPress={() => onSwitch(item.title)}
+              activeOpacity={0.7}
             >
               <View style={styles.iconContainer}>
                 <Image source={{ uri: item.icon }} style={styles.icon} />
@@ -175,24 +180,21 @@ const ExpertPanel = ({ onSwitch, userType }) => {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#D8E3E7",
+    paddingTop: 20,
     paddingBottom: 60,
-    padding: 20,
   },
   header: {
     fontSize: 22,
     fontWeight: "bold",
-    // marginBottom: 15,
     textAlign: "center",
     color: "#333",
-    top: 5,
+    marginBottom: 15,
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
     marginBottom: 20,
-    marginTop:10,
-    paddingHorizontal: 10,
   },
   button: {
     paddingVertical: 12,
@@ -208,38 +210,33 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   requestButton: {
-    backgroundColor: "#4CAF50", // Green color
+    backgroundColor: "#FDFDFD",
   },
   addExpertButton: {
-    backgroundColor: "#2196F3", // Blue color
+    backgroundColor: "#FDFDFD",
   },
   buttonText: {
-    color: "white",
+    color: "#3E5C76",
     fontWeight: "bold",
     fontSize: 16,
   },
-  listContainer: {
+  gridContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "center",
+    justifyContent: "flex-start",
   },
   item: {
     alignItems: "center",
     justifyContent: "center",
-    margin: 10,
     marginBottom: 15,
   },
   iconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#fff",
+    backgroundColor: "#3E5C76",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
     elevation: 4,
     marginBottom: 5,
   },
@@ -247,6 +244,7 @@ const styles = StyleSheet.create({
     width: 35,
     height: 35,
     resizeMode: "contain",
+    tintColor: "#FDFDFD",
   },
   text: {
     fontSize: 12,

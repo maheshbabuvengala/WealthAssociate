@@ -13,6 +13,7 @@ import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { API_URL } from "../../data/ApiUrl";
+import LottieView from "lottie-react-native";
 
 import MyAgents from "../Myagents/Myagents";
 import MyCustomersScreen from "../Mycustomers/MyCustomers";
@@ -142,8 +143,13 @@ export default function Add_Member() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#e63946" />
+      <View style={[styles.container, styles.loadingContainer]}>
+        <LottieView
+          source={require("../../assets/animations/agentanimation.json")}
+          autoPlay
+          loop
+          style={{ width: 300, height: 300 }}
+        />
       </View>
     );
   }

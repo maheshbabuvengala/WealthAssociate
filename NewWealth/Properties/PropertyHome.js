@@ -1,10 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Platform,
+  Animated,
+  Easing,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ViewAllRequestedProperties from "./AllrequestedProperties";
@@ -15,257 +18,367 @@ import { useNavigation } from "@react-navigation/native";
 
 export default function PropertiesScreen() {
   const [activeTab, setActiveTab] = useState("all");
-  const [viewMode, setViewMode] = useState("all");
-  const navigation=useNavigation()
+  const navigation = useNavigation();
+  const [fabOpen, setFabOpen] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  const handleMyPropertiesPress = () => {
-    setViewMode("my");
-    setActiveTab("myProperties");
-    // if (navigation) {
-    //   navigation.navigate("MyProperties");
-    // }
+  const toggleFab = () => {
+    if (fabOpen) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setFabOpen(false));
+    } else {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 200,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setFabOpen(true));
+    }
   };
 
-  const handleBackToAllProperties = () => {
-    setViewMode("all");
-    setActiveTab("all");
-  };
+  useEffect(() => {
+    // Auto open
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 200,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setFabOpen(true);
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotateAnim, {
+            toValue: 0,
+            duration: 200,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ]).start(() => setFabOpen(false));
+      }, 600); // Delay before closing
+    });
+  }, []);
 
-  // Function to open modal with slide animation
-  const openModal = (screenName) => {
-    setViewMode("all");
-    navigation.navigate(screenName);
-  };
+  const rotateInterpolate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "45deg"],
+  });
+
+  const slideUpInterpolate = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [10, 0],
+  });
+
+  const fabOptions = [
+    {
+      icon: "add",
+      label: "Post Property",
+      action: () => navigation.navigate("postproperty"),
+    },
+    {
+      icon: "add-circle-outline",
+      label: "Request Property",
+      action: () => navigation.navigate("requestproperty"),
+    },
+  ];
 
   return (
     <View style={styles.container}>
-      {/* Options */}
-      <View style={styles.optionsContainer}>
+      {/* Top Navigation Bar */}
+      <View style={styles.topNav}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.options}>
-            <Option
+          <View style={styles.navItems}>
+            <NavButton
               icon="home"
-              label="Post a Property"
-              onPress={() => openModal("postproperty")}
+              label="All Properties"
+              active={activeTab === "all"}
+              onPress={() => setActiveTab("all")}
             />
-            <Option
-              icon="home-outline"
-              label="Request a Property"
-              onPress={() => openModal("requestproperty")}
+            <NavButton
+              icon="list"
+              label="All Requested"
+              active={activeTab === "requested"}
+              onPress={() => setActiveTab("requested")}
             />
-            <Option
-              icon="people-outline"
-              label={viewMode === "my" ? "All Properties" : "My Properties"}
-              onPress={
-                viewMode === "my"
-                  ? handleBackToAllProperties
-                  : handleMyPropertiesPress
-              }
+            <NavButton
+              icon="person"
+              label="My Properties"
+              active={activeTab === "myProperties"}
+              onPress={() => setActiveTab("myProperties")}
+            />
+            <NavButton
+              icon="person-outline"
+              label="My Requested"
+              active={activeTab === "myRequested"}
+              onPress={() => setActiveTab("myRequested")}
             />
           </View>
         </ScrollView>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        <View style={styles.row}>
-          <TouchableOpacity
-            style={activeTab === "all" ? styles.activeTab : styles.inactiveTab}
-            onPress={() => setActiveTab("all")}
-          >
-            <Text
-              style={
-                activeTab === "all"
-                  ? styles.activeTabText
-                  : styles.inactiveTabText
-              }
-            >
-              All Properties
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={
-              activeTab === "requested" ? styles.activeTab : styles.inactiveTab
-            }
-            onPress={() => setActiveTab("requested")}
-          >
-            <Text
-              style={
-                activeTab === "requested"
-                  ? styles.activeTabText
-                  : styles.inactiveTabText
-              }
-            >
-              All Requested Properties
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.row}>
-          <TouchableOpacity
-            style={
-              activeTab === "myProperties"
-                ? styles.activeTab
-                : styles.inactiveTab
-            }
-            onPress={() => setActiveTab("myProperties")}
-          >
-            <Text
-              style={
-                activeTab === "myProperties"
-                  ? styles.activeTabText
-                  : styles.inactiveTabText
-              }
-            >
-              My Properties
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={
-              activeTab === "myRequested"
-                ? styles.activeTab
-                : styles.inactiveTab
-            }
-            onPress={() => setActiveTab("myRequested")}
-          >
-            <Text
-              style={
-                activeTab === "myRequested"
-                  ? styles.activeTabText
-                  : styles.inactiveTabText
-              }
-            >
-              My Requested Properties
-            </Text>
-          </TouchableOpacity>
-        </View>
+      {/* Main Content */}
+      <View style={styles.mainContent}>
+        <ScrollView style={styles.contentScroll}>
+          {activeTab === "all" ? (
+            <ViewAllProperties />
+          ) : activeTab === "requested" ? (
+            <ViewAllRequestedProperties />
+          ) : activeTab === "myProperties" ? (
+            <MyProperties />
+          ) : (
+            <MyRequestedProperties />
+          )}
+        </ScrollView>
       </View>
 
-      {/* Render the selected tab content */}
-      {activeTab === "all" ? (
-        <ScrollView>
-          <ViewAllProperties />
-        </ScrollView>
-      ) : activeTab === "requested" ? (
-        <ScrollView>
-          <ViewAllRequestedProperties />
-        </ScrollView>
-      ) : activeTab === "myProperties" ? (
-        <ScrollView>
-          <MyProperties />
-        </ScrollView>
-      ) : (
-        <ScrollView>
-          <MyRequestedProperties />
-        </ScrollView>
-      )}
+      {/* Floating Action Button */}
+      <View style={styles.fabContainer}>
+        {fabOpen && (
+          <Animated.View
+            style={[
+              styles.fabMenu,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideUpInterpolate }],
+              },
+            ]}
+          >
+            {fabOptions.map((option) => (
+              <TouchableOpacity
+                key={option.label}
+                style={styles.fabOption}
+                onPress={() => {
+                  option.action();
+                  toggleFab();
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name={option.icon} size={20} color="white" />
+                <Text style={styles.fabOptionText}>{option.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
+        )}
+        <TouchableOpacity
+          style={styles.fabButton}
+          onPress={toggleFab}
+          activeOpacity={0.7}
+        >
+          <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
+            <Ionicons name="add" size={28} color="white" />
+          </Animated.View>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
-const Option = ({ icon, label, onPress }) => (
-  <TouchableOpacity style={styles.optionButton} onPress={onPress}>
-    <View style={styles.circleIcon}>
-      <Ionicons name={icon} size={24} color="white" />
-    </View>
-    <Text style={styles.optionText}>{label}</Text>
+const NavButton = React.memo(({ icon, label, active, onPress }) => (
+  <TouchableOpacity
+    style={[styles.navButton, active && styles.activeNavButton]}
+    onPress={onPress}
+    activeOpacity={0.7}
+  >
+    <Ionicons
+      name={icon}
+      size={20}
+      color={active ? "#3f51b5" : "#757575"}
+      style={styles.navIcon}
+    />
+    <Text style={[styles.navButtonText, active && styles.activeNavButtonText]}>
+      {label}
+    </Text>
+    {active && <View style={styles.activeIndicator} />}
   </TouchableOpacity>
-);
+));
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#f8f9fa",
   },
-  optionsContainer: {
-    maxHeight: 130,
+  topNav: {
+    backgroundColor: "white",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    ...Platform.select({
+      web: {
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+      },
+    }),
   },
-  options: {
+  navItems: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    paddingVertical: 15,
-    paddingHorizontal: 5,
+    paddingHorizontal: 10,
   },
-  optionButton: {
+  navButton: {
+    flexDirection: "row",
     alignItems: "center",
-    width: 120,
-    paddingHorizontal: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 2,
+    backgroundColor: "#f5f5f5",
   },
-  circleIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 25,
-    backgroundColor: "#e63946",
+  activeNavButton: {
+    backgroundColor: "#e8eaf6",
+  },
+  navIcon: {
+    marginRight: 8,
+  },
+  navButtonText: {
+    fontSize: 14,
+    color: "#757575",
+    fontWeight: "500",
+  },
+  activeNavButtonText: {
+    color: "#3f51b5",
+    fontWeight: "600",
+  },
+  activeIndicator: {
+    position: "absolute",
+    bottom: -10,
+    left: "50%",
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#3f51b5",
+    transform: [{ translateX: -2 }],
+  },
+  mainContent: {
+    flex: 1,
+    padding: 15,
+    ...Platform.select({
+      web: {
+        maxWidth: 1200,
+        marginHorizontal: "auto",
+        width: "100%",
+      },
+    }),
+  },
+  contentScroll: {
+    flex: 1,
+  },
+  fabContainer: {
+    position: "absolute",
+    bottom: "15%",
+    right: 30,
+    alignItems: "flex-end",
+  },
+  fabButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#3f51b5",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "white",
-    marginBottom: 5,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
-  optionText: {
-    fontSize: 12,
-    textAlign: "center",
-    color: "#555",
-    paddingHorizontal: 2,
-  },
-  tabs: {
-    marginHorizontal: 10,
+  fabMenu: {
+    backgroundColor: "rgba(63, 81, 181, 0.95)",
+    borderRadius: 8,
+    paddingVertical: 8,
     marginBottom: 10,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
-  row: {
+  fabOption: {
     flexDirection: "row",
-    marginBottom: 10,
-    display: "flex",
-    // flexWrap: "wrap",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  activeTab: {
-    backgroundColor: "#eb4d4b",
-    padding: 8,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    marginRight: 5,
-    marginBottom: 5,
-  },
-  inactiveTab: {
-    backgroundColor: "#f1f2f6",
-    padding: 8,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    marginRight: 5,
-    marginBottom: 5,
-  },
-  activeTabText: {
+  fabOptionText: {
     color: "white",
-    fontWeight: "600",
-  },
-  inactiveTabText: {
-    color: "black",
-    fontWeight: "600",
-  },
-  searchFilter: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 10,
-    marginBottom: 10,
-  },
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f1f2f6",
-    padding: 8,
-    flex: 1,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  searchInput: {
     marginLeft: 8,
-    flex: 1,
-  },
-  filterButton: {
-    backgroundColor: "#3498db",
-    padding: 10,
-    borderRadius: 8,
+    fontSize: 14,
   },
 });
+
+// Web hover styles
+if (Platform.OS === "web") {
+  const hoverStyles = `
+    .navButton:hover {
+      background-color: #e0e0e0;
+      transition: background-color 100ms ease-out;
+    }
+    .fabButton:hover {
+      background-color: #303f9f;
+      transform: scale(1.05);
+      transition: all 100ms ease-out;
+    }
+    .fabOption:hover {
+      background-color: rgba(255,255,255,0.1);
+      transition: background-color 100ms ease-out;
+    }
+  `;
+  const styleElement = document.createElement("style");
+  styleElement.innerHTML = hoverStyles;
+  document.head.appendChild(styleElement);
+}
