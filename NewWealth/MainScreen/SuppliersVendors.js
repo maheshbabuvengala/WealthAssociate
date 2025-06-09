@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Image,
   FlatList,
+  Platform,
 } from "react-native";
 import {
   Ionicons,
@@ -352,6 +353,7 @@ const vendorSubcategories = {
 };
 
 const { width } = Dimensions.get("window");
+const isWeb = Platform.OS === 'web';
 
 const SuppliersVendors = () => {
   const navigation = useNavigation();
@@ -488,6 +490,72 @@ const SuppliersVendors = () => {
     }
   };
 
+  const renderSubcategories = (subcategories, categoryName) => {
+    if (isWeb) {
+      // For web - grid layout with 3 cards per row
+      return (
+        <View style={styles.webGridContainer}>
+          {subcategories.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.webSubcategoryCard}
+              onPress={() => handleSubcategoryPress(categoryName, item)}
+            >
+              <Image
+                source={
+                  typeof item.image === "string"
+                    ? { uri: item.image }
+                    : item.image
+                }
+                style={styles.subcategoryImage}
+                resizeMode="cover"
+              />
+              <View style={styles.subcategoryTextContainer}>
+                <Text style={styles.subcategoryName}>{item.name}</Text>
+                <Text style={styles.subcategoryDescription} numberOfLines={2}>
+                  {item.description}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    } else {
+      // For mobile - horizontal scroll
+      return (
+        <FlatList
+          data={subcategories}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.subcategoryList}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.subcategoryCard}
+              onPress={() => handleSubcategoryPress(categoryName, item)}
+            >
+              <Image
+                source={
+                  typeof item.image === "string"
+                    ? { uri: item.image }
+                    : item.image
+                }
+                style={styles.subcategoryImage}
+                resizeMode="cover"
+              />
+              <View style={styles.subcategoryTextContainer}>
+                <Text style={styles.subcategoryName}>{item.name}</Text>
+                <Text style={styles.subcategoryDescription} numberOfLines={2}>
+                  {item.description}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      );
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -519,42 +587,11 @@ const SuppliersVendors = () => {
         {vendorTypes.map((vendor) => (
           <View key={vendor.id} style={styles.categoryContainer}>
             <View style={styles.categoryHeader}>
-              {renderIcon(vendor.iconType, vendor.icon, 24, "#D81B60")}
+              {renderIcon(vendor.iconType, vendor.icon, 24, "#3E5C76")}
               <Text style={styles.categoryTitle}>{vendor.name}</Text>
             </View>
 
-            <FlatList
-              data={vendorSubcategories[vendor.name] || []}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.subcategoryList}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.subcategoryCard}
-                  onPress={() => handleSubcategoryPress(vendor.name, item)}
-                >
-                  <Image
-                    source={
-                      typeof item.image === "string"
-                        ? { uri: item.image }
-                        : item.image
-                    }
-                    style={styles.subcategoryImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.subcategoryTextContainer}>
-                    <Text style={styles.subcategoryName}>{item.name}</Text>
-                    <Text
-                      style={styles.subcategoryDescription}
-                      numberOfLines={2}
-                    >
-                      {item.description}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            />
+            {renderSubcategories(vendorSubcategories[vendor.name] || [], vendor.name)}
           </View>
         ))}
       </ScrollView>
@@ -565,8 +602,10 @@ const SuppliersVendors = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#D8E3E7",
     padding: 20,
+    width: Platform.OS === "web" ? "80%" : "100%",
+    alignSelf:"center",
   },
   loadingContainer: {
     flex: 1,
@@ -584,7 +623,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
   },
-
   addButtonBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -630,7 +668,7 @@ const styles = StyleSheet.create({
   },
   subcategoryCard: {
     width: 160,
-    backgroundColor: "white",
+    backgroundColor: "#FDFDFD",
     borderRadius: 10,
     marginRight: 15,
     overflow: "hidden",
@@ -639,7 +677,25 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    // paddingTop:10
+  },
+  webGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    marginHorizontal: -8,
+  },
+  webSubcategoryCard: {
+    width: '30%',
+    minWidth: 160,
+    backgroundColor: "#FDFDFD",
+    borderRadius: 10,
+    margin: 8,
+    overflow: "hidden",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   subcategoryImage: {
     width: "100%",
