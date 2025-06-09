@@ -5,16 +5,41 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  Platform,
   TextInput,
   Dimensions,
+  Image,
 } from "react-native";
-import {
-  Ionicons,
-  MaterialIcons,
-  FontAwesome,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+
+// Import all your category images
+import drill from "../../assets/drill.jpg";
+import glaziers from "../../assets/glaziers.jpg";
+import granite from "../../assets/granite.jpg";
+import cablepullers from "../../assets/cablepullers.jpg";
+import carpenter from "../../assets/carpenter.jpg";
+import conceret from "../../assets/conceret.jpg";
+import drainage from "../../assets/drainage.jpg";
+import drywall from "../../assets/drywall.jpg";
+import Electricianswork from "../../assets/Electricianswork.jpg";
+import falseceiling from "../../assets/falseceiling.jpg";
+import havctech from "../../assets/hvactech.jpg";
+import insulatorsfini from "../../assets/insulatorsfini.jpg";
+import mason from "../../assets/mason.jpg";
+import painterwork from "../../assets/painterwork.jpg";
+import pipielayers from "../../assets/pipelayers.jpg";
+import Plasterers from "../../assets/plasterers.jpg";
+import plumberwork from "../../assets/plumberwork.jpg";
+import roadmark from "../../assets/roadmark.jpg";
+import roofers from "../../assets/roofers.jpg";
+import scaff from "../../assets/scaff.jpg";
+import solarinsta from "../../assets/solarinsta.jpg";
+import surveyor from "../../assets/surveyor.jpg";
+import tilers from "../../assets/tilers.jpg";
+import tunnle from "../../assets/tunnle.jpg";
+import Waterproofing from "../../assets/Waterproofing.jpg";
+import welder from "../../assets/welder.png";
 
 const { width } = Dimensions.get("window");
 
@@ -26,197 +51,158 @@ const SkilledResources = () => {
     {
       id: 1,
       name: "Drilling & Boring",
-      icon: "toolbox",
-      iconLibrary: "MaterialCommunityIcons",
+      image: drill,
       category: "Heavy Equipment",
     },
     {
       id: 2,
       name: "Masons",
-      icon: "construction",
-      iconLibrary: "MaterialIcons",
+      image: mason,
       category: "Construction",
     },
     {
       id: 3,
-      name: "Carpenters",
-      icon: "hammer",
-      iconLibrary: "MaterialCommunityIcons",
+      name: "Carpenter",
+      image: carpenter,
       category: "Woodwork",
     },
     {
       id: 5,
       name: "Concrete Workers",
-      icon: "domain",
-      iconLibrary: "MaterialIcons",
+      image: conceret,
       category: "Construction",
     },
     {
       id: 6,
       name: "Scaffolders",
-      icon: "layers",
-      iconLibrary: "MaterialIcons",
+      image: scaff,
       category: "Safety",
     },
     {
       id: 7,
       name: "Plasterers",
-      icon: "wall",
-      iconLibrary: "MaterialCommunityIcons",
+      image: Plasterers,
       category: "Finishing",
     },
     {
       id: 8,
       name: "Tilers",
-      icon: "grid",
-      iconLibrary: "MaterialCommunityIcons",
+      image: tilers,
       category: "Flooring",
     },
     {
       id: 9,
       name: "Painters",
-      icon: "format-paint",
-      iconLibrary: "MaterialIcons",
+      image: painterwork,
       category: "Finishing",
     },
     {
       id: 10,
       name: "Roofers",
-      icon: "roofing",
-      iconLibrary: "MaterialIcons",
+      image: roofers,
       category: "Construction",
     },
     {
       id: 11,
       name: "Welders",
-      icon: "wrench",
-      iconLibrary: "FontAwesome",
+      image: welder,
       category: "Metalwork",
     },
     {
       id: 12,
       name: "Electricians",
-      icon: "flash",
-      iconLibrary: "Ionicons",
+      image: Electricianswork,
       category: "Electrical",
     },
     {
       id: 13,
       name: "Plumbers",
-      icon: "water-pump",
-      iconLibrary: "MaterialCommunityIcons",
+      image: plumberwork,
       category: "Plumbing",
     },
     {
       id: 14,
       name: "HVAC Techs",
-      icon: "snowflake",
-      iconLibrary: "FontAwesome",
+      image: havctech,
       category: "Mechanical",
     },
     {
       id: 16,
       name: "Waterproofing",
-      icon: "water",
-      iconLibrary: "Ionicons",
+      image: Waterproofing,
       category: "Finishing",
     },
     {
       id: 17,
       name: "Insulators",
-      icon: "coolant-temperature",
-      iconLibrary: "MaterialCommunityIcons",
+      image: insulatorsfini,
       category: "Finishing",
     },
     {
       id: 18,
       name: "Glaziers",
-      icon: "window-closed",
-      iconLibrary: "MaterialCommunityIcons",
+      image: glaziers,
       category: "Glasswork",
     },
     {
       id: 19,
       name: "Granite Workers",
-      icon: "texture",
-      iconLibrary: "MaterialCommunityIcons",
+      image: granite,
       category: "Stonework",
     },
     {
       id: 20,
       name: "False Ceiling",
-      icon: "ceiling-light",
-      iconLibrary: "MaterialCommunityIcons",
+      image: falseceiling,
       category: "Interior",
     },
     {
       id: 21,
       name: "Drywall Installers",
-      icon: "wall",
-      iconLibrary: "MaterialCommunityIcons",
+      image: drywall,
       category: "Interior",
     },
     {
       id: 22,
       name: "Surveyors",
-      icon: "map-marker-distance",
-      iconLibrary: "MaterialCommunityIcons",
+      image: surveyor,
       category: "Planning",
     },
     {
       id: 24,
       name: "Road Marking",
-      icon: "road-variant",
-      iconLibrary: "MaterialCommunityIcons",
+      image: roadmark,
       category: "Civil",
     },
     {
       id: 25,
       name: "Pipe Layers",
-      icon: "pipe",
-      iconLibrary: "MaterialCommunityIcons",
+      image: pipielayers,
       category: "Plumbing",
     },
     {
       id: 26,
       name: "Cable Pullers",
-      icon: "cable-data",
-      iconLibrary: "MaterialCommunityIcons",
+      image: cablepullers,
       category: "Electrical",
     },
     {
       id: 27,
       name: "Drainage Workers",
-      icon: "water-outline",
-      iconLibrary: "Ionicons",
+      image: drainage,
       category: "Civil",
     },
-    {
-      id: 28,
-      name: "Concrete Finishers",
-      icon: "tape-measure",
-      iconLibrary: "MaterialCommunityIcons",
-      category: "Construction",
-    },
+    
     {
       id: 29,
       name: "Tunnel Workers",
-      icon: "tunnel",
-      iconLibrary: "MaterialCommunityIcons",
+      image: tunnle,
       category: "Heavy Construction",
-    },
-    {
-      id: 30,
-      name: "Fabricators",
-      icon: "factory",
-      iconLibrary: "MaterialCommunityIcons",
-      category: "Metalwork",
     },
     {
       id: 31,
       name: "Solar Installers",
-      icon: "solar-power",
-      iconLibrary: "MaterialCommunityIcons",
+      image: solarinsta,
       category: "Electrical",
     },
   ];
@@ -238,33 +224,23 @@ const SkilledResources = () => {
     navigation.navigate("regiskill");
   };
 
-  const renderIcon = (iconLibrary, iconName) => {
-    switch (iconLibrary) {
-      case "MaterialIcons":
-        return <MaterialIcons name={iconName} size={28} color="#D81B60" />;
-      case "MaterialCommunityIcons":
-        return (
-          <MaterialCommunityIcons name={iconName} size={28} color="#D81B60" />
-        );
-      case "FontAwesome":
-        return <FontAwesome name={iconName} size={28} color="#D81B60" />;
-      case "Ionicons":
-        return <Ionicons name={iconName} size={28} color="#D81B60" />;
-      default:
-        return <MaterialIcons name="help" size={28} color="#D81B60" />;
-    }
-  };
-
   const renderCategoryCard = ({ item }) => (
     <TouchableOpacity
       style={styles.categoryCard}
       onPress={() => handleCategoryPress(item)}
     >
-      <View style={styles.iconContainer}>
-        {renderIcon(item.iconLibrary, item.icon)}
+      <View style={styles.imageContainer}>
+        <Image 
+          source={item.image} 
+          style={styles.categoryImage}
+          resizeMode="cover"
+        />
+        <View style={styles.imageOverlay} />
       </View>
-      <Text style={styles.categoryName}>{item.name}</Text>
-      <Text style={styles.categoryType}>{item.category}</Text>
+      <View style={styles.textContainer}>
+        <Text style={styles.categoryName}>{item.name}</Text>
+        <Text style={styles.categoryType}>{item.category}</Text>
+      </View>
     </TouchableOpacity>
   );
 
@@ -288,19 +264,19 @@ const SkilledResources = () => {
           <Ionicons
             name="search"
             size={20}
-            color="#D81B60"
+            color="#3E5C76"
             style={styles.searchIcon}
           />
           <TextInput
             style={styles.searchInput}
             placeholder="Search skilled workers..."
-            placeholderTextColor="#999"
+            placeholderTextColor="#3E5C76"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={20} color="#D81B60" />
+              <Ionicons name="close-circle" size={20} color="#3E5C76" />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -310,12 +286,12 @@ const SkilledResources = () => {
         data={filteredCategories}
         renderItem={renderCategoryCard}
         keyExtractor={(item) => item.id.toString()}
-        numColumns={2}
+        numColumns={Platform.OS === 'web' ? 3 : 2}
         contentContainerStyle={styles.gridContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <FontAwesome name="exclamation-triangle" size={40} color="#ccc" />
+            <Ionicons name="alert-circle-outline" size={40} color="#ccc" />
             <Text style={styles.emptyText}>
               No matching skilled workers found
             </Text>
@@ -329,9 +305,11 @@ const SkilledResources = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
-    padding: 20,
-    paddingBottom: "20%",
+    backgroundColor: "#D8E3E7",
+    padding: Platform.OS === 'web' ? 20 : 15,
+    paddingBottom: Platform.OS === 'web' ? "4%" : "20%",
+    width: Platform.OS === "web" ? "80%" : "100%",
+    alignSelf: "center",
   },
   header: {
     marginBottom: 15,
@@ -340,29 +318,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 5,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#2c3e50",
   },
   addButton: {
-    backgroundColor: "#D81B60",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    backgroundColor: "#3E5C76",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
     elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   addButtonText: {
     color: "white",
     fontSize: 14,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
   subtitle: {
     fontSize: 16,
     color: "#7f8c8d",
-    marginBottom: 15,
+    marginBottom: 20,
   },
   searchContainer: {
     flexDirection: "row",
@@ -370,13 +352,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 8,
     paddingHorizontal: 15,
-    paddingVertical: 10,
-    marginBottom: 15,
-    elevation: 2,
+    paddingVertical: 12,
+    marginBottom: 20,
+    elevation: 3,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: 4,
   },
   searchIcon: {
     marginRight: 10,
@@ -392,39 +374,45 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 15,
+    backgroundColor: "#FDFDFD",
+    borderRadius: 12,
+    overflow: "hidden",
     margin: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: 120,
-    elevation: 2,
+    elevation: 3,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: 4,
   },
-  iconContainer: {
-    backgroundColor: "#f8e1e7",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
+  imageContainer: {
+    height: 120,
+    width: '100%',
+    position: 'relative',
+  },
+  categoryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  textContainer: {
+    padding: 15,
   },
   categoryName: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
     color: "#2c3e50",
-    textAlign: "center",
     marginBottom: 4,
   },
   categoryType: {
-    fontSize: 12,
+    fontSize: 14,
     color: "#7f8c8d",
-    textAlign: "center",
   },
   emptyState: {
     flex: 1,
