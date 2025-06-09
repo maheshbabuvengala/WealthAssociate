@@ -1,25 +1,30 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   TextInput,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Dimensions,
+  ScrollView,
   Platform,
-  ActivityIndicator,
-  KeyboardAvoidingView,
   Alert,
   Keyboard,
+  ActivityIndicator,
+  KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Modal,
+  FlatList,
   Pressable,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
 
-// Add the skilledCategories array from SkilledResources
+const screenHeight = Dimensions.get("window").height;
+const { width } = Dimensions.get("window");
+const isSmallScreen = width < 600;
+
 const skilledCategories = [
   { id: 1, name: "Drilling & Boring", category: "Heavy Equipment" },
   { id: 2, name: "Masons", category: "Construction" },
@@ -52,24 +57,44 @@ const skilledCategories = [
 ];
 
 const Rskill = ({ closeModal }) => {
-  const [fullName, setFullName] = useState("");
-  const [skill, setSkill] = useState("");
-  const [location, setLocation] = useState("");
-  const [mobileNumber, setMobileNumber] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [Details, setDetails] = useState(null);
-  const [constituencies, setConstituencies] = useState([]);
-  const [locationSearch, setLocationSearch] = useState("");
-  const [showLocationList, setShowLocationList] = useState(false);
-  const [showSkillDropdown, setShowSkillDropdown] = useState(false);
-  const [skillSearch, setSkillSearch] = useState("");
-  const [filteredSkills, setFilteredSkills] = useState([]);
-  const [filteredConstituencies, setFilteredConstituencies] = useState([]);
+  const [formData, setFormData] = useState({
+    fullName: "",
+    skill: "",
+    location: "",
+    mobileNumber: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [userDetails, setUserDetails] = useState({});
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [userType, setUserType] = useState("");
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [bottomSheetType, setBottomSheetType] = useState(null);
+  const [filteredData, setFilteredData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [constituencies, setConstituencies] = useState([]);
 
   const navigation = useNavigation();
+  const scrollViewRef = useRef();
+  const searchInputRef = useRef(null);
 
-  const getDetails = async () => {
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => setKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  const fetchUserDetails = async () => {
     try {
       const [token, storedUserType] = await Promise.all([
         AsyncStorage.getItem("authToken"),
@@ -115,72 +140,108 @@ const Rskill = ({ closeModal }) => {
       if (!response.ok) throw new Error("Failed to fetch user details");
 
       const data = await response.json();
-      setDetails(data);
+      setUserDetails(data);
     } catch (error) {
       console.error("Error fetching user details:", error);
     }
   };
 
-  useEffect(() => {
-    getDetails();
-  }, []);
+  const fetchConstituencies = async () => {
+    try {
+      const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
+      const data = await response.json();
+      setConstituencies(data);
+    } catch (error) {
+      console.error("Error fetching constituencies:", error);
+    }
+  };
 
   useEffect(() => {
-    const fetchConstituencies = async () => {
-      try {
-        const response = await fetch(`${API_URL}/alldiscons/alldiscons`);
-        const data = await response.json();
-        setConstituencies(data);
-        setFilteredConstituencies(data.flatMap((item) => item.assemblies));
-      } catch (error) {
-        console.error("Error fetching constituencies:", error);
-      }
-    };
-
+    fetchUserDetails();
     fetchConstituencies();
   }, []);
 
-  // Filter skills based on search input
-  useEffect(() => {
-    if (skillSearch) {
-      const filtered = skilledCategories.filter((category) =>
-        category.name.toLowerCase().includes(skillSearch.toLowerCase())
-      );
-      setFilteredSkills(filtered);
-    } else {
-      setFilteredSkills(skilledCategories);
-    }
-  }, [skillSearch]);
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
-  // Filter constituencies based on search input
-  useEffect(() => {
-    if (locationSearch) {
-      const filtered = constituencies.flatMap((item) =>
-        item.assemblies.filter((assembly) =>
-          assembly.name.toLowerCase().includes(locationSearch.toLowerCase())
-        )
-      );
-      setFilteredConstituencies(filtered);
-    } else {
-      setFilteredConstituencies(
-        constituencies.flatMap((item) => item.assemblies)
-      );
+  const openBottomSheet = (type) => {
+    Keyboard.dismiss();
+    setBottomSheetType(type);
+    setSearchTerm("");
+    
+    switch (type) {
+      case "skill":
+        setFilteredData(skilledCategories);
+        break;
+      case "location":
+        setFilteredData(constituencies.flatMap(item => item.assemblies));
+        break;
+      default:
+        setFilteredData([]);
     }
-  }, [locationSearch, constituencies]);
+    
+    setBottomSheetVisible(true);
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 300);
+  };
+
+  const handleSearch = (text) => {
+    setSearchTerm(text);
+    
+    switch (bottomSheetType) {
+      case "skill":
+        setFilteredData(
+          skilledCategories.filter(item =>
+            item.name.toLowerCase().includes(text.toLowerCase()) ||
+            item.category.toLowerCase().includes(text.toLowerCase())
+          )
+        );
+        break;
+      case "location":
+        setFilteredData(
+          constituencies.flatMap(item => 
+            item.assemblies.filter(assembly =>
+              assembly.name.toLowerCase().includes(text.toLowerCase())
+            )
+          )
+        );
+        break;
+      default:
+        setFilteredData([]);
+    }
+  };
+
+  const handleSelectItem = (item) => {
+    switch (bottomSheetType) {
+      case "skill":
+        handleInputChange("skill", item.name);
+        break;
+      case "location":
+        handleInputChange("location", item.name);
+        break;
+    }
+    setBottomSheetVisible(false);
+  };
 
   const handleRegister = async () => {
+    const { fullName, skill, location, mobileNumber } = formData;
+
     if (!fullName || !skill || !location || !mobileNumber) {
       Alert.alert("Error", "All fields are required");
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
+    setErrorMessage("");
+
     try {
       // Determine the AddedBy value with fallbacks
       const addedByValue =
-        Details?.MobileNumber ||
-        Details?.MobileIN ||
-        Details?.Number ||
+        userDetails?.MobileNumber ||
+        userDetails?.MobileIN ||
+        userDetails?.Number ||
         "Wealthassociate";
 
       // Use the actual userType or default to "WealthAssociate" if not available
@@ -202,391 +263,361 @@ const Rskill = ({ closeModal }) => {
       const data = await response.json();
       if (response.ok) {
         Alert.alert("Success", "Registration successful");
-        setFullName("");
-        setSkill("");
-        setLocation("");
-        setMobileNumber("");
+        setFormData({
+          fullName: "",
+          skill: "",
+          location: "",
+          mobileNumber: "",
+        });
         navigation.goBack();
       } else {
-        Alert.alert("Error", data.message || "Registration failed");
+        setErrorMessage(data.message || "Registration failed");
       }
     } catch (error) {
-      Alert.alert("Error", "Error: " + error.message);
+      setErrorMessage("Error: " + error.message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Bottom Sheet Components
-  const SkillBottomSheet = () => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={showSkillDropdown}
-      onRequestClose={() => setShowSkillDropdown(false)}
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => handleSelectItem(item)}
     >
-      <View style={styles.bottomSheetContainer}>
-        <View style={styles.bottomSheet}>
-          <View style={styles.bottomSheetHeader}>
-            <Text style={styles.bottomSheetTitle}>Select Skill</Text>
-            <Pressable
-              onPress={() => setShowSkillDropdown(false)}
-              style={styles.closeButton}
-            >
-              <Text style={styles.closeButtonText}>✕</Text>
-            </Pressable>
-          </View>
-          <TextInput
-            style={styles.bottomSheetSearchInput}
-            placeholder="Search skills..."
-            value={skillSearch}
-            onChangeText={setSkillSearch}
-            autoFocus={true}
-          />
-          <ScrollView style={styles.bottomSheetScrollView}>
-            {filteredSkills.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.bottomSheetListItem}
-                onPress={() => {
-                  setSkill(item.name);
-                  setShowSkillDropdown(false);
-                }}
-              >
-                <Text style={styles.bottomSheetListItemText}>{item.name}</Text>
-                <Text style={styles.bottomSheetListItemCategory}>
-                  {item.category}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+      <Text style={styles.listItemText}>
+        {bottomSheetType === "skill" ? item.name : item.name}
+      </Text>
+      {bottomSheetType === "skill" && (
+        <Text style={styles.listItemCategory}>{item.category}</Text>
+      )}
+    </TouchableOpacity>
   );
 
-  const LocationBottomSheet = () => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={showLocationList}
-      onRequestClose={() => setShowLocationList(false)}
-    >
-      <View style={styles.bottomSheetContainer}>
-        <View style={styles.bottomSheet}>
-          <View style={styles.bottomSheetHeader}>
-            <Text style={styles.bottomSheetTitle}>Select Location</Text>
-            <Pressable
-              onPress={() => setShowLocationList(false)}
-              style={styles.closeButton}
-            >
-              <Text style={styles.closeButtonText}>✕</Text>
-            </Pressable>
-          </View>
-          <TextInput
-            style={styles.bottomSheetSearchInput}
-            placeholder="Search locations..."
-            value={locationSearch}
-            onChangeText={setLocationSearch}
-            autoFocus={true}
-          />
-          <ScrollView style={styles.bottomSheetScrollView}>
-            {filteredConstituencies.map((item) => (
+  const renderBottomSheet = () => {
+    let title = "";
+    switch (bottomSheetType) {
+      case "skill":
+        title = "Select Skill";
+        break;
+      case "location":
+        title = "Select Location";
+        break;
+      default:
+        title = "Select";
+    }
+
+    return (
+      <Modal
+        visible={bottomSheetVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setBottomSheetVisible(false)}
+      >
+        <Pressable 
+          style={styles.bottomSheetOverlay}
+          onPress={() => setBottomSheetVisible(false)}
+        >
+          <Pressable style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheet}>
+              <Text style={styles.bottomSheetTitle}>{title}</Text>
+              
+              <View style={styles.searchContainer}>
+                <TextInput
+                  ref={searchInputRef}
+                  style={styles.searchInput}
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChangeText={handleSearch}
+                />
+              </View>
+              
+              <FlatList
+                data={filteredData}
+                renderItem={renderItem}
+                keyExtractor={(item, index) => 
+                  bottomSheetType === "skill" ? `${item.id}` : `${item.name}-${index}`
+                }
+                keyboardShouldPersistTaps="handled"
+                style={styles.listContainer}
+              />
+              
               <TouchableOpacity
-                key={`${item.code}-${item.name}`}
-                style={styles.bottomSheetListItem}
-                onPress={() => {
-                  setLocation(item.name);
-                  setShowLocationList(false);
-                }}
+                style={styles.bottomSheetCloseButton}
+                onPress={() => setBottomSheetVisible(false)}
               >
-                <Text style={styles.bottomSheetListItemText}>{item.name}</Text>
+                <Text style={styles.bottomSheetCloseButtonText}>Close</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    );
+  };
 
   return (
-    <TouchableWithoutFeedback
-      onPress={() => {
-        setShowLocationList(false);
-        setShowSkillDropdown(false);
-        Keyboard.dismiss();
-      }}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+      style={{ flex: 1 }}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{
-          flex: 1,
-          backgroundColor: "#D3E8E7",
-          width: Platform.OS === "web" ? "80%" : "100%",
-          alignSelf: "center",
-        }}
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView>
-          <Text style={styles.headerText}>Register Skilled Resource</Text>
-          <View style={styles.container}>
-            <View style={styles.header}></View>
-            <View style={styles.form}>
-              <Text style={styles.label}>Full Name</Text>
-              <TextInput
-                value={fullName}
-                onChangeText={setFullName}
-                style={styles.input}
-                placeholder="Enter full name"
-              />
+        <View style={styles.container}>
+          <Text style={styles.title}>Register Skilled Resource</Text>
+          <View style={styles.card}>
+            {errorMessage ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
 
-              <Text style={styles.label}>Select Skill</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowSkillDropdown(true);
-                  setSkillSearch("");
-                }}
-              >
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Full Name</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Select skill"
-                  value={skill}
-                  editable={false}
-                  pointerEvents="none"
+                  placeholder="Ex. John Doe"
+                  value={formData.fullName}
+                  onChangeText={(text) => handleInputChange("fullName", text)}
                 />
-              </TouchableOpacity>
-
-              <Text style={styles.label}>Location</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowLocationList(true);
-                  setLocationSearch("");
-                }}
-              >
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Mobile Number</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Select location"
-                  value={location}
-                  editable={false}
-                  pointerEvents="none"
+                  placeholder="Ex. 9063 392872"
+                  keyboardType="phone-pad"
+                  value={formData.mobileNumber}
+                  onChangeText={(text) => handleInputChange("mobileNumber", text)}
+                  maxLength={10}
                 />
-              </TouchableOpacity>
+              </View>
+            </View>
 
-              <Text style={styles.label}>Mobile Number</Text>
-              <TextInput
-                value={mobileNumber}
-                onChangeText={setMobileNumber}
-                keyboardType="numeric"
-                style={styles.input}
-                placeholder="Enter mobile number"
-                maxLength={10}
-              />
-
-              <View style={styles.buttonContainer}>
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Select Skill</Text>
                 <TouchableOpacity
-                  style={[
-                    styles.registerButton,
-                    loading && styles.disabledButton,
-                  ]}
-                  onPress={handleRegister}
-                  disabled={loading}
+                  onPress={() => openBottomSheet("skill")}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.buttonText}>Register</Text>
-                  )}
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Select Skill"
+                    value={formData.skill}
+                    editable={false}
+                    pointerEvents="none"
+                  />
                 </TouchableOpacity>
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Select Location</Text>
                 <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => navigation.goBack()}
+                  onPress={() => openBottomSheet("location")}
                 >
-                  <Text style={styles.buttonText}>Cancel</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Select Location"
+                    value={formData.location}
+                    editable={false}
+                    pointerEvents="none"
+                  />
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
-        </ScrollView>
 
-        {/* Bottom Sheets */}
-        <SkillBottomSheet />
-        <LocationBottomSheet />
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.registerButton}
+                onPress={handleRegister}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Register</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => navigation.goBack()}
+                disabled={isLoading}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+      {renderBottomSheet()}
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    alignSelf: "center",
-    backgroundColor: "#FDFDFD",
-    width: "100%",
-    maxWidth: 300,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
+    flex: 1,
+    backgroundColor: "#D8E3E7",
+    padding: 20,
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  card: {
+    backgroundColor: "white",
+    borderRadius: 20,
     elevation: 5,
-    padding: Platform.OS === "web" ? 20 : 30,
-    height: Platform.OS === "web" ? "auto" : 450,
-    borderRadius: 25,
-    marginTop: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    padding: 20,
+    marginBottom: 100,
+    width: Platform.OS === "web" ? "80%" : "95%"
   },
-  header: {
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-  },
-  headerText: {
-    fontSize: 24,
-    fontFamily: "OpenSanssemibold",
+  title: {
+    fontSize: 20,
     fontWeight: "bold",
-    textAlign: "center",
-    color: "#2B2D42",
-    marginTop: Platform.OS === "android" || Platform.OS === "ios" ? "40" : "40",
-  },
-  form: {},
-  label: {
     fontFamily: "OpenSanssemibold",
-    fontSize: 16,
-    marginBottom: 5,
-    color: "#2B2D42",
+    color: "Black",
+    textAlign: "center",
+    padding: 15,
   },
-  inputContainer: {
+  row: {
+    flexDirection: Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
     marginBottom: 15,
   },
+  inputContainer: {
+    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "48%",
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 5,
+    color: "#555",
+    fontFamily: "OpenSanssemibold",
+  },
   input: {
-    borderWidth: 2,
-    borderColor: "#E0E6ED",
-    borderRadius: 25,
-    padding: 12,
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "230" : "200",
-    backgroundColor: "#fff",
-  },
-  searchInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#E0E6ED",
-    borderRadius: 25,
-    paddingRight: 10,
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "230" : "200",
-  },
-  searchInput: {
-    flex: 1,
-    padding: 12,
-  },
-  dropdownToggle: {
-    padding: 5,
-  },
-  dropdownToggleText: {
-    fontSize: 12,
-    color: "#666",
-  },
-  dropdownContainer: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    marginTop: 5,
-    maxHeight: 200,
-    backgroundColor: "#D8E3E7",
+    borderColor: "#ddd",
+    borderRadius: 25,
+    padding: 12,
+    backgroundColor: "#f9f9f9",
+    fontFamily: "OpenSanssemibold",
   },
-  scrollContainer: {
-    maxHeight: 200,
+  disabledInput: {
+    backgroundColor: "#eee",
+    color: "#999",
   },
-  listItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  categoryText: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-  },
-  buttonContainer: {
+  buttonRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 15,
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "" : "",
+    justifyContent: "center",
+    marginTop: 20,
   },
   registerButton: {
     backgroundColor: "#3E5C76",
     padding: 12,
-    borderRadius: 25,
-    flex: 1,
-    marginRight: 10,
+    borderRadius: 30,
+    marginRight: 25,
+    minWidth: 120,
+    alignItems: "center",
   },
   cancelButton: {
     backgroundColor: "#3E5C76",
     padding: 12,
-    borderRadius: 25,
-    flex: 1,
+    borderRadius: 30,
+    minWidth: 120,
+    alignItems: "center",
   },
   buttonText: {
-    textAlign: "center",
-    color: "#fff",
+    color: "white",
     fontWeight: "bold",
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
-  disabledButton: {
-    opacity: 0.6,
+  errorContainer: {
+    backgroundColor: "#ffeeee",
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#ffcccc",
   },
-  placeholderText: {
-    color: "rgba(0, 0, 0, 0.5)",
+  errorText: {
+    color: "#ff4444",
+    textAlign: "center",
+    fontFamily: "OpenSanssemibold",
   },
-
-  // Bottom Sheet Styles
-  bottomSheetContainer: {
+  // Bottom sheet styles
+  bottomSheetOverlay: {
     flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheetContent: {
+    width: '100%',
+    backgroundColor: 'transparent',
   },
   bottomSheet: {
-    backgroundColor: "#fff",
+    backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: "70%",
-  },
-  bottomSheetHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
+    maxHeight: Dimensions.get('window').height * 0.7,
   },
   bottomSheetTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#2B2D42",
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+    fontFamily: "OpenSanssemibold",
   },
-  closeButton: {
-    padding: 5,
+  searchContainer: {
+    marginBottom: 15,
   },
-  closeButtonText: {
-    fontSize: 18,
-    color: "#2B2D42",
-  },
-  bottomSheetSearchInput: {
+  searchInput: {
     borderWidth: 1,
-    borderColor: "#E0E6ED",
+    borderColor: '#ddd',
     borderRadius: 25,
     padding: 12,
-    marginBottom: 15,
-    backgroundColor: "#fff",
+    backgroundColor: '#f9f9f9',
+    fontFamily: "OpenSanssemibold",
   },
-  bottomSheetScrollView: {
-    maxHeight: "80%",
+  listContainer: {
+    maxHeight: Dimensions.get('window').height * 0.5,
   },
-  bottomSheetListItem: {
+  listItem: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: '#eee',
   },
-  bottomSheetListItemText: {
+  listItemText: {
     fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
-  bottomSheetListItemCategory: {
+  listItemCategory: {
     fontSize: 12,
-    color: "#666",
-    marginTop: 5,
+    color: '#666',
+    marginTop: 4,
+    fontFamily: "OpenSanssemibold",
+  },
+  bottomSheetCloseButton: {
+    backgroundColor: '#3E5C76',
+    padding: 12,
+    borderRadius: 30,
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  bottomSheetCloseButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
 });
 

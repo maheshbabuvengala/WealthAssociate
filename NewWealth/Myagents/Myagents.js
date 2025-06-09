@@ -19,6 +19,7 @@ import { API_URL } from "../../data/ApiUrl";
 import agentImage from "../../assets/man.png";
 
 const { width } = Dimensions.get("window");
+const isWeb = Platform.OS === "web";
 
 export default function ViewAgents() {
   const [agents, setAgents] = useState([]);
@@ -169,77 +170,53 @@ export default function ViewAgents() {
     setModalVisible(true);
   };
 
+  // Render agent cards in rows (3 per row on web)
+  const renderAgentCards = () => {
+    if (isWeb) {
+      // For web: 3 cards per row with left alignment
+      return (
+        <View style={styles.webGrid}>
+          {agents.map((agent) => (
+            <AgentCard 
+              key={agent._id} 
+              agent={agent} 
+              onPress={handleAgentPress}
+              onDelete={handleDeleteAgent}
+              userType={userType}
+            />
+          ))}
+        </View>
+      );
+    } else {
+      // For mobile: single column
+      return agents.map((agent) => (
+        <AgentCard 
+          key={agent._id} 
+          agent={agent} 
+          onPress={handleAgentPress}
+          onDelete={handleDeleteAgent}
+          userType={userType}
+        />
+      ));
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={styles.heading}>
-          My Agents:{agents.length > 0 ? agents.length : "0"}
+          My Agents: {agents.length > 0 ? agents.length : "0"}
         </Text>
 
         {loading ? (
           <ActivityIndicator
             size="large"
-            color="#0000ff"
+            color="#3E5C76"
             style={styles.loader}
           />
         ) : agents.length > 0 ? (
           <View style={styles.gridContainer}>
-            {agents.map((agent) => (
-              <TouchableOpacity
-                key={agent._id}
-                style={styles.card}
-                onPress={() => handleAgentPress(agent)}
-                activeOpacity={userType === "ValueAssociate" ? 0.6 : 1}
-              >
-                <Image
-                  source={
-                    typeof agent.photo === "string" && agent.photo.trim() !== ""
-                      ? { uri: agent.photo }
-                      : agentImage
-                  }
-                  style={styles.avatar}
-                />
-
-                <View style={styles.infoContainer}>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Name</Text>
-                    <Text style={styles.value}>: {agent.FullName}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>District</Text>
-                    <Text style={styles.value}>: {agent.District}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Constituency</Text>
-                    <Text style={styles.value}>: {agent.Contituency}</Text>
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Referral Code</Text>
-                    <Text style={styles.value}>: {agent.MyRefferalCode}</Text>
-                  </View>
-                  {agent.MobileNumber && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Mobile Number</Text>
-                      <Text style={styles.value}>: {agent.MobileNumber}</Text>
-                    </View>
-                  )}
-                  {agent.Locations && (
-                    <View style={styles.row}>
-                      <Text style={styles.label}>Location</Text>
-                      <Text style={styles.value}>: {agent.Locations}</Text>
-                    </View>
-                  )}
-                </View>
-                {userType !== "ValueAssociate" && (
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteAgent(agent._id)}
-                  >
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  </TouchableOpacity>
-                )}
-              </TouchableOpacity>
-            ))}
+            {renderAgentCards()}
           </View>
         ) : (
           <Text style={styles.noAgentsText}>
@@ -302,7 +279,6 @@ export default function ViewAgents() {
                 </View>
                 <View style={styles.statRow}>
                   <Text style={styles.statLabel}>Posted Properties:</Text>
-                  9985626888
                   <Text style={styles.statValue}>
                     {selectedAgent.referralStats.postedProperties || 0}
                   </Text>
@@ -343,87 +319,170 @@ export default function ViewAgents() {
   );
 }
 
+// Separate AgentCard component with improved design
+const AgentCard = ({ agent, onPress, onDelete, userType }) => {
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => onPress(agent)}
+      activeOpacity={userType === "ValueAssociate" ? 0.6 : 1}
+    >
+      <View style={styles.cardHeader}>
+        <Image
+          source={
+            typeof agent.photo === "string" && agent.photo.trim() !== ""
+              ? { uri: agent.photo }
+              : agentImage
+          }
+          style={styles.avatar}
+        />
+        <Text style={styles.agentName}>{agent.FullName}</Text>
+      </View>
+
+      <View style={styles.infoContainer}>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>District:</Text>
+          <Text style={styles.infoValue}>{agent.District}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Constituency:</Text>
+          <Text style={styles.infoValue}>{agent.Contituency}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Referral Code:</Text>
+          <Text style={styles.infoValue}>{agent.MyRefferalCode}</Text>
+        </View>
+        {agent.MobileNumber && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Mobile:</Text>
+            <Text style={styles.infoValue}>{agent.MobileNumber}</Text>
+          </View>
+        )}
+        {agent.Locations && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Location:</Text>
+            <Text style={styles.infoValue}>{agent.Locations}</Text>
+          </View>
+        )}
+      </View>
+      
+      {userType !== "ValueAssociate" && (
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => onDelete(agent._id)}
+        >
+          <Text style={styles.deleteButtonText}>Delete Agent</Text>
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
-    paddingHorizontal: 10,
+    backgroundColor: "#f8f9fa",
     paddingBottom: 30,
   },
   scrollContainer: {
     width: "100%",
+    paddingHorizontal: isWeb ? 20 : 10,
   },
   loader: {
     marginTop: 40,
   },
   heading: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
-    textAlign: "left",
-    marginVertical: 15,
-    paddingLeft: 10,
+    color: "#3E5C76",
+    marginVertical: 20,
+    marginLeft: isWeb ? 10 : 0,
   },
   gridContainer: {
-    paddingBottom: 20,
+    width: "100%",
+  },
+  webGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+    marginLeft: isWeb ? -10 : 0,
   },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    width: width > 600 ? "30%" : "100%",
-    paddingVertical: 20,
-    paddingHorizontal: 15,
-    alignItems: "center",
+    borderRadius: 12,
+    width: isWeb ? "31%" : "93%",
+    margin: isWeb ? 10 : 15,
+    padding: 20,
     shadowColor: "#000",
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: "#eee",
+    // alignItems: "center",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    paddingBottom: 15,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 10,
-    backgroundColor: "#ddd",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 15,
+    backgroundColor: "#f0f0f0",
+  },
+  agentName: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#3E5C76",
   },
   infoContainer: {
     width: "100%",
-    alignItems: "flex-start",
-    paddingHorizontal: 10,
   },
-  row: {
+  infoRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 5,
-    width: "100%",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
-  label: {
-    fontWeight: "bold",
+  infoLabel: {
     fontSize: 14,
-    width: 120,
+    color: "#6c757d",
+    fontWeight: "500",
   },
-  value: {
+  infoValue: {
     fontSize: 14,
+    color: "#495057",
+    fontWeight: "600",
+    textAlign: "right",
+    flexShrink: 1,
+    flexWrap: "wrap",
   },
   noAgentsText: {
     textAlign: "center",
     marginTop: 20,
     fontSize: 16,
-    color: "#666",
+    color: "#6c757d",
     width: "100%",
   },
   deleteButton: {
-    marginTop: 10,
-    backgroundColor: "#ff4444",
-    paddingVertical: 8,
+    marginTop: 15,
+    backgroundColor: "#e63946",
+    paddingVertical: 10,
     paddingHorizontal: 15,
-    borderRadius: 5,
-    alignSelf: "flex-end",
+    borderRadius: 6,
+    alignItems: "center",
+    width: "100%"
   },
   deleteButtonText: {
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 14,
   },
   centeredView: {
     flex: 1,
@@ -452,6 +511,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 20,
     textAlign: "center",
+    color: "#3E5C76",
   },
   button: {
     borderRadius: 10,
@@ -460,7 +520,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   buttonClose: {
-    backgroundColor: "#2196F3",
+    backgroundColor: "#3E5C76",
   },
   textStyle: {
     color: "white",
@@ -480,14 +540,16 @@ const styles = StyleSheet.create({
   statLabel: {
     fontWeight: "bold",
     fontSize: 16,
+    color: "#495057",
   },
   statValue: {
     fontSize: 16,
+    color: "#3E5C76",
   },
   noStatsText: {
     textAlign: "center",
     marginVertical: 20,
     fontSize: 16,
-    color: "#666",
+    color: "#6c757d",
   },
 });

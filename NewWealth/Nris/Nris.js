@@ -7,89 +7,72 @@ import {
   Image,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
-  FlatList,
-  LogBox,
+  Platform,
+  Modal,
+  Pressable,
 } from "react-native";
-import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_URL } from "../../data/ApiUrl";
 import avatar from "../../Admin_Pan/assets/man.png";
 
-// Ignore specific warnings (optional)
-LogBox.ignoreLogs(["VirtualizedLists should never be nested"]);
-
 const { width } = Dimensions.get("window");
+const isWeb = Platform.OS === "web";
 
 export default function ViewNri({ navigation }) {
   const [nriMembers, setNriMembers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState(null);
   const [userType, setUserType] = useState("");
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let isMounted = true;
-
     const fetchData = async () => {
       try {
-        await fetchNriMembers();
-      } catch (err) {
-        if (isMounted) {
-          setError(err.message);
-          console.error("Component error:", err);
+        const token = await AsyncStorage.getItem("authToken");
+        const storedUserType = await AsyncStorage.getItem("userType") || "";
+
+        if (!token) {
+          throw new Error("Authentication token not found");
         }
+
+        setUserType(storedUserType);
+
+        const response = await fetch(`${API_URL}/nri/getmynris`, {
+          method: "GET",
+          headers: {
+            token: `${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to fetch NRI members");
+        }
+
+        const data = await response.json();
+        if (!data || !Array.isArray(data.referredMembers)) {
+          throw new Error("Invalid data format received");
+        }
+
+        setNriMembers(data.referredMembers);
+        setError(null);
+      } catch (error) {
+        console.error("Fetch error:", error);
+        setError(error.message);
+        setNriMembers([]);
       } finally {
-        if (isMounted) setLoading(false);
+        setLoading(false);
       }
     };
 
     fetchData();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
-
-  const fetchNriMembers = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const storedUserType = (await AsyncStorage.getItem("userType")) || "";
-
-      if (!token) {
-        throw new Error("Authentication token not found");
-      }
-
-      setUserType(storedUserType);
-
-      const response = await fetch(`${API_URL}/nri/getmynris`, {
-        method: "GET",
-        headers: {
-          token: `${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to fetch NRI members");
-      }
-
-      const data = await response.json();
-      if (!data || !Array.isArray(data.referredMembers)) {
-        throw new Error("Invalid data format received");
-      }
-
-      setNriMembers(data.referredMembers);
-      setError(null);
-    } catch (error) {
-      console.error("Fetch error:", error);
-      setError(error.message);
-      setNriMembers([]);
-      Alert.alert("Error", error.message || "Failed to load NRI members");
-    }
-  };
 
   const handleDelete = async (id) => {
     try {
@@ -112,7 +95,6 @@ export default function ViewNri({ navigation }) {
         throw new Error(errorText || "Failed to delete member");
       }
 
-      // Success case
       setNriMembers((prev) => prev.filter((member) => member._id !== id));
       Alert.alert("Success", "Member deleted successfully");
     } catch (error) {
@@ -137,61 +119,43 @@ export default function ViewNri({ navigation }) {
     ]);
   };
 
-  const renderMemberCard = ({ item }) => (
-    <View style={styles.card}>
-      <Image source={avatar} style={styles.avatar} />
-      <View style={styles.infoContainer}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Name</Text>
-          <Text style={styles.value}>: {item.Name || "N/A"}</Text>
+  const handleMemberPress = (member) => {
+    setSelectedMember(member);
+    setModalVisible(true);
+  };
+
+  const renderMemberCards = () => {
+    if (isWeb) {
+      return (
+        <View style={styles.webGrid}>
+          {nriMembers.map((member) => (
+            <MemberCard 
+              key={member._id} 
+              member={member} 
+              onPress={handleMemberPress}
+              onDelete={confirmDelete}
+              deletingId={deletingId}
+            />
+          ))}
         </View>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Mobile (IN)</Text>
-          <Text style={styles.value}>: {item.MobileIN || "N/A"}</Text>
-        </View>
-
-        {item.MobileCountryNo && (
-          <View style={styles.row}>
-            <Text style={styles.label}>Mobile (Country)</Text>
-            <Text style={styles.value}>: {item.MobileCountryNo}</Text>
-          </View>
-        )}
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Occupation</Text>
-          <Text style={styles.value}>: {item.Occupation || "N/A"}</Text>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Location</Text>
-          <Text style={styles.value}>: {item.Locality || "N/A"}</Text>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Country</Text>
-          <Text style={styles.value}>: {item.Country || "N/A"}</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => confirmDelete(item._id, item.Name)}
-          disabled={deletingId === item._id}
-        >
-          {deletingId === item._id ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.deleteButtonText}>Delete</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+      );
+    } else {
+      return nriMembers.map((member) => (
+        <MemberCard 
+          key={member._id} 
+          member={member} 
+          onPress={handleMemberPress}
+          onDelete={confirmDelete}
+          deletingId={deletingId}
+        />
+      ));
+    }
+  };
 
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#3E5C76" />
       </View>
     );
   }
@@ -200,7 +164,14 @@ export default function ViewNri({ navigation }) {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchNriMembers}>
+        <TouchableOpacity 
+          style={styles.retryButton} 
+          onPress={() => {
+            setLoading(true);
+            setError(null);
+            fetchNriMembers();
+          }}
+        >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -209,30 +180,141 @@ export default function ViewNri({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.heading}>
-        NRI Members: {nriMembers.length > 0 ? nriMembers.length : "0"}
-      </Text>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <Text style={styles.heading}>
+          NRI Members: {nriMembers.length > 0 ? nriMembers.length : "0"}
+        </Text>
 
-      <FlatList
-        data={nriMembers}
-        renderItem={renderMemberCard}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.gridContainer}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No NRI members found.</Text>
-        }
-        numColumns={width > 600 ? 2 : 1}
-        columnWrapperStyle={width > 600 ? styles.rowWrapper : null}
-      />
+        {nriMembers.length > 0 ? (
+          <View style={styles.gridContainer}>
+            {renderMemberCards()}
+          </View>
+        ) : (
+          <Text style={styles.noMembersText}>
+            No NRI members found.
+          </Text>
+        )}
+      </ScrollView>
+
+      {/* Modal for Member Details */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          setModalVisible(!modalVisible);
+        }}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            {selectedMember && (
+              <>
+                <Text style={styles.modalTitle}>
+                  {selectedMember.Name}'s Details
+                </Text>
+                
+                <View style={styles.statsContainer}>
+                  <View style={styles.statRow}>
+                    <Text style={styles.statLabel}>Mobile (IN):</Text>
+                    <Text style={styles.statValue}>
+                      {selectedMember.MobileIN || "N/A"}
+                    </Text>
+                  </View>
+                  <View style={styles.statRow}>
+                    <Text style={styles.statLabel}>Mobile (Country):</Text>
+                    <Text style={styles.statValue}>
+                      {selectedMember.MobileCountryNo || "N/A"}
+                    </Text>
+                  </View>
+                  <View style={styles.statRow}>
+                    <Text style={styles.statLabel}>Occupation:</Text>
+                    <Text style={styles.statValue}>
+                      {selectedMember.Occupation || "N/A"}
+                    </Text>
+                  </View>
+                  <View style={styles.statRow}>
+                    <Text style={styles.statLabel}>Location:</Text>
+                    <Text style={styles.statValue}>
+                      {selectedMember.Locality || "N/A"}
+                    </Text>
+                  </View>
+                  <View style={styles.statRow}>
+                    <Text style={styles.statLabel}>Country:</Text>
+                    <Text style={styles.statValue}>
+                      {selectedMember.Country || "N/A"}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
+
+            <Pressable
+              style={[styles.button, styles.buttonClose]}
+              onPress={() => setModalVisible(!modalVisible)}
+            >
+              <Text style={styles.textStyle}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
+// Separate MemberCard component
+const MemberCard = ({ member, onPress, onDelete, deletingId }) => {
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => onPress(member)}
+      activeOpacity={0.6}
+    >
+      <View style={styles.cardHeader}>
+        <Image source={avatar} style={styles.avatar} />
+        <Text style={styles.memberName}>{member.Name || "N/A"}</Text>
+      </View>
+
+      <View style={styles.infoContainer}>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Mobile (IN):</Text>
+          <Text style={styles.infoValue}>{member.MobileIN || "N/A"}</Text>
+        </View>
+        {member.MobileCountryNo && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Mobile (Country):</Text>
+            <Text style={styles.infoValue}>{member.MobileCountryNo}</Text>
+          </View>
+        )}
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Occupation:</Text>
+          <Text style={styles.infoValue}>{member.Occupation || "N/A"}</Text>
+        </View>
+      </View>
+      
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => onDelete(member._id, member.Name)}
+        disabled={deletingId === member._id}
+      >
+        {deletingId === member._id ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={styles.deleteButtonText}>Delete Member</Text>
+        )}
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
-    paddingHorizontal: 10,
+    backgroundColor: "#f8f9fa",
+    paddingBottom: 30,
+  },
+  scrollContainer: {
+    width: "100%",
+    paddingHorizontal: isWeb ? 20 : 10,
   },
   loaderContainer: {
     flex: 1,
@@ -252,7 +334,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   retryButton: {
-    backgroundColor: "#007bff",
+    backgroundColor: "#3E5C76",
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 5,
@@ -262,74 +344,157 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   heading: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
-    textAlign: "left",
-    marginVertical: 15,
-    paddingLeft: 10,
+    color: "#3E5C76",
+    marginVertical: 20,
+    marginLeft: isWeb ? 10 : 0,
   },
   gridContainer: {
-    paddingBottom: 20,
-    alignItems: "center",
+    width: "100%",
   },
-  rowWrapper: {
-    justifyContent: "space-between",
+  webGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+    marginLeft: isWeb ? -10 : 0,
   },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    width: width > 600 ? "48%" : "95%",
-    paddingVertical: 20,
-    paddingHorizontal: 15,
-    alignItems: "center",
+    borderRadius: 12,
+    width: isWeb ? "31%" : "93%",
+    margin: isWeb ? 10 : 15,
+    padding: 20,
     shadowColor: "#000",
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    paddingBottom: 15,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 10,
-    backgroundColor: "#ddd",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 15,
+    backgroundColor: "#f0f0f0",
+  },
+  memberName: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#3E5C76",
   },
   infoContainer: {
     width: "100%",
-    alignItems: "flex-start",
-    paddingHorizontal: 10,
   },
-  row: {
+  infoRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 5,
-    width: "100%",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
-  label: {
-    fontWeight: "bold",
-    width: 120,
+  infoLabel: {
+    fontSize: 14,
+    color: "#6c757d",
+    fontWeight: "500",
   },
-  value: {
+  infoValue: {
+    fontSize: 14,
+    color: "#495057",
+    fontWeight: "600",
+    textAlign: "right",
     flexShrink: 1,
+    flexWrap: "wrap",
   },
-  emptyText: {
+  noMembersText: {
     textAlign: "center",
     marginTop: 20,
     fontSize: 16,
-    color: "#888",
+    color: "#6c757d",
+    width: "100%",
   },
   deleteButton: {
-    marginTop: 10,
-    backgroundColor: "#ff4444",
-    paddingVertical: 8,
+    marginTop: 15,
+    backgroundColor: "#e63946",
+    paddingVertical: 10,
     paddingHorizontal: 15,
-    borderRadius: 5,
-    alignSelf: "flex-end",
+    borderRadius: 6,
+    alignItems: "center",
+    width: "100%"
   },
   deleteButtonText: {
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 14,
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 25,
+    width: "90%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#3E5C76",
+  },
+  button: {
+    borderRadius: 10,
+    padding: 12,
+    elevation: 2,
+    marginTop: 20,
+  },
+  buttonClose: {
+    backgroundColor: "#3E5C76",
+  },
+  textStyle: {
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  statsContainer: {
+    width: "100%",
+  },
+  statRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  statLabel: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#495057",
+  },
+  statValue: {
+    fontSize: 16,
+    color: "#3E5C76",
   },
 });

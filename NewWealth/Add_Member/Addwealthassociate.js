@@ -1,20 +1,20 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Image,
   StyleSheet,
-  Platform,
-  ScrollView,
-  StatusBar,
   Dimensions,
+  ScrollView,
+  Platform,
   Alert,
+  Keyboard,
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   FlatList,
+  Pressable,
 } from "react-native";
 import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -22,58 +22,81 @@ import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useFontsLoader from "../../assets/Hooks/useFontsLoader";
 
-const { width, height } = Dimensions.get("window");
-const isTablet = width >= 768;
-const isWeb = Platform.OS === "web";
+const screenHeight = Dimensions.get("window").height;
+const { width } = Dimensions.get("window");
+const isSmallScreen = width < 600;
 
 const Add_Agent = ({ closeModal }) => {
   const fontsLoaded = useFontsLoader();
-  const [fullname, setFullname] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [email, setEmail] = useState("");
-  const [district, setDistrict] = useState("");
-  const [constituency, setConstituency] = useState("");
-  const [expertise, setExpertise] = useState("");
-  const [experience, setExperience] = useState("");
+  const [formData, setFormData] = useState({
+    fullname: "",
+    mobile: "",
+    email: "",
+    district: "",
+    constituency: "",
+    expertise: "",
+    experience: "",
+    location: "",
+  });
   const [referralCode, setReferralCode] = useState("");
-  const [location, setLocation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [responseStatus, setResponseStatus] = useState(null);
-  const [districtSearch, setDistrictSearch] = useState("");
-  const [constituencySearch, setConstituencySearch] = useState("");
-  const [expertiseSearch, setExpertiseSearch] = useState("");
-  const [experienceSearch, setExperienceSearch] = useState("");
-  const [showDistrictList, setShowDistrictList] = useState(false);
-  const [showConstituencyList, setShowConstituencyList] = useState(false);
-  const [showExpertiseList, setShowExpertiseList] = useState(false);
-  const [showExperienceList, setShowExperienceList] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [districts, setDistricts] = useState([]);
-  const [constituencies, setConstituencies] = useState([]);
   const [expertiseOptions, setExpertiseOptions] = useState([]);
-  const [Details, setDetails] = useState({});
+  const [userDetails, setUserDetails] = useState({});
+  const [errorMessage, setErrorMessage] = useState("");
   const [userType, setUserType] = useState("");
-  const [valuemember, setValuemember] = useState("");
-
-  const mobileRef = useRef(null);
-  const emailRef = useRef(null);
-  const districtRef = useRef(null);
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [bottomSheetType, setBottomSheetType] = useState(null);
+  const [filteredData, setFilteredData] = useState([]);
 
   const navigation = useNavigation();
+  const scrollViewRef = useRef();
+  const searchInputRef = useRef(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const storedUserType = await AsyncStorage.getItem("userType");
-      console.log("Stored userType:", storedUserType);
+  const experienceOptions = [
+    { name: "0-1 years", code: "01" },
+    { name: "1-3 years", code: "02" },
+    { name: "3-5 years", code: "03" },
+    { name: "5-10 years", code: "04" },
+    { name: "10-15 years", code: "05" },
+    { name: "15-20 years", code: "06" },
+    { name: "20-25 years", code: "07" },
+    { name: "25+ years", code: "08" },
+  ];
+
+  const fetchUserDetails = async () => {
+    try {
+      const [token, storedUserType] = await Promise.all([
+        AsyncStorage.getItem("authToken"),
+        AsyncStorage.getItem("userType"),
+      ]);
+
+      if (!token || !storedUserType) return;
+
       setUserType(storedUserType);
 
-      if (storedUserType) {
-        console.log("Fetching details for userType:", storedUserType);
-        await getDetails();
-      }
-    };
+      let endpoint = storedUserType === "CoreMember" 
+        ? `${API_URL}/core/getcore` 
+        : `${API_URL}/agent/AgentDetails`;
 
-    fetchData();
-  }, []);
+      const response = await fetch(endpoint, {
+        headers: { token },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch user details");
+
+      const data = await response.json();
+      setUserDetails(data);
+
+      if (data.MyRefferalCode || data.ReferralCode) {
+        setReferralCode(data.MyRefferalCode || data.ReferralCode);
+      }
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+      setReferralCode("WA0000000001");
+    }
+  };
 
   const fetchDistrictsAndConstituencies = async () => {
     try {
@@ -81,7 +104,7 @@ const Add_Agent = ({ closeModal }) => {
       const data = await response.json();
       setDistricts(data);
     } catch (error) {
-      console.error("Error fetching districts and constituencies:", error);
+      console.error("Error fetching districts:", error);
     }
   };
 
@@ -96,107 +119,118 @@ const Add_Agent = ({ closeModal }) => {
   };
 
   useEffect(() => {
+    fetchUserDetails();
     fetchDistrictsAndConstituencies();
     fetchExpertise();
   }, []);
 
-  const experienceOptions = [
-    { name: "0-1 years", code: "01" },
-    { name: "1-3 years", code: "02" },
-    { name: "3-5 years", code: "03" },
-    { name: "5-10 years", code: "04" },
-    { name: "10-15 years", code: "05" },
-    { name: "15-20 years", code: "06" },
-    { name: "20-25 years", code: "07" },
-    { name: "25+ years", code: "08" },
-  ];
-
-  const filteredDistricts = districts.filter((item) =>
-    item.parliament.toLowerCase().includes(districtSearch.toLowerCase())
-  );
-
-  const filteredConstituencies =
-    districts
-      .find((item) => item.parliament === district)
-      ?.assemblies.filter((assembly) =>
-        assembly.name.toLowerCase().includes(constituencySearch.toLowerCase())
-      ) || [];
-
-  const filteredExpertise = expertiseOptions.filter((item) =>
-    item.name.toLowerCase().includes(expertiseSearch.toLowerCase())
-  );
-
-  const filteredExperience = experienceOptions.filter((item) =>
-    item.name.toLowerCase().includes(experienceSearch.toLowerCase())
-  );
-
-  const getDetails = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      let endpoint = "";
-
-      if (userType === "CoreMember") {
-        endpoint = `${API_URL}/core/getcore`;
-      } else {
-        endpoint = `${API_URL}/agent/AgentDetails`;
-      }
-
-      const response = await fetch(endpoint, {
-        method: "GET",
-        headers: {
-          token: `${token}` || "",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const newDetails = await response.json();
-      setDetails(newDetails);
-
-      if (newDetails.valuemember) {
-        setValuemember(newDetails.valuemember);
-      }
-    } catch (error) {
-      console.error("Error fetching user details:", error);
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "district") {
+      setFormData((prev) => ({ ...prev, constituency: "" }));
     }
   };
 
-  useEffect(() => {
-    if (userType) {
-      getDetails();
+  const openBottomSheet = (type) => {
+    Keyboard.dismiss();
+    setBottomSheetType(type);
+    setSearchTerm("");
+    
+    switch (type) {
+      case "district":
+        setFilteredData(districts);
+        break;
+      case "constituency":
+        const selectedDistrict = districts.find(d => d.parliament === formData.district);
+        setFilteredData(selectedDistrict?.assemblies || []);
+        break;
+      case "expertise":
+        setFilteredData(expertiseOptions);
+        break;
+      case "experience":
+        setFilteredData(experienceOptions);
+        break;
+      default:
+        setFilteredData([]);
     }
-  }, [userType]);
+    
+    setBottomSheetVisible(true);
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 300);
+  };
 
-  useEffect(() => {
-    if (Details.MyRefferalCode || Details.ReferralCode) {
-      setReferralCode(Details.MyRefferalCode || Details.ReferralCode);
-      console.log(Details.MyRefferalCode);
+  const handleSearch = (text) => {
+    setSearchTerm(text);
+    
+    switch (bottomSheetType) {
+      case "district":
+        setFilteredData(
+          districts.filter(item =>
+            item.parliament.toLowerCase().includes(text.toLowerCase())
+          )
+        );
+        break;
+      case "constituency":
+        const selectedDistrict = districts.find(d => d.parliament === formData.district);
+        if (selectedDistrict) {
+          setFilteredData(
+            selectedDistrict.assemblies.filter(item =>
+              item.name.toLowerCase().includes(text.toLowerCase())
+            )
+          );
+        }
+        break;
+      case "expertise":
+        setFilteredData(
+          expertiseOptions.filter(item =>
+            item.name.toLowerCase().includes(text.toLowerCase())
+          )
+        );
+        break;
+      case "experience":
+        setFilteredData(
+          experienceOptions.filter(item =>
+            item.name.toLowerCase().includes(text.toLowerCase())
+          )
+        );
+        break;
+      default:
+        setFilteredData([]);
     }
-  }, [Details]);
+  };
+
+  const handleSelectItem = (item) => {
+    switch (bottomSheetType) {
+      case "district":
+        handleInputChange("district", item.parliament);
+        break;
+      case "constituency":
+        handleInputChange("constituency", item.name);
+        break;
+      case "expertise":
+        handleInputChange("expertise", item.name);
+        break;
+      case "experience":
+        handleInputChange("experience", item.name);
+        break;
+    }
+    setBottomSheetVisible(false);
+  };
 
   const handleRegister = async () => {
-    if (
-      !fullname ||
-      !mobile ||
-      !email ||
-      !district ||
-      !constituency ||
-      !location ||
-      !expertise ||
-      !experience
-    ) {
+    const { fullname, mobile, email, district, constituency, location, expertise, experience } = formData;
+
+    if (!fullname || !mobile || !email || !district || !constituency || !location || !expertise || !experience) {
       Alert.alert("Error", "Please fill in all required fields.");
       return;
     }
 
     setIsLoading(true);
+    setErrorMessage("");
 
-    const selectedDistrict = districts.find((d) => d.parliament === district);
-    const selectedAssembly = selectedDistrict?.assemblies.find(
-      (a) => a.name === constituency
-    );
+    const selectedDistrict = districts.find(d => d.parliament === district);
+    const selectedAssembly = selectedDistrict?.assemblies.find(a => a.name === constituency);
 
     if (!selectedDistrict || !selectedAssembly) {
       Alert.alert("Error", "Invalid district or constituency selected.");
@@ -225,600 +259,529 @@ const Add_Agent = ({ closeModal }) => {
     try {
       const response = await fetch(`${API_URL}/agent/AgentRegister`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userData),
       });
-
-      setResponseStatus(response.status);
 
       if (response.ok) {
         const result = await response.json();
         Alert.alert("Success", "Registration successful!");
         navigation.goBack();
       } else if (response.status === 400) {
-        const errorData = await response.json();
-        Alert.alert("Error", "Mobile number already exists.");
+        setErrorMessage("Mobile number already exists.");
       } else {
         const errorData = await response.json();
-        Alert.alert("Error", errorData.message || "Something went wrong.");
+        setErrorMessage(errorData.message || "Something went wrong.");
       }
     } catch (error) {
-      console.error("Error during registration:", error);
-      Alert.alert(
-        "Error",
-        "Failed to connect to the server. Please try again later."
-      );
+      console.error("Registration error:", error);
+      setErrorMessage("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const renderBottomSheet = (type) => {
-    let data = [];
-    let searchValue = "";
-    let setSearch = () => {};
-    let setSelected = () => {};
-    let setShow = () => {};
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => handleSelectItem(item)}
+    >
+      <Text style={styles.listItemText}>
+        {bottomSheetType === "district" ? item.parliament : 
+         bottomSheetType === "constituency" ? item.name : 
+         item.name}
+      </Text>
+    </TouchableOpacity>
+  );
 
-    switch (type) {
+  const renderBottomSheet = () => {
+    let title = "";
+    switch (bottomSheetType) {
       case "district":
-        data = filteredDistricts;
-        searchValue = districtSearch;
-        setSearch = setDistrictSearch;
-        setSelected = setDistrict;
-        setShow = setShowDistrictList;
+        title = "Select Parliament";
         break;
       case "constituency":
-        data = filteredConstituencies;
-        searchValue = constituencySearch;
-        setSearch = setConstituencySearch;
-        setSelected = setConstituency;
-        setShow = setShowConstituencyList;
+        title = "Select Assembly";
         break;
       case "expertise":
-        data = filteredExpertise;
-        searchValue = expertiseSearch;
-        setSearch = setExpertiseSearch;
-        setSelected = setExpertise;
-        setShow = setShowExpertiseList;
+        title = "Select Expertise";
         break;
       case "experience":
-        data = filteredExperience;
-        searchValue = experienceSearch;
-        setSearch = setExperienceSearch;
-        setSelected = setExperience;
-        setShow = setShowExperienceList;
+        title = "Select Experience";
         break;
       default:
-        return null;
+        title = "Select";
     }
 
     return (
       <Modal
-        visible={
-          type === "district"
-            ? showDistrictList
-            : type === "constituency"
-            ? showConstituencyList
-            : type === "expertise"
-            ? showExpertiseList
-            : showExperienceList
-        }
+        visible={bottomSheetVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShow(false)}
+        onRequestClose={() => setBottomSheetVisible(false)}
       >
-        <View style={styles.bottomSheetContainer}>
-          <View style={styles.bottomSheet}>
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder={`Search ${type}`}
-                placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                value={searchValue}
-                onChangeText={setSearch}
-                autoFocus={true}
+        <Pressable 
+          style={styles.bottomSheetOverlay}
+          onPress={() => setBottomSheetVisible(false)}
+        >
+          <Pressable style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheet}>
+              <Text style={styles.bottomSheetTitle}>{title}</Text>
+              
+              <View style={styles.searchContainer}>
+                <TextInput
+                  ref={searchInputRef}
+                  style={styles.searchInput}
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChangeText={handleSearch}
+                />
+              </View>
+              
+              <FlatList
+                data={filteredData}
+                renderItem={renderItem}
+                keyExtractor={(item, index) => 
+                  bottomSheetType === "district" ? item.parliament : 
+                  bottomSheetType === "constituency" ? `${item.name}-${index}` : 
+                  item.code
+                }
+                keyboardShouldPersistTaps="handled"
+                style={styles.listContainer}
               />
+              
               <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShow(false)}
+                style={styles.bottomSheetCloseButton}
+                onPress={() => setBottomSheetVisible(false)}
               >
-                <Text style={styles.closeButtonText}>Close</Text>
+                <Text style={styles.bottomSheetCloseButtonText}>Close</Text>
               </TouchableOpacity>
             </View>
-            <FlatList
-              data={data}
-              keyExtractor={(item, index) =>
-                type === "district"
-                  ? item.parliament
-                  : type === "constituency"
-                  ? index.toString()
-                  : item.code
-              }
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.bottomSheetItem}
-                  onPress={() => {
-                    setSelected(
-                      type === "district"
-                        ? item.parliament
-                        : type === "constituency"
-                        ? item.name
-                        : item.name
-                    );
-                    setSearch(
-                      type === "district"
-                        ? item.parliament
-                        : type === "constituency"
-                        ? item.name
-                        : item.name
-                    );
-                    setShow(false);
-                  }}
-                >
-                  <Text style={styles.bottomSheetItemText}>
-                    {type === "district"
-                      ? item.parliament
-                      : type === "constituency"
-                      ? item.name
-                      : item.name}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              keyboardShouldPersistTaps="handled"
-            />
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     );
   };
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: "#D8E3E7",
-      width: Platform.OS === "web" ? "80%" : "100%",
-      paddingBottom: isWeb ? 0 : 20,
-      alignSelf: "center",
-      paddingBottom: Platform.OS === "android" ? 120 : 20,
-    },
-    scrollContainer: {
-      flexGrow: 1,
-      padding: isWeb ? (width > 1024 ? 20 : 10) : 10,
-    },
-    register_main: {
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: "#D8E3E7",
-      width: "100%",
-      height: isWeb ? 60 : 70,
-      paddingVertical: 10,
-    },
-    register_text: {
-      fontSize: isWeb ? 28 : 24,
-      color: "#2B2D42",
-      fontWeight: "bold",
-      fontFamily: "OpenSanssemibold",
-    },
-    card: {
-      width: isWeb ? (width > 1024 ? "80%" : "90%") : "100%",
-      maxWidth: 1200,
-      alignSelf: "center",
-      backgroundColor: "#FDFDFD",
-      shadowColor: "#000",
-      shadowOffset: { width: 4, height: 1 },
-      shadowOpacity: 0.25,
-      shadowRadius: 8,
-      elevation: 8,
-      borderRadius: 20,
-      padding: isWeb ? 30 : 20,
-      paddingBottom: isWeb ? 40 : 70,
-      marginVertical: isWeb ? 20 : 0,
-    },
-    webInputWrapper: {
-      width: "100%",
-      flexDirection: "column",
-      gap: isWeb ? 25 : 15,
-      marginTop: 25,
-    },
-    scrollView: {
-      maxHeight: 200,
-      paddingBottom: Platform.OS === "android" ? 120 : 20,
-    },
-    inputRow: {
-      flexDirection: isWeb ? "row" : "column",
-      justifyContent: "space-between",
-      gap: isWeb ? 20 : 15,
-    },
-    inputContainer: {
-      width: isWeb ? (isTablet ? "32%" : "100%") : "100%",
-      marginBottom: isWeb ? 0 : 10,
-      position: "relative",
-      zIndex: 1,
-    },
-    inputWrapper: {
-      position: "relative",
-      zIndex: 1,
-    },
-    input: {
-      width: "100%",
-      height: isWeb ? 50 : 47,
-      backgroundColor: "#FFF",
-      borderRadius: 25,
-      paddingHorizontal: 15,
-      paddingRight: 40,
-      borderWidth: 2,
-      borderColor: "#E0E6ED",
-      color: "#2B2D42",
-      fontSize: isWeb ? 16 : 14,
-      fontFamily: "OpenSanssemibold",
-    },
-    icon: {
-      position: "absolute",
-      right: 15,
-      top: isWeb ? 15 : 13,
-    },
-    label: {
-      fontSize: isWeb ? 18 : 16,
-      color: "#2B2D42",
-      marginBottom: 8,
-      fontWeight: isWeb ? "500" : "normal",
-      fontFamily: "OpenSanssemibold",
-    },
-    row: {
-      flexDirection: "row",
-      justifyContent: "space-evenly",
-      width: "100%",
-      marginTop: 30,
-    },
-    registerButton: {
-      backgroundColor: "#3E5C76",
-      paddingVertical: isWeb ? 15 : 12,
-      paddingHorizontal: isWeb ? 30 : 20,
-      borderRadius: 15,
-      minWidth: isWeb ? 150 : 120,
-    },
-    cancelButton: {
-      backgroundColor: "#3E5C76",
-      paddingVertical: isWeb ? 15 : 12,
-      paddingHorizontal: isWeb ? 30 : 20,
-      borderRadius: 15,
-      minWidth: isWeb ? 150 : 120,
-    },
-    buttonText: {
-      color: "#FFFFFF",
-      fontSize: isWeb ? 18 : 16,
-      fontWeight: "500",
-      textAlign: "center",
-    },
-    loadingIndicator: {
-      marginTop: 20,
-    },
-    errorText: {
-      color: "red",
-      fontSize: isWeb ? 16 : 14,
-      marginBottom: 10,
-      textAlign: "center",
-    },
-    bottomSheetContainer: {
-      flex: 1,
-      justifyContent: "flex-end",
-      backgroundColor: "rgba(0,0,0,0.5)",
-    },
-    bottomSheet: {
-      backgroundColor: "#FFF",
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      maxHeight: height * 0.7,
-      padding: 20,
-    },
-    searchContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 10,
-    },
-    searchInput: {
-      flex: 1,
-      height: 50,
-      backgroundColor: "#F5F5F5",
-      borderRadius: 10,
-      paddingHorizontal: 15,
-      marginRight: 10,
-    },
-    closeButton: {
-      backgroundColor: "#3E5C76",
-      paddingVertical: 10,
-      paddingHorizontal: 15,
-      borderRadius: 10,
-    },
-    closeButtonText: {
-      color: "#FFF",
-      fontWeight: "bold",
-    },
-    bottomSheetItem: {
-      padding: 15,
-      borderBottomWidth: 1,
-      borderBottomColor: "#EEE",
-    },
-    bottomSheetItemText: {
-      fontSize: 16,
-      color: "#333",
-    },
-  });
-
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.register_main}>
-            <Text style={styles.register_text}>Register Wealth Associate</Text>
-          </View>
+        <View style={styles.container}>
+          <Text style={styles.title}>Register Wealth Associate</Text>
           <View style={styles.card}>
-            {responseStatus === 400 && (
-              <Text style={styles.errorText}>
-                Mobile number already exists.
-              </Text>
-            )}
+            {errorMessage ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
 
-            <View style={styles.webInputWrapper}>
-              {/* Row 1 */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Fullname</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Full name"
-                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      onChangeText={setFullname}
-                      returnKeyType="next"
-                      onSubmitEditing={() => mobileRef.current.focus()}
-                    />
-                    <FontAwesome
-                      name="user"
-                      size={isWeb ? 22 : 20}
-                      color="#3E5C76"
-                      style={styles.icon}
-                    />
-                  </View>
-                </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Mobile Number</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      ref={mobileRef}
-                      style={styles.input}
-                      placeholder="Mobile Number"
-                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      onChangeText={setMobile}
-                      keyboardType="number-pad"
-                      returnKeyType="next"
-                      onSubmitEditing={() => emailRef.current.focus()}
-                    />
-                    <MaterialIcons
-                      name="phone"
-                      size={isWeb ? 22 : 20}
-                      color="#3E5C76"
-                      style={styles.icon}
-                    />
-                  </View>
-                </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Email</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      ref={emailRef}
-                      style={styles.input}
-                      placeholder="Email"
-                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      onChangeText={setEmail}
-                      returnKeyType="next"
-                      onSubmitEditing={() => districtRef.current.focus()}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                    />
-                    <MaterialIcons
-                      name="email"
-                      size={isWeb ? 22 : 20}
-                      color="#3E5C76"
-                      style={styles.icon}
-                    />
-                  </View>
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Full Name</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Full name"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={formData.fullname}
+                    onChangeText={(text) => handleInputChange("fullname", text)}
+                  />
+                  <FontAwesome
+                    name="user"
+                    size={20}
+                    color="#3E5C76"
+                    style={styles.inputIcon}
+                  />
                 </View>
               </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Mobile Number</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Mobile Number"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={formData.mobile}
+                    onChangeText={(text) => handleInputChange("mobile", text)}
+                    keyboardType="number-pad"
+                  />
+                  <MaterialIcons
+                    name="phone"
+                    size={20}
+                    color="#3E5C76"
+                    style={styles.inputIcon}
+                  />
+                </View>
+              </View>
+            </View>
 
-              {/* Row 2 */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Select Parliament</Text>
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={formData.email}
+                    onChangeText={(text) => handleInputChange("email", text)}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  <MaterialIcons
+                    name="email"
+                    size={20}
+                    color="#3E5C76"
+                    style={styles.inputIcon}
+                  />
+                </View>
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Select Parliament</Text>
+                <TouchableOpacity
+                  onPress={() => openBottomSheet("district")}
+                >
                   <View style={styles.inputWrapper}>
                     <TextInput
-                      ref={districtRef}
                       style={styles.input}
                       placeholder="Select Parliament"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={district}
-                      onFocus={() => setShowDistrictList(true)}
+                      value={formData.district}
                       editable={false}
+                      pointerEvents="none"
                     />
-                    <TouchableOpacity
-                      style={styles.icon}
-                      onPress={() => setShowDistrictList(true)}
-                    >
-                      <MaterialIcons
-                        name="arrow-drop-down"
-                        size={isWeb ? 28 : 24}
-                        color="#3E5C76"
-                      />
-                    </TouchableOpacity>
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#3E5C76"
+                      style={styles.dropdownIcon}
+                    />
                   </View>
-                </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Select Assembly</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Select Assembly</Text>
+                <TouchableOpacity
+                  onPress={() => openBottomSheet("constituency")}
+                  disabled={!formData.district}
+                >
                   <View style={styles.inputWrapper}>
                     <TextInput
-                      style={styles.input}
-                      placeholder="Select Assembly"
+                      style={[styles.input, !formData.district && styles.disabledInput]}
+                      placeholder={formData.district ? "Select Assembly" : "First select Parliament"}
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={constituency}
-                      onFocus={() =>
-                        district
-                          ? setShowConstituencyList(true)
-                          : Alert.alert(
-                              "Error",
-                              "Please select Parliament first"
-                            )
-                      }
+                      value={formData.constituency}
                       editable={false}
+                      pointerEvents="none"
                     />
-                    <TouchableOpacity
-                      style={styles.icon}
-                      onPress={() =>
-                        district
-                          ? setShowConstituencyList(true)
-                          : Alert.alert(
-                              "Error",
-                              "Please select Parliament first"
-                            )
-                      }
-                    >
-                      <MaterialIcons
-                        name="arrow-drop-down"
-                        size={isWeb ? 28 : 24}
-                        color="#3E5C76"
-                      />
-                    </TouchableOpacity>
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#3E5C76"
+                      style={styles.dropdownIcon}
+                    />
                   </View>
-                </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Select Experience</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Select Experience</Text>
+                <TouchableOpacity
+                  onPress={() => openBottomSheet("experience")}
+                >
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
                       placeholder="Select Experience"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={experience}
-                      onFocus={() => setShowExperienceList(true)}
+                      value={formData.experience}
                       editable={false}
+                      pointerEvents="none"
                     />
-                    <TouchableOpacity
-                      style={styles.icon}
-                      onPress={() => setShowExperienceList(true)}
-                    >
-                      <MaterialIcons
-                        name="arrow-drop-down"
-                        size={isWeb ? 28 : 24}
-                        color="#3E5C76"
-                      />
-                    </TouchableOpacity>
+                    <MaterialIcons
+                      name="arrow-drop-down"
+                      size={24}
+                      color="#3E5C76"
+                      style={styles.dropdownIcon}
+                    />
                   </View>
-                </View>
+                </TouchableOpacity>
               </View>
+            </View>
 
-              {/* Row 3 */}
-              <View style={styles.inputRow}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Select Expertise</Text>
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Select Expertise</Text>
+                <TouchableOpacity
+                  onPress={() => openBottomSheet("expertise")}
+                >
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
                       placeholder="Select Expertise"
                       placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      value={expertise}
-                      onFocus={() => setShowExpertiseList(true)}
+                      value={formData.expertise}
                       editable={false}
-                    />
-                    <TouchableOpacity
-                      style={styles.icon}
-                      onPress={() => setShowExpertiseList(true)}
-                    >
-                      <MaterialIcons
-                        name="arrow-drop-down"
-                        size={isWeb ? 28 : 24}
-                        color="#3E5C76"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Location</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Location"
-                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      onChangeText={setLocation}
+                      pointerEvents="none"
                     />
                     <MaterialIcons
-                      name="location-on"
-                      size={isWeb ? 22 : 20}
+                      name="arrow-drop-down"
+                      size={24}
                       color="#3E5C76"
-                      style={styles.icon}
+                      style={styles.dropdownIcon}
                     />
                   </View>
-                </View>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Referral Code</Text>
-                  <View style={styles.inputWrapper}>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Referral Code"
-                      placeholderTextColor="rgba(25, 25, 25, 0.5)"
-                      onChangeText={setReferralCode}
-                      editable={false}
-                      value={referralCode}
-                    />
-                    <MaterialIcons
-                      name="card-giftcard"
-                      size={isWeb ? 22 : 20}
-                      color="#3E5C76"
-                      style={styles.icon}
-                    />
-                  </View>
-                </View>
+                </TouchableOpacity>
               </View>
-
-              <View style={styles.row}>
-                <TouchableOpacity
-                  style={styles.registerButton}
-                  onPress={handleRegister}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.buttonText}>Register</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  disabled={isLoading}
-                  onPress={() => navigation.navigate("addmember")}
-                >
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Location</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Location"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={formData.location}
+                    onChangeText={(text) => handleInputChange("location", text)}
+                  />
+                  <MaterialIcons
+                    name="location-on"
+                    size={20}
+                    color="#3E5C76"
+                    style={styles.inputIcon}
+                  />
+                </View>
               </View>
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
 
-      {/* Bottom Sheets */}
-      {renderBottomSheet("district")}
-      {renderBottomSheet("constituency")}
-      {renderBottomSheet("expertise")}
-      {renderBottomSheet("experience")}
-    </View>
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Referral Code</Text>
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Referral Code"
+                    placeholderTextColor="rgba(25, 25, 25, 0.5)"
+                    value={referralCode}
+                    editable={false}
+                  />
+                  <MaterialIcons
+                    name="card-giftcard"
+                    size={20}
+                    color="#3E5C76"
+                    style={styles.inputIcon}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.registerButton}
+                onPress={handleRegister}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Register</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => navigation.navigate("addmember")}
+                disabled={isLoading}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+      {renderBottomSheet()}
+    </KeyboardAvoidingView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#D8E3E7",
+    padding: 20,
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  card: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    padding: 20,
+    marginBottom: 100,
+    width: Platform.OS === "web" ? "80%" : "95%"
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+    fontFamily: "OpenSanssemibold",
+    color: "Black",
+    textAlign: "center",
+    padding: 15,
+  },
+  row: {
+    flexDirection: Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    marginBottom: 15,
+  },
+  inputContainer: {
+    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "48%",
+    marginBottom: 15,
+  },
+  inputWrapper: {
+    position: "relative",
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 5,
+    color: "#555",
+    fontFamily: "OpenSanssemibold",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 25,
+    padding: 12,
+    paddingRight: 40,
+    backgroundColor: "#f9f9f9",
+    fontFamily: "OpenSanssemibold",
+  },
+  inputIcon: {
+    position: "absolute",
+    right: 15,
+    top: 12,
+  },
+  dropdownIcon: {
+    position: "absolute",
+    right: 15,
+    top: 12,
+  },
+  disabledInput: {
+    backgroundColor: "#eee",
+    color: "#999",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  registerButton: {
+    backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 30,
+    marginRight: 25,
+    minWidth: 120,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 30,
+    minWidth: 120,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
+  },
+  errorContainer: {
+    backgroundColor: "#ffeeee",
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#ffcccc",
+  },
+  errorText: {
+    color: "#ff4444",
+    textAlign: "center",
+    fontFamily: "OpenSanssemibold",
+  },
+  // Bottom sheet styles
+  bottomSheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheetContent: {
+    width: '100%',
+    backgroundColor: 'transparent',
+  },
+  bottomSheet: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: Dimensions.get('window').height * 0.7,
+  },
+  bottomSheetTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+    fontFamily: "OpenSanssemibold",
+  },
+  searchContainer: {
+    marginBottom: 15,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 25,
+    padding: 12,
+    backgroundColor: '#f9f9f9',
+    fontFamily: "OpenSanssemibold",
+  },
+  listContainer: {
+    maxHeight: Dimensions.get('window').height * 0.5,
+  },
+  listItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  listItemText: {
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
+  },
+  bottomSheetCloseButton: {
+    backgroundColor: '#3E5C76',
+    padding: 12,
+    borderRadius: 30,
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  bottomSheetCloseButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
+  },
+});
 
 export default Add_Agent;

@@ -1,43 +1,50 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Dimensions,
   ScrollView,
-  ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Alert,
   Keyboard,
-  TouchableWithoutFeedback,
+  ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  FlatList,
+  Pressable,
 } from "react-native";
 import { API_URL } from "../../data/ApiUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 
+const screenHeight = Dimensions.get("window").height;
+const { width } = Dimensions.get("window");
+const isSmallScreen = width < 600;
+
 const AddNRIMember = ({ closeModal }) => {
-  const [name, setName] = useState("");
-  const [country, setCountry] = useState("");
-  const [locality, setLocality] = useState("");
-  const [indianLocation, setIndianLocation] = useState("");
-  const [occupation, setOccupation] = useState("");
-  const [mobileIN, setMobileIN] = useState("");
-  const [mobileCountryNo, setMobileCountryNo] = useState("");
+  const [formData, setFormData] = useState({
+    name: "",
+    country: "",
+    locality: "",
+    indianLocation: "",
+    occupation: "",
+    mobileIN: "",
+    mobileCountryNo: "",
+  });
   const [loading, setLoading] = useState(false);
-  const [Details, setDetails] = useState({});
+  const [userDetails, setUserDetails] = useState({});
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [userType, setUserType] = useState("");
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [bottomSheetType, setBottomSheetType] = useState(null);
+  const [filteredData, setFilteredData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [constituencies, setConstituencies] = useState([]);
-  const [locationSearch, setLocationSearch] = useState("");
-  const [countrySearch, setCountrySearch] = useState("");
-  const [senduserType, setsenduserType] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(null);
-
-  const navigation = useNavigation();
-
-  const countries = [
+  const [countries, setCountries] = useState([
     { label: "United Arab Emirates", value: "uae" },
     { label: "United States of America", value: "usa" },
     { label: "Saudi Arabia", value: "saudi_arabia" },
@@ -48,51 +55,65 @@ const AddNRIMember = ({ closeModal }) => {
     { label: "Qatar", value: "qatar" },
     { label: "Oman", value: "oman" },
     { label: "Singapore", value: "singapore" },
-  ];
+  ]);
 
-  const getDetails = async () => {
+  const navigation = useNavigation();
+  const scrollViewRef = useRef();
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => setKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  const fetchUserDetails = async () => {
     try {
-      const [token, userType] = await Promise.all([
+      const [token, storedUserType] = await Promise.all([
         AsyncStorage.getItem("authToken"),
         AsyncStorage.getItem("userType"),
       ]);
 
-      if (!token) return;
-      const senduserType = userType;
+      if (!token || !storedUserType) return;
+
+      setUserType(storedUserType);
 
       let endpoint = "";
-      switch (userType) {
+      switch (storedUserType) {
         case "WealthAssociate":
         case "ReferralAssociate":
           endpoint = `${API_URL}/agent/AgentDetails`;
-          setsenduserType("WealthAssociate");
           break;
         case "Customer":
           endpoint = `${API_URL}/customer/getcustomer`;
-          setsenduserType("customer");
           break;
         case "CoreMember":
           endpoint = `${API_URL}/core/getcore`;
-          setsenduserType("core");
           break;
         case "Investor":
           endpoint = `${API_URL}/investors/getinvestor`;
-          setsenduserType("investor");
           break;
         case "NRI":
           endpoint = `${API_URL}/nri/getnri`;
-          setsenduserType("nri");
           break;
         case "SkilledResource":
           endpoint = `${API_URL}/skillLabour/getskilled`;
-          setsenduserType("skilled");
           break;
         case "CallCenter":
           endpoint = `${API_URL}/callcenter/getcallcenter`;
           break;
         default:
           endpoint = `${API_URL}/agent/AgentDetails`;
-          setsenduserType("WealthAssociate");
       }
 
       const response = await fetch(endpoint, {
@@ -102,16 +123,11 @@ const AddNRIMember = ({ closeModal }) => {
       if (!response.ok) throw new Error("Failed to fetch user details");
 
       const data = await response.json();
-      setDetails(data);
+      setUserDetails(data);
     } catch (error) {
       console.error("Error fetching user details:", error);
     }
   };
-
-  useEffect(() => {
-    getDetails();
-    fetchConstituencies();
-  }, []);
 
   const fetchConstituencies = async () => {
     try {
@@ -123,63 +139,98 @@ const AddNRIMember = ({ closeModal }) => {
     }
   };
 
-  const openModal = (type) => {
-    setModalType(type);
-    setShowModal(true);
+  useEffect(() => {
+    fetchUserDetails();
+    fetchConstituencies();
+  }, []);
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const closeModalHandler = () => {
-    setShowModal(false);
-    setModalType(null);
-  };
-
-  const handleItemSelect = (item) => {
-    if (modalType === "country") {
-      setCountry(item.label);
-      setCountrySearch(item.label);
-    } else {
-      setIndianLocation(item.name);
-      setLocationSearch(item.name);
+  const openBottomSheet = (type) => {
+    Keyboard.dismiss();
+    setBottomSheetType(type);
+    setSearchTerm("");
+    
+    switch (type) {
+      case "country":
+        setFilteredData(countries);
+        break;
+      case "indianLocation":
+        case "location":
+        case "constituency":
+          const assemblies = constituencies.flatMap(district => district.assemblies);
+          setFilteredData(assemblies);
+          break;
+      default:
+        setFilteredData([]);
     }
-    closeModalHandler();
+    
+    setBottomSheetVisible(true);
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 300);
   };
 
-  const getFilteredData = () => {
-    if (modalType === "country") {
-      return countries.filter((item) =>
-        item.label.toLowerCase().includes(countrySearch.toLowerCase())
-      );
-    } else {
-      return constituencies.flatMap((item) =>
-        item.assemblies.filter((assembly) =>
-          assembly.name.toLowerCase().includes(locationSearch.toLowerCase())
-        )
-      );
+  const handleSearch = (text) => {
+    setSearchTerm(text);
+    
+    switch (bottomSheetType) {
+      case "country":
+        setFilteredData(
+          countries.filter(item =>
+            item.label.toLowerCase().includes(text.toLowerCase())
+          )
+        );
+        break;
+      case "indianLocation":
+      case "location":
+      case "constituency":
+        const assemblies = constituencies.flatMap(district => district.assemblies);
+        setFilteredData(
+          assemblies.filter(item =>
+            item.name.toLowerCase().includes(text.toLowerCase())
+          )
+        );
+        break;
+      default:
+        setFilteredData([]);
     }
+  };
+
+  const handleSelectItem = (item) => {
+    switch (bottomSheetType) {
+      case "country":
+        handleInputChange("country", item.label);
+        break;
+      case "indianLocation":
+      case "location":
+      case "constituency":
+        handleInputChange("indianLocation", item.name);
+        break;
+    }
+    setBottomSheetVisible(false);
   };
 
   const handleAddMember = async () => {
-    if (
-      !name ||
-      !country ||
-      !locality ||
-      !indianLocation ||
-      !occupation ||
-      !mobileIN ||
-      !mobileCountryNo
-    ) {
+    const { name, country, locality, indianLocation, occupation, mobileIN, mobileCountryNo } = formData;
+
+    if (!name || !country || !locality || !indianLocation || !occupation || !mobileIN || !mobileCountryNo) {
       Alert.alert("Error", "Please fill all the fields");
       return;
     }
 
     setLoading(true);
-    try {
-      const addedByValue =
-        Details.MobileNumber ||
-        Details.MobileIN ||
-        Details.Number ||
-        "Wealthassociate";
+    setErrorMessage("");
 
+    const addedByValue =
+      userDetails.MobileNumber ||
+      userDetails.MobileIN ||
+      userDetails.Number ||
+      "Wealthassociate";
+
+    try {
       const response = await fetch(`${API_URL}/nri/register`, {
         method: "POST",
         headers: {
@@ -203,262 +254,380 @@ const AddNRIMember = ({ closeModal }) => {
         Alert.alert("Success", data.message);
         navigation.goBack();
       } else {
-        Alert.alert("Error", data.message);
+        setErrorMessage(data.message || "Failed to add NRI member");
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to connect to server");
+      console.error("Error adding NRI member:", error);
+      setErrorMessage("Failed to connect to server");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => handleSelectItem(item)}
+    >
+      <Text style={styles.listItemText}>
+        {bottomSheetType === "country" ? item.label : item.name}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderBottomSheet = () => {
+    let title = "";
+    switch (bottomSheetType) {
+      case "country":
+        title = "Select Country";
+        break;
+      case "indianLocation":
+      case "location":
+      case "constituency":
+        title = "Select Location in India";
+        break;
+      default:
+        title = "Select";
+    }
+
+    return (
+      <Modal
+        visible={bottomSheetVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setBottomSheetVisible(false)}
+      >
+        <Pressable 
+          style={styles.bottomSheetOverlay}
+          onPress={() => setBottomSheetVisible(false)}
+        >
+          <Pressable style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheet}>
+              <Text style={styles.bottomSheetTitle}>{title}</Text>
+              
+              <View style={styles.searchContainer}>
+                <TextInput
+                  ref={searchInputRef}
+                  style={styles.searchInput}
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChangeText={handleSearch}
+                />
+              </View>
+              
+              <FlatList
+                data={filteredData}
+                renderItem={renderItem}
+                keyExtractor={(item, index) => 
+                  bottomSheetType === "country" ? item.value : `${item.code}-${index}`
+                }
+                keyboardShouldPersistTaps="handled"
+                style={styles.listContainer}
+              />
+              
+              <TouchableOpacity
+                style={styles.bottomSheetCloseButton}
+                onPress={() => setBottomSheetVisible(false)}
+              >
+                <Text style={styles.bottomSheetCloseButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    );
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={100}
-        style={{ flex: 1, backgroundColor: "#D3E7E8" }}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-          <Text style={styles.header}>Add NRI Member</Text>
-          <View style={styles.container}>
-            <Text style={styles.label}>Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter full name"
-              value={name}
-              onChangeText={setName}
-            />
+        <View style={styles.container}>
+          <Text style={styles.title}>Add NRI Member</Text>
+          <View style={styles.card}>
+            {errorMessage ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
 
-            <Text style={styles.label}>Country</Text>
-            <TouchableOpacity onPress={() => openModal("country")}>
-              <TextInput
-                style={styles.input}
-                placeholder="Search country..."
-                value={countrySearch}
-                onChangeText={setCountrySearch}
-                editable={false}
-                onPressIn={() => openModal("country")}
-              />
-            </TouchableOpacity>
-
-            <Text style={styles.label}>Locality (Abroad)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex. Dallas"
-              value={locality}
-              onChangeText={setLocality}
-            />
-
-            <Text style={styles.label}>Location in India</Text>
-            <TouchableOpacity onPress={() => openModal("location")}>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex. Vijayawada"
-                value={locationSearch}
-                onChangeText={setLocationSearch}
-                editable={false}
-                onPressIn={() => openModal("location")}
-              />
-            </TouchableOpacity>
-
-            <Text style={styles.label}>Occupation</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex. Software Engineer"
-              value={occupation}
-              onChangeText={setOccupation}
-            />
-
-            <Text style={styles.label}>Mobile IN (WhatsApp No.)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex. 9063392872"
-              keyboardType="phone-pad"
-              value={mobileIN}
-              onChangeText={setMobileIN}
-            />
-
-            <Text style={styles.label}>Mobile Country No (WhatsApp No.)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex. 9063392872"
-              keyboardType="phone-pad"
-              value={mobileCountryNo}
-              onChangeText={setMobileCountryNo}
-            />
-
-            <View style={styles.buttonContainer}>
-              {loading ? (
-                <ActivityIndicator size="large" color="#E91E63" />
-              ) : (
-                <TouchableOpacity style={styles.addButton} onPress={handleAddMember}>
-                  <Text style={styles.buttonText}>Add</Text>
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Full Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter full name"
+                  value={formData.name}
+                  onChangeText={(text) => handleInputChange("name", text)}
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Country</Text>
+                <TouchableOpacity
+                  onPress={() => openBottomSheet("country")}
+                >
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Select country"
+                    value={formData.country}
+                    editable={false}
+                    pointerEvents="none"
+                  />
                 </TouchableOpacity>
-              )}
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Locality (Abroad)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex. Dallas"
+                  value={formData.locality}
+                  onChangeText={(text) => handleInputChange("locality", text)}
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Location in India</Text>
+                <TouchableOpacity
+                  onPress={() => openBottomSheet("indianLocation")}
+                >
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. Vijayawada"
+                    value={formData.indianLocation}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Occupation</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex. Software Engineer"
+                  value={formData.occupation}
+                  onChangeText={(text) => handleInputChange("occupation", text)}
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Mobile IN (WhatsApp No.)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex. 9063392872"
+                  keyboardType="phone-pad"
+                  value={formData.mobileIN}
+                  onChangeText={(text) => handleInputChange("mobileIN", text)}
+                />
+              </View>
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Mobile Country No (WhatsApp No.)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex. 9063392872"
+                  keyboardType="phone-pad"
+                  value={formData.mobileCountryNo}
+                  onChangeText={(text) => handleInputChange("mobileCountryNo", text)}
+                />
+              </View>
+            </View>
+
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.registerButton}
+                onPress={handleAddMember}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Add Member</Text>
+                )}
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => navigation.goBack()}
+                disabled={loading}
               >
                 <Text style={styles.buttonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
-
-        {/* Modal for dropdown selection */}
-        <Modal
-          visible={showModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={closeModalHandler}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder={`Search ${modalType === "country" ? "country" : "location"}...`}
-                value={modalType === "country" ? countrySearch : locationSearch}
-                onChangeText={(text) => {
-                  if (modalType === "country") {
-                    setCountrySearch(text);
-                  } else {
-                    setLocationSearch(text);
-                  }
-                }}
-              />
-              <ScrollView style={styles.modalScrollView}>
-                {getFilteredData().map((item) => (
-                  <TouchableOpacity
-                    key={modalType === "country" ? item.value : `${item.code}-${item.name}`}
-                    style={styles.modalItem}
-                    onPress={() => handleItemSelect(item)}
-                  >
-                    <Text>{modalType === "country" ? item.label : item.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={closeModalHandler}
-              >
-                <Text style={styles.modalCloseButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+        </View>
+      </ScrollView>
+      {renderBottomSheet()}
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#FDFDFD",
-    borderRadius: 25,
-    borderColor: "black",
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "90%" : "30%",
-    alignSelf: "center",
-    elevation: 5,
-    top: Platform.OS === "android" || Platform.OS === "ios" ? 30 : 20,
-    padding: Platform.OS === "android" || Platform.OS === "ios" ? "10%" : "3%",
-    marginBottom: Platform.OS === "android" || Platform.OS === "ios" ? "3%" : "5%",
-    paddingLeft: Platform.OS === "android" || Platform.OS === "ios" ? "5%" : "2%",
-    paddingRight: Platform.OS === "android" || Platform.OS === "ios" ? "10%" : "2%",
-    paddingBottom: Platform.OS === "android" || Platform.OS === "ios" ? "100" : "0%"
+    flex: 1,
+    backgroundColor: "#D8E3E7",
+    padding: 20,
+    justifyContent: "center",
+    alignItems: "center"
   },
-  header: {
-    color: "#2B2D42",
-    fontSize: 26,
+  card: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    padding: 20,
+    marginBottom: 100,
+    width: Platform.OS === "web" ? "80%" : "95%"
+  },
+  title: {
+    fontSize: 20,
     fontWeight: "bold",
+    fontFamily: "OpenSanssemibold",
+    color: "Black",
     textAlign: "center",
-    paddingVertical: 10,
-    marginTop: Platform.OS === "android" || Platform.OS === "ios" ? "5" : "0%",
+    padding: 15,
+  },
+  row: {
+    flexDirection: Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    marginBottom: 15,
+  },
+  inputContainer: {
+    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "48%",
+    marginBottom: 15,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
-    color: "#2B2D42",
     marginBottom: 5,
+    color: "#555",
+    fontFamily: "OpenSanssemibold",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#E0E6ED",
+    borderColor: "#ddd",
     borderRadius: 25,
-    padding: 10,
-    fontSize: 14,
-    color: "#E0E6ED",
-    width: "100%",
-    height: 45,
+    padding: 12,
+    backgroundColor: "#f9f9f9",
+    fontFamily: "OpenSanssemibold",
   },
-  buttonContainer: {
+  disabledInput: {
+    backgroundColor: "#eee",
+    color: "#999",
+  },
+  buttonRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-    paddingTop: Platform.OS === "android" || Platform.OS === "ios" ? "10" : "0%",
-    height: Platform.OS === "android" || Platform.OS === "ios" ? "60" : "100",
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "280" : "0%",   
+    justifyContent: "center",
+    marginTop: 20,
   },
-  addButton: {
+  registerButton: {
     backgroundColor: "#3E5C76",
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    borderRadius: 25,
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "120" : "0%",
+    padding: 12,
+    borderRadius: 30,
+    marginRight: 25,
+    minWidth: 120,
+    alignItems: "center",
   },
   cancelButton: {
     backgroundColor: "#3E5C76",
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    borderRadius: 25,
-    width: Platform.OS === "android" || Platform.OS === "ios" ? "120" : "0%",
+    padding: 12,
+    borderRadius: 30,
+    minWidth: 120,
+    alignItems: "center",
   },
   buttonText: {
-    color: "#fff",
-    fontSize: 18,
+    color: "white",
     fontWeight: "bold",
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
+  },
+  errorContainer: {
+    backgroundColor: "#ffeeee",
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#ffcccc",
+  },
+  errorText: {
+    color: "#ff4444",
     textAlign: "center",
-    marginTop: Platform.OS === "android" || Platform.OS === "ios" ? "5" : "0%",
+    fontFamily: "OpenSanssemibold",
   },
-  // Modal styles
-  modalContainer: {
+  // Bottom sheet styles
+  bottomSheetOverlay: {
     flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: "white",
+  bottomSheetContent: {
+    width: '100%',
+    backgroundColor: 'transparent',
+  },
+  bottomSheet: {
+    backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: "50%",
+    maxHeight: Dimensions.get('window').height * 0.7,
   },
-  modalSearchInput: {
+  bottomSheetTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+    fontFamily: "OpenSanssemibold",
+  },
+  searchContainer: {
+    marginBottom: 15,
+  },
+  searchInput: {
     borderWidth: 1,
-    borderColor: "#E0E6ED",
+    borderColor: '#ddd',
     borderRadius: 25,
-    padding: 10,
-    fontSize: 14,
-    color: "#2B2D42",
-    marginBottom: 10,
+    padding: 12,
+    backgroundColor: '#f9f9f9',
+    fontFamily: "OpenSanssemibold",
   },
-  modalScrollView: {
-    maxHeight: "70%",
+  listContainer: {
+    maxHeight: Dimensions.get('window').height * 0.5,
   },
-  modalItem: {
+  listItem: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: '#eee',
   },
-  modalCloseButton: {
-    backgroundColor: "#3E5C76",
-    padding: 10,
-    borderRadius: 25,
-    marginTop: 10,
-    alignItems: "center",
+  listItemText: {
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
-  modalCloseButtonText: {
-    color: "white",
-    fontWeight: "bold",
+  bottomSheetCloseButton: {
+    backgroundColor: '#3E5C76',
+    padding: 12,
+    borderRadius: 30,
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  bottomSheetCloseButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
 });
 

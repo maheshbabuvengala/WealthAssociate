@@ -1,46 +1,78 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
+  Dimensions,
   ScrollView,
-  TouchableWithoutFeedback,
-  Keyboard,
+  Platform,
   Alert,
+  Keyboard,
+  ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
+  FlatList,
+  Pressable,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../data/ApiUrl";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 
+const screenHeight = Dimensions.get("window").height;
+const { width } = Dimensions.get("window");
+const isSmallScreen = width < 600;
+
 const AddInvestor = ({ closeModal }) => {
-  const [fullName, setFullName] = useState("");
-  const [skill, setSkill] = useState("");
-  const [location, setLocation] = useState("");
-  const [mobileNumber, setMobileNumber] = useState("");
+  const [formData, setFormData] = useState({
+    fullName: "",
+    skill: "",
+    location: "",
+    mobileNumber: "",
+  });
   const [loading, setLoading] = useState(false);
-  const [Details, setDetails] = useState(null);
-  const [skills, setSkills] = useState(["Land Lord", "Investor"]);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [constituencies, setConstituencies] = useState([]);
-  const [locationSearch, setLocationSearch] = useState("");
-  const [showLocationList, setShowLocationList] = useState(false);
+  const [userDetails, setUserDetails] = useState({});
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [userType, setUserType] = useState("");
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [bottomSheetType, setBottomSheetType] = useState(null);
+  const [filteredData, setFilteredData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [constituencies, setConstituencies] = useState([]);
+  const [skills, setSkills] = useState(["Land Lord", "Investor"]);
 
   const navigation = useNavigation();
-  const getDetails = async () => {
+  const scrollViewRef = useRef();
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => setKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  const fetchUserDetails = async () => {
     try {
       const [token, storedUserType] = await Promise.all([
         AsyncStorage.getItem("authToken"),
         AsyncStorage.getItem("userType"),
       ]);
 
-      if (!token) return;
+      if (!token || !storedUserType) return;
 
-      setUserType(storedUserType || "");
+      setUserType(storedUserType);
 
       let endpoint = "";
       switch (storedUserType) {
@@ -77,16 +109,11 @@ const AddInvestor = ({ closeModal }) => {
       if (!response.ok) throw new Error("Failed to fetch user details");
 
       const data = await response.json();
-      setDetails(data);
+      setUserDetails(data);
     } catch (error) {
       console.error("Error fetching user details:", error);
     }
   };
-
-  useEffect(() => {
-    getDetails();
-    fetchConstituencies();
-  }, []);
 
   const fetchConstituencies = async () => {
     try {
@@ -98,35 +125,99 @@ const AddInvestor = ({ closeModal }) => {
     }
   };
 
-  const filteredConstituencies = constituencies.flatMap((item) =>
-    item.assemblies.filter((assembly) =>
-      assembly.name.toLowerCase().includes(locationSearch.toLowerCase())
-    )
-  );
+  useEffect(() => {
+    fetchUserDetails();
+    fetchConstituencies();
+  }, []);
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const openBottomSheet = (type) => {
+    Keyboard.dismiss();
+    setBottomSheetType(type);
+    setSearchTerm("");
+    
+    switch (type) {
+      case "skill":
+        setFilteredData(skills);
+        break;
+      case "location":
+        const assemblies = constituencies.flatMap(district => district.assemblies);
+        setFilteredData(assemblies);
+        break;
+      default:
+        setFilteredData([]);
+    }
+    
+    setBottomSheetVisible(true);
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 300);
+  };
+
+  const handleSearch = (text) => {
+    setSearchTerm(text);
+    
+    switch (bottomSheetType) {
+      case "skill":
+        setFilteredData(
+          skills.filter(item =>
+            item.toLowerCase().includes(text.toLowerCase())
+          )
+        );
+        break;
+      case "location":
+        const assemblies = constituencies.flatMap(district => district.assemblies);
+        setFilteredData(
+          assemblies.filter(item =>
+            item.name.toLowerCase().includes(text.toLowerCase())
+          )
+        );
+        break;
+      default:
+        setFilteredData([]);
+    }
+  };
+
+  const handleSelectItem = (item) => {
+    switch (bottomSheetType) {
+      case "skill":
+        handleInputChange("skill", item);
+        break;
+      case "location":
+        handleInputChange("location", item.name);
+        break;
+    }
+    setBottomSheetVisible(false);
+  };
 
   const handleRegister = async () => {
+    const { fullName, skill, location, mobileNumber } = formData;
+
     if (!fullName || !skill || !location || !mobileNumber) {
       Alert.alert("Error", "All fields are required");
       return;
     }
 
     setLoading(true);
+    setErrorMessage("");
+
+    const addedByValue =
+      userDetails.MobileNumber ||
+      userDetails.MobileIN ||
+      userDetails.Number ||
+      "Wealthassociate";
+
+    const registeredByValue = [
+      "WealthAssociate",
+      "ReferralAssociate",
+    ].includes(userType)
+      ? userType
+      : "WealthAssociate";
+
     try {
-      // Determine the AddedBy value with fallbacks
-      const addedByValue =
-        Details?.MobileNumber ||
-        Details?.MobileIN ||
-        Details?.Number ||
-        "Wealthassociate";
-
-      // Determine the RegisteredBy value based on user type
-      const registeredByValue = [
-        "WealthAssociate",
-        "ReferralAssociate",
-      ].includes(userType)
-        ? userType
-        : "WealthAssociate";
-
       const response = await fetch(`${API_URL}/investors/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -143,281 +234,355 @@ const AddInvestor = ({ closeModal }) => {
       const data = await response.json();
       if (response.ok) {
         Alert.alert("Success", "Registration successful");
-        setFullName("");
-        setSkill("");
-        setLocation("");
-        setMobileNumber("");
+        setFormData({
+          fullName: "",
+          skill: "",
+          location: "",
+          mobileNumber: "",
+        });
         navigation.goBack();
       } else {
-        Alert.alert("Error", data.message || "Registration failed");
+        setErrorMessage(data.message || "Registration failed");
       }
     } catch (error) {
-      Alert.alert("Error", "Error: " + error.message);
+      console.error("Registration error:", error);
+      setErrorMessage("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const renderDropdown = () => {
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => handleSelectItem(item)}
+    >
+      <Text style={styles.listItemText}>
+        {bottomSheetType === "skill" ? item : item.name}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderBottomSheet = () => {
+    let title = "";
+    switch (bottomSheetType) {
+      case "skill":
+        title = "Select Category";
+        break;
+      case "location":
+        title = "Select Location";
+        break;
+      default:
+        title = "Select";
+    }
+
     return (
-      <View style={styles.dropdownContainer}>
-        <ScrollView style={styles.scrollContainer}>
-          {skills.map((item) => (
-            <TouchableOpacity
-              key={item}
-              style={styles.listItem}
-              onPress={() => {
-                setSkill(item);
-                setShowDropdown(false);
-              }}
-            >
-              <Text>{item}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      <Modal
+        visible={bottomSheetVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setBottomSheetVisible(false)}
+      >
+        <Pressable 
+          style={styles.bottomSheetOverlay}
+          onPress={() => setBottomSheetVisible(false)}
+        >
+          <Pressable style={styles.bottomSheetContent}>
+            <View style={styles.bottomSheet}>
+              <Text style={styles.bottomSheetTitle}>{title}</Text>
+              
+              <View style={styles.searchContainer}>
+                <TextInput
+                  ref={searchInputRef}
+                  style={styles.searchInput}
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChangeText={handleSearch}
+                />
+              </View>
+              
+              <FlatList
+                data={filteredData}
+                renderItem={renderItem}
+                keyExtractor={(item, index) => 
+                  bottomSheetType === "skill" ? item : `${item.code}-${index}`
+                }
+                keyboardShouldPersistTaps="handled"
+                style={styles.listContainer}
+              />
+              
+              <TouchableOpacity
+                style={styles.bottomSheetCloseButton}
+                onPress={() => setBottomSheetVisible(false)}
+              >
+                <Text style={styles.bottomSheetCloseButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     );
   };
 
   return (
-    // <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-    // <KeyboardAvoidingView>
-    <ScrollView style={styles.container}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerText}>Register Investor</Text>
-        </View>
-
-        <View style={styles.form}>
-          {/* Full Name Input */}
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            value={fullName}
-            onChangeText={setFullName}
-            style={styles.input}
-            placeholder="Full Name"
-            placeholderTextColor="#999"
-          />
-
-          {/* Category Select */}
-          <Text style={styles.label}>Select Category</Text>
-          <View style={styles.inputContainer}>
-            <View style={styles.searchInputContainer}>
-              <TouchableOpacity
-                style={[styles.searchInput, { justifyContent: "center" }]}
-                onPress={() => {
-                  setShowDropdown(!showDropdown);
-                  setShowLocationList(false);
-                }}
-              >
-                <Text style={skill ? {} : styles.placeholderText}>
-                  {skill || "-- Select Category --"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShowDropdown(!showDropdown)}
-                style={styles.dropdownToggle}
-              >
-                <Text style={styles.dropdownToggleText}>
-                  {showDropdown ? "▲" : "▼"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            {showDropdown && renderDropdown()}
-          </View>
-
-          {/* Location Input */}
-          <Text style={styles.label}>Location</Text>
-          <View style={styles.inputContainer}>
-            <View style={styles.searchInputContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Ex. Vijayawada"
-                placeholderTextColor="#999"
-                value={location}
-                onChangeText={(text) => {
-                  setLocation(text);
-                  setLocationSearch(text);
-                  setShowLocationList(text.length > 0);
-                }}
-                onFocus={() => {
-                  setShowLocationList(true);
-                  setShowDropdown(false);
-                }}
-              />
-              <TouchableOpacity
-                onPress={() => setShowLocationList(!showLocationList)}
-                style={styles.dropdownToggle}
-              >
-                <Text style={styles.dropdownToggleText}>
-                  {showLocationList ? "▲" : "▼"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            {showLocationList && filteredConstituencies.length > 0 && (
-              <View style={styles.dropdownContainer}>
-                <ScrollView style={styles.scrollContainer}>
-                  {filteredConstituencies.map((item) => (
-                    <TouchableOpacity
-                      key={`${item.code}-${item.name}`}
-                      style={styles.listItem}
-                      onPress={() => {
-                        setLocation(item.name);
-                        setShowLocationList(false);
-                      }}
-                    >
-                      <Text>{item.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.container}>
+          <Text style={styles.title}>Register Investor</Text>
+          <View style={styles.card}>
+            {errorMessage ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
               </View>
-            )}
-          </View>
+            ) : null}
 
-          {/* Mobile Number Input */}
-          <Text style={styles.label}>Mobile Number</Text>
-          <TextInput
-            value={mobileNumber}
-            onChangeText={(text) =>
-              setMobileNumber(text.replace(/[^0-9]/g, ""))
-            }
-            keyboardType="phone-pad"
-            style={styles.input}
-            placeholder="Mobile Number"
-            placeholderTextColor="#999"
-            maxLength={10}
-          />
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Full Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full Name"
+                  value={formData.fullName}
+                  onChangeText={(text) => handleInputChange("fullName", text)}
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Mobile Number</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex. 9063392872"
+                  keyboardType="phone-pad"
+                  value={formData.mobileNumber}
+                  onChangeText={(text) => 
+                    handleInputChange("mobileNumber", text.replace(/[^0-9]/g, ""))
+                  }
+                  maxLength={10}
+                />
+              </View>
+            </View>
 
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.registerButton, loading && styles.disabledButton]}
-              onPress={handleRegister}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Register</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.buttonText}>Cancel</Text>
-            </TouchableOpacity>
+            <View style={styles.row}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Select Category</Text>
+                <TouchableOpacity
+                  onPress={() => openBottomSheet("skill")}
+                >
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Select Category"
+                    value={formData.skill}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Location</Text>
+                <TouchableOpacity
+                  onPress={() => openBottomSheet("location")}
+                >
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex. Vijayawada"
+                    value={formData.location}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.registerButton}
+                onPress={handleRegister}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Register</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => navigation.goBack()}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+      {renderBottomSheet()}
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    alignSelf: "center",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    width: "100%",
-    maxWidth: 400,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  header: {
-    backgroundColor: "#E91E63",
-    padding: 15,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-  },
-  headerText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-    color: "#fff",
-  },
-  form: {
+    flex: 1,
+    backgroundColor: "#D8E3E7",
     padding: 20,
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  card: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    padding: 20,
+    marginBottom: 100,
+    width: Platform.OS === "web" ? "80%" : "95%"
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+    fontFamily: "OpenSanssemibold",
+    color: "Black",
+    textAlign: "center",
+    padding: 15,
+  },
+  row: {
+    flexDirection: Platform.OS === "android" || Platform.OS === "ios" ? "column" : "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    marginBottom: 15,
+  },
+  inputContainer: {
+    width: Platform.OS === "android" || Platform.OS === "ios" ? "100%" : "48%",
+    marginBottom: 15,
   },
   label: {
     fontSize: 14,
     fontWeight: "bold",
     marginBottom: 5,
+    color: "#555",
+    fontFamily: "OpenSanssemibold",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#ddd",
     borderRadius: 25,
     padding: 12,
-    marginBottom: 15,
+    backgroundColor: "#f9f9f9",
+    fontFamily: "OpenSanssemibold",
   },
-  inputContainer: {
-    marginBottom: 15,
+  disabledInput: {
+    backgroundColor: "#eee",
+    color: "#999",
   },
-  searchInputContainer: {
+  buttonRow: {
     flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 25,
-    paddingRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    padding: 12,
-  },
-  dropdownToggle: {
-    padding: 5,
-  },
-  dropdownToggleText: {
-    fontSize: 12,
-    color: "#666",
-  },
-  dropdownContainer: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 5,
-    marginTop: 5,
-    maxHeight: 200,
-    backgroundColor: "#e6708e",
-  },
-  scrollContainer: {
-    maxHeight: 150,
-  },
-  listItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    marginTop: 20,
   },
   registerButton: {
-    backgroundColor: "#E91E63",
+    backgroundColor: "#3E5C76",
     padding: 12,
-    borderRadius: 25,
-    flex: 1,
-    marginRight: 10,
+    borderRadius: 30,
+    marginRight: 25,
+    minWidth: 120,
+    alignItems: "center",
   },
   cancelButton: {
-    backgroundColor: "#000",
+    backgroundColor: "#3E5C76",
     padding: 12,
-    borderRadius: 25,
-    flex: 1,
+    borderRadius: 30,
+    minWidth: 120,
+    alignItems: "center",
   },
   buttonText: {
-    textAlign: "center",
-    color: "#fff",
+    color: "white",
     fontWeight: "bold",
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
-  disabledButton: {
-    opacity: 0.6,
+  errorContainer: {
+    backgroundColor: "#ffeeee",
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#ffcccc",
   },
-  placeholderText: {
-    color: "rgba(0, 0, 0, 0.5)",
+  errorText: {
+    color: "#ff4444",
+    textAlign: "center",
+    fontFamily: "OpenSanssemibold",
+  },
+  // Bottom sheet styles
+  bottomSheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheetContent: {
+    width: '100%',
+    backgroundColor: 'transparent',
+  },
+  bottomSheet: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: Dimensions.get('window').height * 0.7,
+  },
+  bottomSheetTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+    fontFamily: "OpenSanssemibold",
+  },
+  searchContainer: {
+    marginBottom: 15,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 25,
+    padding: 12,
+    backgroundColor: '#f9f9f9',
+    fontFamily: "OpenSanssemibold",
+  },
+  listContainer: {
+    maxHeight: Dimensions.get('window').height * 0.5,
+  },
+  listItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  listItemText: {
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
+  },
+  bottomSheetCloseButton: {
+    backgroundColor: '#3E5C76',
+    padding: 12,
+    borderRadius: 30,
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  bottomSheetCloseButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+    fontFamily: "OpenSanssemibold",
   },
 });
 

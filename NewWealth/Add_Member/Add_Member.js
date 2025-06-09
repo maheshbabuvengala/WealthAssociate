@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   actionButtonsContainer: {
-    maxHeight: 100,
+    maxHeight: 110,
   },
   actionButtonsContentContainer: {
     paddingHorizontal: 2,
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#e63946",
+    backgroundColor: "#3E5C76",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   tabTextActive: {
-    color: "#e63946",
+    color: "#3E5C76",
     fontWeight: "600",
   },
   activeTabIndicator: {
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
     left: 15,
     right: 15,
     height: 3,
-    backgroundColor: "#e63946",
+    backgroundColor: "#3E5C76",
     borderRadius: 2,
   },
   modalContainer: {
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#e63946",
+    backgroundColor: "#3E5C76",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   },
   modalCancelButtonText: {
     fontSize: 16,
-    color: "#e63946",
+    color: "#3E5C76",
     fontWeight: "bold",
   },
 });
