@@ -11,11 +11,13 @@ import {
   Modal,
   Alert,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
+import Carousel from "react-native-reanimated-carousel";
 
 const { width } = Dimensions.get("window");
 
@@ -26,6 +28,7 @@ const WealthPropertiesScreen = () => {
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
   const [referredInfo, setReferredInfo] = useState(null);
   const navigation = useNavigation();
+  const [currentIndices, setCurrentIndices] = useState({});
 
   useEffect(() => {
     fetchProperties();
@@ -43,30 +46,20 @@ const WealthPropertiesScreen = () => {
     }
   };
 
-  // Update the formatImages function to use newImageUrls instead of photo
   const formatImages = (property) => {
     if (!property) return [];
 
-    // Handle array of newImageUrls
-    if (
-      Array.isArray(property.newImageUrls) &&
-      property.newImageUrls.length > 0
-    ) {
-      return property.newImageUrls.map((url) => ({
-        uri: url, // Assuming URLs are already complete
-      }));
+    if (Array.isArray(property.newImageUrls) && property.newImageUrls.length > 0) {
+      return property.newImageUrls.filter(url => url);
     }
 
-    // Handle single image as string
     if (typeof property.newImageUrls === "string") {
-      return [{ uri: property.newImageUrls }];
+      return [property.newImageUrls];
     }
 
-    // Fallback to default logo
-    return [require("../../../assets/logo.png")];
+    return [];
   };
 
-  // Update the fetchProperties function to use the updated formatImages
   const fetchProperties = async () => {
     try {
       const response = await fetch(`${API_URL}/properties/getApproveProperty`);
@@ -75,10 +68,18 @@ const WealthPropertiesScreen = () => {
         const wealthProps = data.filter(
           (property) => getPropertyTag(property.createdAt) === "Wealth Property"
         );
+        
+        // Initialize current indices for carousels
+        const indices = {};
+        wealthProps.forEach((_, index) => {
+          indices[index] = 0;
+        });
+        setCurrentIndices(indices);
+
         setProperties(
           wealthProps.map((property) => ({
             ...property,
-            images: formatImages(property), // This now uses newImageUrls
+            images: formatImages(property),
           }))
         );
       }
@@ -106,10 +107,6 @@ const WealthPropertiesScreen = () => {
     }
   };
 
-  const getLastFourChars = (id) => {
-    return id ? id.slice(-4) : "N/A";
-  };
-
   const handlePropertyPress = async (property) => {
     if (!property?._id) {
       console.error("Property ID is missing");
@@ -127,7 +124,6 @@ const WealthPropertiesScreen = () => {
     }
 
     try {
-      // Store the property in AsyncStorage before navigating
       await AsyncStorage.setItem(
         "currentProperty",
         JSON.stringify({
@@ -165,7 +161,7 @@ const WealthPropertiesScreen = () => {
       }
 
       const shareData = {
-        photo: property.images?.[0]?.uri || null,
+        photo: property.images?.[0] || null,
         location: property.location || "Location not specified",
         price: property.price || "Price not available",
         propertyType: property.propertyType || "Property",
@@ -182,66 +178,51 @@ const WealthPropertiesScreen = () => {
     }
   };
 
-  const PropertyImageSlider = ({ images }) => {
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const scrollRef = useRef(null);
-
-    useEffect(() => {
-      if (images.length <= 1) return;
-
-      const interval = setInterval(() => {
-        const nextIndex = (currentImageIndex + 1) % images.length;
-        setCurrentImageIndex(nextIndex);
-        scrollRef.current?.scrollTo({
-          x: nextIndex * width,
-          animated: true,
-        });
-      }, 3000);
-
-      return () => clearInterval(interval);
-    }, [currentImageIndex, images.length]);
+  const PropertyImageSlider = ({ images, index }) => {
+    const carouselRef = useRef(null);
 
     if (images.length === 0) {
       return (
         <Image
           source={require("../../../assets/logo.png")}
-          style={styles.propertyImage}
-          resizeMode="contain"
+          style={{ width: '100%', height: 200 }}
+          resizeMode="cover"
         />
       );
     }
 
     return (
-      <View style={styles.imageSliderContainer}>
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => {
-            const offsetX = e.nativeEvent.contentOffset.x;
-            const newIndex = Math.round(offsetX / width);
-            setCurrentImageIndex(newIndex);
-          }}
-        >
-          {images.map((image, index) => (
+      <View style={styles.imageSlider}>
+        <Carousel
+          ref={carouselRef}
+          width={width - 32}
+          height={200}
+          loop={images.length > 1}
+          data={images}
+          scrollAnimationDuration={800}
+          onSnapToItem={(i) => setCurrentIndices(prev => ({...prev, [index]: i}))}
+          renderItem={({ item }) => (
             <Image
-              key={index}
-              source={image}
-              style={styles.propertyImage}
+              source={{ uri: item }}
+              style={{
+                width: '100%',
+                height: 200,
+                borderTopLeftRadius: 12,
+                borderTopRightRadius: 12,
+              }}
               resizeMode="cover"
             />
-          ))}
-        </ScrollView>
+          )}
+        />
 
         {images.length > 1 && (
           <View style={styles.pagination}>
-            {images.map((_, index) => (
+            {images.map((_, i) => (
               <View
-                key={index}
+                key={i}
                 style={[
-                  styles.paginationDot,
-                  index === currentImageIndex && styles.activeDot,
+                  styles.dot,
+                  i === currentIndices[index] ? styles.activeDot : styles.inactiveDot,
                 ]}
               />
             ))}
@@ -254,14 +235,17 @@ const WealthPropertiesScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#D81B60" />
+        <ActivityIndicator size="large" color="#3E5C76" />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
         {properties.length === 0 ? (
           <Text style={styles.noPropertiesText}>
             No wealth properties available
@@ -271,67 +255,57 @@ const WealthPropertiesScreen = () => {
             <TouchableOpacity
               key={index}
               onPress={() => handlePropertyPress(property)}
-              activeOpacity={0.8}
-              style={styles.propertyCardContainer}
+              activeOpacity={0.9}
+              style={styles.card}
             >
-              <View style={styles.propertyCard}>
-                <PropertyImageSlider images={property.images} />
+              <PropertyImageSlider images={property.images} index={index} />
 
-                <View
-                  style={[
-                    styles.statusTag,
-                    {
-                      backgroundColor: "#9C27B0",
-                    },
-                  ]}
-                >
-                  <Text style={styles.statusText}>Wealth Property</Text>
-                </View>
-                <View style={styles.propertyIdContainer}>
-                  <Text style={styles.propertyId}>
-                    ID: {getLastFourChars(property._id)}
+              <View style={styles.content}>
+                <View style={styles.propertyIdWrapper}>
+                  <Text style={styles.propertyIdText}>
+                    Property ID: {property?._id?.slice(-4)}
                   </Text>
                 </View>
-                <Text style={styles.cardTitle}>{property.propertyType}</Text>
-                {/* <Text style={styles.cardSubtitle}>
-                  {property.propertyDetails || "20 sqft"}
-                </Text> */}
-                <Text style={styles.cardSubtitle}>
-                  Location: {property.location}
-                </Text>
-                <Text style={styles.cardPrice}>
-                  ₹ {parseInt(property.price).toLocaleString()}
-                </Text>
-                <View style={styles.cardButtons}>
-                  <TouchableOpacity
-                    style={styles.enquiryBtn}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleEnquiryNow(property);
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "bold" }}>
-                      Enquiry Now
-                    </Text>
+
+                <View style={styles.headerRow}>
+                  <Text style={styles.propertyType}>{property.propertyType}</Text>
+                  <TouchableOpacity>
+                    <Ionicons
+                      name={"heart-outline"}
+                      size={26}
+                      color={"gray"}
+                    />
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.shareBtn}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleShare(property);
-                    }}
-                  >
-                    <FontAwesome name="share" size={16} color="white" />
-                    <Text
-                      style={{
-                        color: "white",
-                        marginLeft: 5,
-                        fontWeight: "bold",
+                </View>
+
+                <Text style={styles.location}>📍 {property.location}</Text>
+
+                <View style={styles.priceRow}>
+                  <Text style={styles.price}>
+                    ₹ {parseInt(property.price).toLocaleString()}
+                  </Text>
+
+                  <View style={styles.priceButtons}>
+                    <TouchableOpacity
+                      style={[styles.btn, styles.enquireBtn]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleEnquiryNow(property);
                       }}
                     >
-                      Share
-                    </Text>
-                  </TouchableOpacity>
+                      <Text style={styles.btnText}>Enquire</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.btn, styles.shareBtn]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleShare(property);
+                      }}
+                    >
+                      <Text style={styles.btnText}>Share</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             </TouchableOpacity>
@@ -397,17 +371,20 @@ const WealthPropertiesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f1f1f1",
-    paddingHorizontal: 15,
-    paddingBottom: "15%",
+    backgroundColor: "#f8f9fa",
+    paddingHorizontal: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#f8f9fa",
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   noPropertiesText: {
     textAlign: "center",
@@ -415,111 +392,108 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
   },
-  propertyCardContainer: {
-    marginBottom: 15,
-  },
-  propertyCard: {
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 12,
+  card: {
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    marginVertical: 10,
+    overflow: "hidden",
+    elevation: 3,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-    position: "relative",
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    alignSelf: "center",
+    width: Platform.OS === "web" ? 350 : '100%',
   },
-  imageSliderContainer: {
+  imageSlider: {
     position: "relative",
-    marginBottom: 10,
-  },
-  propertyImage: {
-    width: width - 40,
-    height: 200,
-    borderRadius: 8,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    overflow: "hidden",
   },
   pagination: {
     position: "absolute",
-    bottom: 10,
-    flexDirection: "row",
+    bottom: 8,
     alignSelf: "center",
+    flexDirection: "row",
   },
-  paginationDot: {
+  dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.5)",
-    margin: 5,
+    marginHorizontal: 3,
   },
   activeDot: {
     backgroundColor: "#fff",
   },
-  statusTag: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    zIndex: 1,
+  inactiveDot: {
+    backgroundColor: "rgba(255,255,255,0.4)",
   },
-  statusText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
+  content: {
+    padding: 14,
   },
-  propertyIdContainer: {
-    alignItems: "flex-end",
-    paddingRight: 5,
-    marginBottom: 5,
-  },
-  propertyId: {
-    backgroundColor: "green",
-    borderRadius: 8,
-    paddingHorizontal: 8,
+  propertyIdWrapper: {
+    backgroundColor: "#EEF2F3",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    color: "#fff",
-    fontWeight: "600",
+    borderRadius: 20,
+    marginBottom: 6,
   },
-  cardTitle: {
-    fontWeight: "bold",
-    fontSize: 16,
-    color: "#333",
-    marginBottom: 4,
-  },
-  cardSubtitle: {
+  propertyIdText: {
     fontSize: 13,
-    color: "#666",
-    marginBottom: 2,
+    color: "#555",
+    fontWeight: "500",
   },
-  cardPrice: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#4CAF50",
-    marginVertical: 8,
-  },
-  cardButtons: {
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 5,
+    alignItems: "center",
   },
-  enquiryBtn: {
-    backgroundColor: "#D81B60",
-    padding: 10,
-    borderRadius: 5,
-    width: "48%",
+  propertyType: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  location: {
+    fontSize: 15,
+    color: "#555",
+    marginTop: 4,
+  },
+  priceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 10,
+    flexWrap: "wrap",
+  },
+  price: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1B4D3E",
+  },
+  priceButtons: {
+    flexDirection: "row",
+    marginTop: Platform.OS === "web" ? 0 : 6,
+  },
+  btn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginLeft: 8,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
+  },
+  enquireBtn: {
+    backgroundColor: "#3E5C76",
   },
   shareBtn: {
-    backgroundColor: "#2196F3",
-    padding: 10,
-    borderRadius: 5,
-    width: "48%",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
+    backgroundColor: "#666",
+  },
+  btnText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
   },
   modalContainer: {
     flex: 1,

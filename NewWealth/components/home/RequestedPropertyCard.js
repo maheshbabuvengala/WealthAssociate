@@ -29,13 +29,13 @@ const RequestedPropertyCard = ({ item, onIHavePress }) => {
     }
   };
 
-  const getLastFourCharss = (id) => {
+  const getLastFourChars = (id) => {
     if (!id) return "N/A";
     return id.length > 4 ? id.slice(-4) : id;
   };
 
   const propertyTag = getPropertyTag(item.createdAt);
-  const propertyId = getLastFourCharss(item.id);
+  const propertyId = getLastFourChars(item.id);
 
   const getImageByPropertyType = (propertyType) => {
     switch ((propertyType || "").toLowerCase()) {
@@ -76,88 +76,99 @@ const RequestedPropertyCard = ({ item, onIHavePress }) => {
   const imageSource = getImageSource();
 
   return (
-    <View style={styles.requestedCard}>
+    <View style={styles.card}>
       <LazyImage
         source={imageSource}
-        style={styles.requestedImage}
+        style={styles.propertyImage}
         cacheKey={`requested_${item.id}`}
       />
-      <View style={styles.propertyIdContainer}>
-        <Text style={styles.propertyId}>ID: {propertyId}</Text>
+      
+      <View style={styles.content}>
+        <View style={styles.propertyIdWrapper}>
+          <Text style={styles.propertyIdText}>ID: {propertyId}</Text>
+        </View>
+        
+        <Text style={styles.propertyTitle}>{item.title}</Text>
+        <Text style={styles.propertyText}>Type: {item.type}</Text>
+        <Text style={styles.propertyText}>Location: {item.location}</Text>
+        <Text style={styles.propertyText}>Budget: {item.budget}</Text>
+        
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            onIHavePress();
+          }}
+        >
+          <Text style={styles.buttonText}>I Have This Property</Text>
+        </TouchableOpacity>
       </View>
-      <View style={styles.details}>
-        <Text style={styles.requestedTitle}>{item.title}</Text>
-        <Text style={styles.requestedText}>Type: {item.type}</Text>
-        <Text style={styles.requestedText}>Location: {item.location}</Text>
-        <Text style={styles.requestedText}>Budget: {item.budget}</Text>
-      </View>
-      <TouchableOpacity
-        style={styles.iHaveButton}
-        onPress={(e) => {
-          e.stopPropagation();
-          onIHavePress();
-        }}
-      >
-        <Text style={styles.buttonText}>I Have</Text>
-      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  requestedCard: {
+  card: {
     width: Platform.select({
       web: 350,
-      default: width * 0.8, // ✅ This now works
+      default: width * 0.85,
     }),
-    backgroundColor: "white",
-    borderRadius: 10,
-    marginRight: 15,
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    marginVertical: 8,
+    marginHorizontal: Platform.OS === "web" ? 0 : 8,
     overflow: "hidden",
     elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
   },
-  requestedImage: {
+  propertyImage: {
     width: "100%",
-    height: 120,
+    height: 160,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
-  requestedTitle: {
-    fontSize: 14,
+  content: {
+    padding: 14,
+  },
+  propertyIdWrapper: {
+    backgroundColor: "#EEF2F3",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+  propertyIdText: {
+    fontSize: 13,
+    color: "#555",
+    fontWeight: "500",
+  },
+  propertyTitle: {
+    fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 5,
+    color: "#333",
+    marginBottom: 6,
   },
-  requestedText: {
-    fontSize: 12,
-    color: "#666",
+  propertyText: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 4,
   },
-  details: {
-    padding: 10,
-  },
-  iHaveButton: {
-    backgroundColor: "#4CAF50",
-    padding: 10,
-    borderRadius: 5,
-    alignSelf: "center",
-    margin: 10,
-    width: "90%",
+  actionButton: {
+    backgroundColor: "#3E5C76",
+    padding: 12,
+    borderRadius: 8,
     alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
   },
   buttonText: {
     color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  propertyIdContainer: {
-    alignItems: "flex-end",
-    paddingRight: 5,
-    marginTop: 5,
-  },
-  propertyId: {
-    backgroundColor: "green",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    color: "#fff",
     fontWeight: "600",
+    fontSize: 15,
   },
 });
 
