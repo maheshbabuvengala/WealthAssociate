@@ -1,26 +1,25 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
-  Text,
   ScrollView,
   StyleSheet,
+  Dimensions,
+  Linking,
+  Platform,
   ActivityIndicator,
   TouchableOpacity,
+  Text,
+  Animated,
   Image,
-  Linking,
-  Modal,
-  Alert,
-  Dimensions,
-  Platform,
 } from "react-native";
-import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_URL } from "../../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import Carousel from "react-native-reanimated-carousel";
-
+import LazyImage from "../../components/home/LazyImage";
 
 const { width } = Dimensions.get("window");
+const API_URL = "https://your-api-url.com"; // Replace with your actual API URL
 
 const RegularPropertiesScreen = () => {
   const [properties, setProperties] = useState([]);
@@ -28,13 +27,44 @@ const RegularPropertiesScreen = () => {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
   const [referredInfo, setReferredInfo] = useState(null);
-  const [likedProperties, setLikedProperties] = useState({});
+  const [likedProperties, setLikedProperties] = useState([]);
   const navigation = useNavigation();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(100)).current;
+
+  useEffect(() => {
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading]);
 
   useEffect(() => {
     fetchProperties();
     loadReferredInfoFromStorage();
+    loadLikedProperties();
   }, []);
+
+  const loadLikedProperties = async () => {
+    try {
+      const storedLikes = await AsyncStorage.getItem("likedProperties");
+      if (storedLikes) {
+        setLikedProperties(JSON.parse(storedLikes));
+      }
+    } catch (error) {
+      console.error("Error loading liked properties:", error);
+    }
+  };
 
   const loadReferredInfoFromStorage = async () => {
     try {
@@ -53,15 +83,9 @@ const RegularPropertiesScreen = () => {
       const data = await response.json();
       if (data && Array.isArray(data)) {
         const regularProps = data.filter(
-          (property) =>
-            getPropertyTag(property.createdAt) === "Regular Property"
+          (property) => getPropertyTag(property.createdAt) === "Regular Property"
         );
-        setProperties(
-          regularProps.map((property) => ({
-            ...property,
-            images: formatImages(property),
-          }))
-        );
+        setProperties(regularProps);
       }
     } catch (error) {
       console.error("Error fetching properties:", error);
@@ -70,37 +94,34 @@ const RegularPropertiesScreen = () => {
     }
   };
 
-  const formatImages = (property) => {
-    if (!property) return [];
-
-    if (Array.isArray(property.newImageUrls)) {
-      return property.newImageUrls.filter((url) => url);
-    } else if (typeof property.newImageUrls === "string") {
-      return [property.newImageUrls];
-    }
-    if (Array.isArray(property.imageUrls)) {
-      return property.imageUrls.filter((url) => url);
-    } else if (typeof property.imageUrls === "string") {
-      return [property.imageUrls];
-    }
-    return [];
-  };
-
   const getPropertyTag = (createdAt) => {
     const currentDate = new Date();
     const propertyDate = new Date(createdAt);
     const timeDifference = currentDate - propertyDate;
     const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
 
-    if (daysDifference <= 3) {
-      return "Regular Property";
-    } else if (daysDifference >= 4 && daysDifference <= 17) {
-      return "Approved Property";
-    } else if (daysDifference >= 18 && daysDifference <= 25) {
-      return "Wealth Property";
-    } else {
-      return "Listed Property";
+    if (daysDifference <= 3) return "Regular Property";
+    if (daysDifference >= 4 && daysDifference <= 17) return "Approved Property";
+    if (daysDifference >= 18 && daysDifference <= 25) return "Wealth Property";
+    return "Listed Property";
+  };
+
+  const normalizeImageSources = (property) => {
+    if (!property) return [];
+
+    if (Array.isArray(property.newImageUrls)) {
+      return property.newImageUrls.filter((url) => url && typeof url === "string");
+    } else if (typeof property.newImageUrls === "string" && property.newImageUrls) {
+      return [property.newImageUrls];
     }
+
+    if (Array.isArray(property.imageUrls)) {
+      return property.imageUrls.filter((url) => url && typeof url === "string");
+    } else if (typeof property.imageUrls === "string" && property.imageUrls) {
+      return [property.imageUrls];
+    }
+
+    return [];
   };
 
   const handlePropertyPress = async (property) => {
@@ -108,6 +129,10 @@ const RegularPropertiesScreen = () => {
       console.error("Property ID is missing");
       return;
     }
+
+    const images = normalizeImageSources(property).map((uri) => ({
+      uri: uri,
+    }));
 
     let formattedPrice = "Price not available";
     try {
@@ -119,29 +144,43 @@ const RegularPropertiesScreen = () => {
       console.error("Error formatting price:", e);
     }
 
-    try {
-      await AsyncStorage.setItem(
-        "currentProperty",
-        JSON.stringify({
-          ...property,
-          id: property._id,
-          price: formattedPrice,
-          images: formatImages(property),
-        })
-      );
+    navigation.navigate("PropertyDetails", {
+      property: {
+        ...property,
+        id: property._id,
+        price: formattedPrice,
+        images: images.length > 0 ? images : [require("../../../assets/logo.png")],
+      },
+    });
+  };
 
-      navigation.navigate("PropertyDetails", {
-        property: {
-          ...property,
-          id: property._id,
-          price: formattedPrice,
-          images: formatImages(property),
-        },
-      });
-    } catch (error) {
-      console.error("Error storing property:", error);
-      Alert.alert("Error", "Failed to navigate to property details");
+  const handleShare = (property) => {
+    const images = normalizeImageSources(property);
+    let shareImage = images.length > 0 ? images[0] : null;
+
+    let formattedPrice = "Price not available";
+    if (property.price) {
+      try {
+        const priceValue = parseInt(property.price);
+        if (!isNaN(priceValue)) {
+          formattedPrice = `₹${priceValue.toLocaleString()}`;
+        }
+      } catch (e) {
+        console.error("Error formatting price:", e);
+      }
     }
+
+    navigation.navigate("PropertyCard", {
+      property: {
+        photo: shareImage,
+        location: property.location || "Location not specified",
+        price: formattedPrice,
+        propertyType: property.propertyType || "Property",
+        PostedBy: property.PostedBy || "",
+        fullName: property.fullName || "Wealth Associate",
+        mobile: property.mobile || property.MobileNumber || "",
+      },
+    });
   };
 
   const handleEnquiryNow = (property) => {
@@ -149,43 +188,45 @@ const RegularPropertiesScreen = () => {
     setPropertyModalVisible(true);
   };
 
-  const handleShare = async (property) => {
+  const toggleLike = async (propertyId) => {
     try {
-      if (!property) {
-        Alert.alert("Error", "No property data to share");
-        return;
+      const token = await AsyncStorage.getItem("authToken");
+      const userDetails = JSON.parse(await AsyncStorage.getItem("userDetails"));
+
+      const newLikedStatus = !likedProperties.includes(propertyId);
+      let updatedLikes;
+
+      if (newLikedStatus) {
+        updatedLikes = [...likedProperties, propertyId];
+      } else {
+        updatedLikes = likedProperties.filter((id) => id !== propertyId);
       }
 
-      const shareData = {
-        photo: formatImages(property)?.[0] || null,
-        location: property.location || "Location not specified",
-        price: property.price || "Price not available",
-        propertyType: property.propertyType || "Property",
-        PostedBy: property.PostedBy || "",
-        fullName: property.fullName || "Wealth Associate",
-        mobile: property.mobile || property.MobileNumber || "",
-      };
+      setLikedProperties(updatedLikes);
+      await AsyncStorage.setItem("likedProperties", JSON.stringify(updatedLikes));
 
-      await AsyncStorage.setItem("sharedProperty", JSON.stringify(shareData));
-      navigation.navigate("PropertyCard", { property: shareData });
+      await fetch(`${API_URL}/properties/like`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token: token || "",
+        },
+        body: JSON.stringify({
+          propertyId: propertyId,
+          like: newLikedStatus,
+          userName: userDetails?.FullName || "User",
+          mobileNumber: userDetails?.MobileNumber || "",
+        }),
+      });
     } catch (error) {
-      console.error("Sharing error:", error);
-      Alert.alert("Error", "Failed to share property");
+      console.error("Error toggling like:", error);
     }
-  };
-
-  const handleLikePress = (propertyId, state) => {
-    setLikedProperties(prev => ({
-      ...prev,
-      [propertyId]: state
-    }));
-    // Here you would typically also update the backend
   };
 
   const PropertyImageSlider = ({ property }) => {
     const carouselRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const images = formatImages(property);
+    const images = normalizeImageSources(property);
 
     if (images.length === 0) {
       return (
@@ -208,7 +249,7 @@ const RegularPropertiesScreen = () => {
           scrollAnimationDuration={800}
           onSnapToItem={(index) => setCurrentIndex(index)}
           renderItem={({ item, index }) => (
-            <Image
+            <LazyImage
               key={index}
               source={{ uri: item }}
               style={{
@@ -250,7 +291,16 @@ const RegularPropertiesScreen = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent}>
+      <Animated.ScrollView
+        style={[
+          styles.scrollView,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+        contentContainerStyle={styles.scrollViewContent}
+      >
         {properties.length === 0 ? (
           <Text style={styles.noPropertiesText}>
             No regular properties available
@@ -274,14 +324,16 @@ const RegularPropertiesScreen = () => {
 
                   <View style={styles.headerRow}>
                     <Text style={styles.propertyType}>{property.propertyType}</Text>
-                    <TouchableOpacity onPress={(e) => {
-                      e.stopPropagation();
-                      handleLikePress(property._id, !likedProperties[property._id]);
-                    }}>
+                    <TouchableOpacity 
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        toggleLike(property._id);
+                      }}
+                    >
                       <Ionicons
-                        name={likedProperties[property._id] ? "heart" : "heart-outline"}
+                        name={likedProperties.includes(property._id) ? "heart" : "heart-outline"}
                         size={26}
-                        color={likedProperties[property._id] ? "red" : "gray"}
+                        color={likedProperties.includes(property._id) ? "red" : "gray"}
                       />
                     </TouchableOpacity>
                   </View>
@@ -320,7 +372,7 @@ const RegularPropertiesScreen = () => {
             </View>
           ))
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       <Modal
         visible={isPropertyModalVisible}

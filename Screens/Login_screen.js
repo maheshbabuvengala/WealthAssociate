@@ -173,22 +173,25 @@ export default function LoginScreen() {
     }
   };
 
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        Alert.alert("Exit App", "Are you sure you want to exit?", [
-          { text: "Cancel", style: "cancel" },
-          { text: "Exit", onPress: () => BackHandler.exitApp() },
-        ]);
-        return true;
-      };
+ useFocusEffect(
+  React.useCallback(() => {
+    const onBackPress = () => {
+      Alert.alert("Exit App", "Are you sure you want to exit?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Exit", onPress: () => BackHandler.exitApp() },
+      ]);
+      return true;
+    };
 
-      BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress
+    );
 
-      return () =>
-        BackHandler.removeEventListener("hardwareBackPress", onBackPress);
-    }, [])
-  );
+    return () => backHandler.remove(); // ✅ Correct way to remove
+  }, [])
+);
+
 
   return (
     <KeyboardAvoidingView
@@ -419,6 +422,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     fontFamily: 'Cairo-Regular',
     paddingVertical: 14,
+    outlineStyle:"none"
   },
   inputIcon: {
     marginLeft: 8,

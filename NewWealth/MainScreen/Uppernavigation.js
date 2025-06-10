@@ -421,6 +421,7 @@ const styles = StyleSheet.create({
   headerWrapper: {
     width: "100%",
     alignItems: "center",
+    top:20
   },
   container: {
     flexDirection: "row",

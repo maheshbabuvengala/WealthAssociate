@@ -12,6 +12,7 @@ import {
   ScrollView,
   TextInput,
   Modal,
+  FlatList,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
@@ -25,7 +26,9 @@ import PropertyModal from "../components/home/PropertyModal";
 import LazyImage from "../components/home/LazyImage";
 
 const { width, height } = Dimensions.get("window");
-const PROPERTIES_PER_PAGE = 20; // Changed from 10 to 20 properties per page
+const PROPERTIES_PER_PAGE = 20;
+const IS_WEB = Platform.OS === "web";
+const ITEMS_PER_ROW = IS_WEB ? 3 : 1; // 3 for web, 1 for mobile
 
 const ViewAllProperties = () => {
   const [properties, setProperties] = useState([]);
@@ -55,10 +58,8 @@ const ViewAllProperties = () => {
   const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(100)).current;
-  // const scrollViewRef = useRef();
   const scrollViewRef = useRef(null);
 
-  // Animation effect
   useEffect(() => {
     if (!loading) {
       Animated.parallel([
@@ -76,14 +77,13 @@ const ViewAllProperties = () => {
     }
   }, [loading]);
 
-  // Scroll to top when page changes
   useEffect(() => {
     console.log("Page changed to:", currentPage);
     setTimeout(() => {
       if (scrollViewRef.current) {
         scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: true });
       }
-    }, 100); // 100ms delay
+    }, 100);
   }, [currentPage]);
 
   const getDetails = async () => {
@@ -149,7 +149,6 @@ const ViewAllProperties = () => {
       const data = await response.json();
       if (data && Array.isArray(data) && data.length > 0) {
         setProperties(data);
-        // Calculate total pages
         const total = Math.ceil(data.length / PROPERTIES_PER_PAGE);
         setTotalPages(total);
       } else {
@@ -303,13 +302,11 @@ const ViewAllProperties = () => {
     }
 
     setProperties(filteredProperties);
-    // Reset pagination when filters change
     setCurrentPage(1);
     setTotalPages(Math.ceil(filteredProperties.length / PROPERTIES_PER_PAGE));
     setFilterModalVisible(false);
   };
 
-  // Reset filters
   const resetFilters = () => {
     setFilterCriteria({ propertyType: "", location: "", price: "" });
     fetchProperties();
@@ -436,7 +433,6 @@ const ViewAllProperties = () => {
     }
   };
 
-  // Categorize properties with search filtering
   const regularProperties = sortPropertiesByConstituency(
     filterProperties(
       properties.filter(
@@ -481,7 +477,6 @@ const ViewAllProperties = () => {
     }
   };
 
-  // Get paginated properties
   const getPaginatedProperties = () => {
     const filtered = getFilteredProperties();
     const startIndex = (currentPage - 1) * PROPERTIES_PER_PAGE;
@@ -489,7 +484,6 @@ const ViewAllProperties = () => {
     return filtered.slice(startIndex, endIndex);
   };
 
-  // Render pagination controls with scrollable page numbers
   const renderPagination = () => {
     const filteredProperties = getFilteredProperties();
     const totalFilteredPages = Math.ceil(
@@ -498,7 +492,6 @@ const ViewAllProperties = () => {
 
     if (totalFilteredPages <= 1) return null;
 
-    // Calculate visible page range
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalFilteredPages, startPage + maxVisiblePages - 1);
@@ -579,6 +572,14 @@ const ViewAllProperties = () => {
     );
   }
 
+  const chunkArray = (array, chunkSize) => {
+    const result = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      result.push(array.slice(i, i + chunkSize));
+    }
+    return result;
+  };
+
   return (
     <View style={styles.container}>
       <Animated.View
@@ -590,7 +591,6 @@ const ViewAllProperties = () => {
           },
         ]}
       >
-        {/* Search and Filter Header */}
         <View style={styles.searchFilterContainer}>
           <View style={styles.searchContainer}>
             <TextInput
@@ -610,35 +610,54 @@ const ViewAllProperties = () => {
         </View>
         {renderPagination()}
 
-        {/* Property List using ScrollView and map */}
         <ScrollView
           ref={scrollViewRef}
           style={styles.propertyScrollView}
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={styles.propertyGridContainer}
         >
           {getPaginatedProperties().length > 0 ? (
-            getPaginatedProperties().map((item) => (
-              <PropertyCard
-                key={item._id}
-                property={item}
-                onPress={() => handlePropertyPress(item)}
-                onEnquiryPress={() => handleEnquiryNow(item)}
-                onSharePress={() => handleShare(item)}
-                isLiked={likedProperties.includes(item._id)}
-                onLikePress={() => toggleLike(item._id)}
-              />
-            ))
+            chunkArray(getPaginatedProperties(), ITEMS_PER_ROW).map(
+              (row, rowIndex) => (
+                <View key={`row-${rowIndex}`} style={styles.propertyRow}>
+                  {row.map((item) => (
+                    <View
+                      key={item._id}
+                      style={[
+                        styles.propertyItemContainer,
+                        IS_WEB && { width: `${100 / ITEMS_PER_ROW}%` },
+                      ]}
+                    >
+                      <PropertyCard
+                        property={item}
+                        onPress={() => handlePropertyPress(item)}
+                        onEnquiryPress={() => handleEnquiryNow(item)}
+                        onSharePress={() => handleShare(item)}
+                        isLiked={likedProperties.includes(item._id)}
+                        onLikePress={() => toggleLike(item._id)}
+                      />
+                    </View>
+                  ))}
+                  {row.length < ITEMS_PER_ROW &&
+                    Array(ITEMS_PER_ROW - row.length)
+                      .fill()
+                      .map((_, index) => (
+                        <View
+                          key={`empty-${rowIndex}-${index}`}
+                          style={[
+                            styles.propertyItemContainer,
+                            IS_WEB && { width: `${100 / ITEMS_PER_ROW}%` },
+                          ]}
+                        />
+                      ))}
+                </View>
+              )
+            )
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No properties found</Text>
             </View>
           )}
         </ScrollView>
-
-        {/* Pagination Controls */}
-        
-
-        {/* Filter Modal */}
         <Modal
           visible={isFilterModalVisible}
           transparent={true}
@@ -648,7 +667,6 @@ const ViewAllProperties = () => {
             <View style={styles.modalContent}>
               <Text style={styles.modalHeading}>Filter Properties</Text>
 
-              {/* Property Type Filter */}
               <View style={styles.filterGroup}>
                 <Text style={styles.filterLabel}>Property Type</Text>
                 <View style={styles.inputContainer}>
@@ -711,7 +729,6 @@ const ViewAllProperties = () => {
                 </View>
               </View>
 
-              {/* Location Filter */}
               <View style={styles.filterGroup}>
                 <Text style={styles.filterLabel}>Location</Text>
                 <View style={styles.inputContainer}>
@@ -773,7 +790,6 @@ const ViewAllProperties = () => {
                 </View>
               </View>
 
-              {/* Price Filter */}
               <View style={styles.filterGroup}>
                 <Text style={styles.filterLabel}>Price (in lakhs)</Text>
                 <View style={styles.inputContainer}>
@@ -835,7 +851,6 @@ const ViewAllProperties = () => {
                 </View>
               </View>
 
-              {/* Apply and Reset Buttons */}
               <View style={styles.modalButtonContainer}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.applyButton]}
@@ -853,8 +868,6 @@ const ViewAllProperties = () => {
             </View>
           </View>
         </Modal>
-
-        {/* Property Enquiry Modal */}
         <PropertyModal
           visible={isPropertyModalVisible}
           onClose={() => setPropertyModalVisible(false)}
@@ -871,7 +884,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#D8E3E7",
     width: "100%",
-    paddingBottom: "45%",
+    paddingBottom: Platform.OS === "web" ? "45%" : "20%",
   },
   contentContainer: {
     flex: 1,
@@ -912,31 +925,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  tabContainer: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-  },
-  tabButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    marginHorizontal: 5,
-    borderRadius: 20,
-    backgroundColor: "#f5f5f5",
-  },
-  activeTabButton: {
-    backgroundColor: "#E91E63",
-  },
-  tabButtonText: {
-    color: "#333",
-    fontWeight: "500",
-  },
-  activeTabButtonText: {
-    color: "#fff",
-  },
   propertyScrollView: {
     width: "100%",
-    paddingHorizontal: 15,
     marginBottom: 10,
+  },
+  propertyGridContainer: {
+    paddingHorizontal: Platform.OS === "web" ? 8 : 15,
+  },
+  propertyRow: {
+    flexDirection: "row",
+    justifyContent: Platform.OS === "web" ? "space-between" : "center",
+    marginBottom: 8,
+    flexWrap: "wrap",
+  },
+  propertyItemContainer: {
+    width: Platform.OS === "web" ? "32%" : "95%",
+    marginBottom: Platform.OS === "web" ? 0 : 15,
   },
   emptyContainer: {
     flex: 1,
@@ -959,7 +963,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 10,
     padding: 20,
-    width: "90%",
+    width: Platform.OS === "web" ? "50%" : "90%",
     maxHeight: "80%",
   },
   modalHeading: {

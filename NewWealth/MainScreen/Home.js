@@ -604,10 +604,11 @@ const HomeScreen = () => {
               contentContainerStyle={styles.horizontalScroll}
             >
               {regularProperties.slice(0, 10).map((property, index) => (
-                <View style={{ marginHorizontal: 5 }}>
-                  {" "}
-                  {/* Add this wrapper */}
-                  <RenderPropertyCard key={index} property={property} />
+                <View
+                  key={`regular-${property._id || index}`}
+                  style={{ marginHorizontal: 5 }}
+                >
+                  <RenderPropertyCard property={property} />
                 </View>
               ))}
             </ScrollView>
@@ -625,8 +626,11 @@ const HomeScreen = () => {
               contentContainerStyle={styles.horizontalScroll}
             >
               {approvedProperties.slice(0, 10).map((property, index) => (
-                <View style={{ marginHorizontal: 5 }}>
-                  <RenderPropertyCard key={index} property={property} />
+                <View
+                  key={`approved-${property._id || index}`}
+                  style={{ marginHorizontal: 5 }}
+                >
+                  <RenderPropertyCard property={property} />
                 </View>
               ))}
             </ScrollView>
@@ -645,8 +649,11 @@ const HomeScreen = () => {
               contentContainerStyle={styles.horizontalScroll}
             >
               {wealthProperties.slice(0, 10).map((property, index) => (
-                <View style={{ marginHorizontal: 5 }}>
-                  <RenderPropertyCard key={index} property={property} />
+                <View
+                  key={`wealth-${property._id || index}`}
+                  style={{ marginHorizontal: 5 }}
+                >
+                  <RenderPropertyCard property={property} />
                 </View>
               ))}
             </ScrollView>
@@ -665,8 +672,11 @@ const HomeScreen = () => {
               contentContainerStyle={styles.horizontalScroll}
             >
               {listedProperties.slice(0, 10).map((property, index) => (
-                <View style={{ marginHorizontal: 5 }}>
-                  <RenderPropertyCard key={index} property={property} />
+                <View
+                  key={`listed-${property._id || index}`}
+                  style={{ marginHorizontal: 5 }}
+                >
+                  <RenderPropertyCard property={property} />
                 </View>
               ))}
             </ScrollView>
@@ -687,7 +697,7 @@ const HomeScreen = () => {
           >
             {propertiess.map((item, index) => (
               <RequestedPropertyCard
-                key={index}
+                key={`requested-${item.id || index}`}
                 item={item}
                 onIHavePress={() => handleIHave(item)}
               />
@@ -704,7 +714,7 @@ const HomeScreen = () => {
             >
               {coreClients.map((client, index) => (
                 <TouchableOpacity
-                  key={index}
+                  key={`client-${client._id || index}`}
                   style={styles.clientCard}
                   onPress={() => handleOpenLink(client.website)}
                 >
@@ -730,7 +740,7 @@ const HomeScreen = () => {
             >
               {coreProjects.map((project, index) => (
                 <TouchableOpacity
-                  key={index}
+                  key={`core-project-${project._id || index}`}
                   style={styles.projectCard}
                   onPress={() => handleOpenLink(project.website)}
                 >
@@ -757,7 +767,7 @@ const HomeScreen = () => {
             >
               {valueprojects.map((project, index) => (
                 <TouchableOpacity
-                  key={index}
+                  key={`value-project-${project._id || index}`}
                   style={styles.projectCard}
                   onPress={() => handleOpenLink(project.website)}
                 >
@@ -789,7 +799,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#D8E3E7",
     paddingHorizontal: 15,
-    paddingTop: -10,
+    top: 10,
+    // paddingBottom:"20%"
   },
   loadingContainer: {
     flex: 1,
@@ -800,7 +811,8 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    marginBottom: 60,
+    // paddingBottom:"40%"
+    marginBottom: Platform.OS === "web" ? "0" : "25%",
   },
   horizontalScroll: {
     paddingVertical: 10,
@@ -871,6 +883,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 3,
+    // paddingBottom:"20%"
   },
   projectImage: {
     width: 130,

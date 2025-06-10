@@ -62,14 +62,7 @@ const RequestedPropertyCard = ({ item, onIHavePress }) => {
   };
 
   const getImageSource = () => {
-    if (item.images && item.images.length > 0) {
-      const firstImage = item.images[0];
-      if (typeof firstImage === "string") {
-        return { uri: firstImage };
-      } else if (firstImage?.uri) {
-        return firstImage;
-      }
-    }
+    // Always use local image based on property type
     return getImageByPropertyType(item.type);
   };
 
@@ -106,6 +99,8 @@ const RequestedPropertyCard = ({ item, onIHavePress }) => {
     </View>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   card: {
