@@ -1,23 +1,31 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
-  Text,
-  ScrollView,
   StyleSheet,
+  Dimensions,
+  Linking,
+  Platform,
   ActivityIndicator,
   TouchableOpacity,
-  Image,
-  Linking,
+  Text,
+  Animated,
+  ScrollView,
+  TextInput,
   Modal,
-  Dimensions,
-  Platform,
+  FlatList,
+  Image,
 } from "react-native";
-import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_URL } from "../../../data/ApiUrl";
 import { useNavigation } from "@react-navigation/native";
-import Carousel from "react-native-reanimated-carousel";
+import LottieView from "lottie-react-native";
+import { Ionicons, MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { API_URL } from "../../../data/ApiUrl";
+import PropertyCard from "../../components/home/PropertyCard";
 
+const { width, height } = Dimensions.get("window");
+const PROPERTIES_PER_PAGE = 20;
+const IS_WEB = Platform.OS === "web";
+const ITEMS_PER_ROW = IS_WEB ? 3 : 1;
 
 const ApprovedPropertiesScreen = () => {
   const [properties, setProperties] = useState([]);
@@ -25,41 +33,94 @@ const ApprovedPropertiesScreen = () => {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isPropertyModalVisible, setPropertyModalVisible] = useState(false);
   const [referredInfo, setReferredInfo] = useState(null);
-  const [likedProperties, setLikedProperties] = useState({});
+  const [isFilterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterCriteria, setFilterCriteria] = useState({
+    propertyType: "",
+    location: "",
+    price: "",
+  });
+  const [showPropertyTypeDropdown, setShowPropertyTypeDropdown] =
+    useState(false);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [showPriceDropdown, setShowPriceDropdown] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [likedProperties, setLikedProperties] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [details, setDetails] = useState({});
+
   const navigation = useNavigation();
-  const { width } = Dimensions.get("window");
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(100)).current;
+  const scrollViewRef = useRef(null);
 
   useEffect(() => {
-    fetchProperties();
-    loadReferredInfoFromStorage();
-  }, []);
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading]);
 
-  const loadReferredInfoFromStorage = async () => {
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: true });
+    }
+  }, [currentPage]);
+
+  const getDetails = async () => {
     try {
-      const storedInfo = await AsyncStorage.getItem("referredAddedByInfo");
-      if (storedInfo) {
-        setReferredInfo(JSON.parse(storedInfo));
+      const token = await AsyncStorage.getItem("authToken");
+      const storedLikes = await AsyncStorage.getItem("likedProperties");
+      if (storedLikes) {
+        setLikedProperties(JSON.parse(storedLikes));
       }
+
+      const response = await fetch(`${API_URL}/customer/getcustomer`, {
+        method: "GET",
+        headers: {
+          token: `${token}` || "",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const newDetails = await response.json();
+      setDetails(newDetails);
     } catch (error) {
-      console.error("Error loading referred info from storage:", error);
+      console.error("Error fetching user details:", error);
     }
   };
 
   const fetchProperties = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`${API_URL}/properties/getApproveProperty`);
       const data = await response.json();
+
       if (data && Array.isArray(data)) {
         const approvedProps = data.filter(
           (property) =>
             getPropertyTag(property.createdAt) === "Approved Property"
         );
-        setProperties(
-          approvedProps.map((property) => ({
-            ...property,
-            images: formatImages(property),
-          }))
-        );
+
+        setProperties(approvedProps);
+        const total = Math.ceil(approvedProps.length / PROPERTIES_PER_PAGE);
+        setTotalPages(total);
+      } else {
+        console.warn("API returned empty data.");
+        setTotalPages(1);
       }
     } catch (error) {
       console.error("Error fetching properties:", error);
@@ -68,43 +129,133 @@ const ApprovedPropertiesScreen = () => {
     }
   };
 
-  const formatImages = (property) => {
-    if (!property) return [];
-
-    if (Array.isArray(property.newImageUrls) && property.newImageUrls.length > 0) {
-      return property.newImageUrls.filter(url => url);
-    }
-
-    if (typeof property.newImageUrls === "string") {
-      return [property.newImageUrls];
-    }
-
-    if (Array.isArray(property.imageUrls) && property.imageUrls.length > 0) {
-      return property.imageUrls.filter(url => url);
-    }
-
-    if (typeof property.imageUrls === "string") {
-      return [property.imageUrls];
-    }
-
-    return [];
-  };
-
   const getPropertyTag = (createdAt) => {
+    if (!createdAt) return "Listed Property";
+
     const currentDate = new Date();
     const propertyDate = new Date(createdAt);
     const timeDifference = currentDate - propertyDate;
     const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
 
-    if (daysDifference <= 3) {
-      return "Regular Property";
-    } else if (daysDifference >= 4 && daysDifference <= 17) {
-      return "Approved Property";
-    } else if (daysDifference >= 18 && daysDifference <= 25) {
-      return "Wealth Property";
-    } else {
-      return "Listed Property";
+    if (daysDifference <= 3) return "Regular Property";
+    if (daysDifference >= 4 && daysDifference <= 17) return "Approved Property";
+    if (daysDifference >= 18 && daysDifference <= 25) return "Wealth Property";
+    return "Listed Property";
+  };
+
+  const sortPropertiesByConstituency = (properties) => {
+    if (!details.Contituency) return properties;
+
+    return [...properties].sort((a, b) => {
+      const aInConstituency = a.location?.includes(details.Contituency);
+      const bInConstituency = b.location?.includes(details.Contituency);
+
+      if (aInConstituency && !bInConstituency) return -1;
+      if (!aInConstituency && bInConstituency) return 1;
+      return 0;
+    });
+  };
+
+  const handleEnquiryNow = (property) => {
+    setSelectedProperty(property);
+    setPropertyModalVisible(true);
+  };
+
+  const filterProperties = (properties) => {
+    let filtered = [...properties];
+
+    if (searchQuery) {
+      filtered = filtered.filter((property) => {
+        const propertyId = property._id
+          ? property._id.slice(-4).toLowerCase()
+          : "";
+        return propertyId.includes(searchQuery.toLowerCase());
+      });
     }
+
+    if (filterCriteria.propertyType) {
+      filtered = filtered.filter(
+        (item) => item.propertyType === filterCriteria.propertyType
+      );
+    }
+
+    if (filterCriteria.location) {
+      filtered = filtered.filter(
+        (item) => item.location === filterCriteria.location
+      );
+    }
+
+    if (filterCriteria.price) {
+      filtered = filtered.filter(
+        (item) => Math.floor(item.price / 100000) === filterCriteria.price
+      );
+    }
+
+    return filtered;
+  };
+
+  const loadReferredInfoFromStorage = async () => {
+    try {
+      const data = await AsyncStorage.getItem("referredAddedByInfo");
+      if (data) {
+        setReferredInfo(JSON.parse(data));
+      }
+    } catch (error) {
+      console.error("Failed to load referred info:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (isPropertyModalVisible) {
+      loadReferredInfoFromStorage();
+    }
+  }, [isPropertyModalVisible]);
+
+  useEffect(() => {
+    getDetails();
+    fetchProperties();
+  }, []);
+
+  const uniquePropertyTypes = [
+    ...new Set(properties.map((item) => item.propertyType)),
+  ];
+  const uniqueLocations = [...new Set(properties.map((item) => item.location))];
+  const uniquePrices = [
+    ...new Set(properties.map((item) => Math.floor(item.price / 100000))),
+  ].sort((a, b) => a - b);
+
+  const applyFilters = () => {
+    setCurrentPage(1);
+    setFilterModalVisible(false);
+  };
+
+  const resetFilters = () => {
+    setFilterCriteria({ propertyType: "", location: "", price: "" });
+    setCurrentPage(1);
+    setFilterModalVisible(false);
+  };
+
+  const normalizeImageSources = (property) => {
+    if (!property) return [];
+
+    if (Array.isArray(property.newImageUrls)) {
+      return property.newImageUrls.filter(
+        (url) => url && typeof url === "string"
+      );
+    } else if (
+      typeof property.newImageUrls === "string" &&
+      property.newImageUrls
+    ) {
+      return [property.newImageUrls];
+    }
+
+    if (Array.isArray(property.imageUrls)) {
+      return property.imageUrls.filter((url) => url && typeof url === "string");
+    } else if (typeof property.imageUrls === "string" && property.imageUrls) {
+      return [property.imageUrls];
+    }
+
+    return [];
   };
 
   const handlePropertyPress = (property) => {
@@ -112,6 +263,10 @@ const ApprovedPropertiesScreen = () => {
       console.error("Property ID is missing");
       return;
     }
+
+    const images = normalizeImageSources(property).map((uri) => ({
+      uri: uri,
+    }));
 
     let formattedPrice = "Price not available";
     try {
@@ -128,234 +283,528 @@ const ApprovedPropertiesScreen = () => {
         ...property,
         id: property._id,
         price: formattedPrice,
-        images: property.images,
+        images:
+          images.length > 0 ? images : [require("../../../assets/logo.png")],
       },
     });
-  };
-
-  const handleEnquiryNow = (property) => {
-    setSelectedProperty(property);
-    setPropertyModalVisible(true);
   };
 
   const handleShare = (property) => {
+    const images = normalizeImageSources(property);
+    let shareImage = images.length > 0 ? images[0] : null;
+
+    let formattedPrice = "Price not available";
+    if (property.price) {
+      try {
+        const priceValue = parseInt(property.price);
+        if (!isNaN(priceValue)) {
+          formattedPrice = `₹${priceValue.toLocaleString()}`;
+        }
+      } catch (e) {
+        console.error("Error formatting price:", e);
+      }
+    }
+
     navigation.navigate("PropertyCard", {
       property: {
-        photo: property.images?.[0] || null,
+        photo: shareImage,
         location: property.location || "Location not specified",
-        price: property.price || "Price not available",
+        price: formattedPrice,
         propertyType: property.propertyType || "Property",
-        PostedBy: property.PostedBy || "",
-        fullName: property.fullName || "Wealth Associate",
+        PostedBy: property.PostedBy || details?.Number || "",
+        fullName: property.fullName || details?.name || "Wealth Associate",
       },
     });
   };
 
-  const handleLike = (propertyId, state) => {
-    setLikedProperties(prev => ({
-      ...prev,
-      [propertyId]: state
-    }));
+  const toggleLike = async (propertyId) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const userDetails = JSON.parse(await AsyncStorage.getItem("userDetails"));
+
+      const newLikedStatus = !likedProperties.includes(propertyId);
+      let updatedLikes;
+
+      if (newLikedStatus) {
+        updatedLikes = [...likedProperties, propertyId];
+      } else {
+        updatedLikes = likedProperties.filter((id) => id !== propertyId);
+      }
+      setLikedProperties(updatedLikes);
+
+      await AsyncStorage.setItem(
+        "likedProperties",
+        JSON.stringify(updatedLikes)
+      );
+
+      await fetch(`${API_URL}/properties/like`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token: token || "",
+        },
+        body: JSON.stringify({
+          propertyId: propertyId,
+          like: newLikedStatus,
+          userName: userDetails?.FullName || details?.FullName || "User",
+          mobileNumber:
+            userDetails?.MobileNumber || details?.MobileNumber || "",
+        }),
+      });
+    } catch (error) {
+      console.error("Error toggling like:", error);
+    }
   };
 
-  const PropertyImageSlider = ({ images, width }) => {
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const carouselRef = useRef(null);
+  const getPaginatedProperties = () => {
+    const filtered = sortPropertiesByConstituency(filterProperties(properties));
+    const startIndex = (currentPage - 1) * PROPERTIES_PER_PAGE;
+    const endIndex = startIndex + PROPERTIES_PER_PAGE;
+    return filtered.slice(startIndex, endIndex);
+  };
 
-    if (images.length === 0) {
-      return (
-        <Image
-          source={require("../../../assets/logo.png")}
-          style={{ width, height: 200 }}
-          resizeMode="cover"
-        />
-      );
+  const renderPagination = () => {
+    const filteredProperties = sortPropertiesByConstituency(
+      filterProperties(properties)
+    );
+    const totalFilteredPages = Math.ceil(
+      filteredProperties.length / PROPERTIES_PER_PAGE
+    );
+
+    if (totalFilteredPages <= 1) return null;
+
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalFilteredPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
 
     return (
-      <View style={styles.imageSlider}>
-        <Carousel
-          ref={carouselRef}
-          width={width}
-          height={200}
-          loop={images.length > 1}
-          data={images}
-          scrollAnimationDuration={800}
-          onSnapToItem={(index) => setCurrentIndex(index)}
-          renderItem={({ item, index }) => (
-            <Image
-              key={index}
-              source={{ uri: item }}
-              style={{
-                width: width,
-                height: 200,
-                borderTopLeftRadius: 12,
-                borderTopRightRadius: 12,
-              }}
-              resizeMode="cover"
-              cacheKey={`property_${item}_${index}`}
-            />
-          )}
-        />
+      <View style={styles.paginationContainer}>
+        <TouchableOpacity
+          style={[
+            styles.pageButton,
+            currentPage === 1 && styles.disabledButton,
+          ]}
+          onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+        >
+          <Text style={styles.pageButtonText}>Previous</Text>
+        </TouchableOpacity>
 
-        {images.length > 1 && (
-          <View style={styles.pagination}>
-            {images.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  i === currentIndex ? styles.activeDot : styles.inactiveDot,
-                ]}
-              />
-            ))}
-          </View>
-        )}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pageNumbersContainer}
+        >
+          {Array.from(
+            { length: endPage - startPage + 1 },
+            (_, i) => startPage + i
+          ).map((page) => (
+            <TouchableOpacity
+              key={page}
+              style={[
+                styles.pageNumber,
+                currentPage === page && styles.activePage,
+              ]}
+              onPress={() => setCurrentPage(page)}
+            >
+              <Text
+                style={
+                  currentPage === page
+                    ? styles.activePageText
+                    : styles.pageNumberText
+                }
+              >
+                {page}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <TouchableOpacity
+          style={[
+            styles.pageButton,
+            currentPage === totalFilteredPages && styles.disabledButton,
+          ]}
+          onPress={() =>
+            setCurrentPage(Math.min(totalFilteredPages, currentPage + 1))
+          }
+          disabled={currentPage === totalFilteredPages}
+        >
+          <Text style={styles.pageButtonText}>Next</Text>
+        </TouchableOpacity>
       </View>
     );
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3E5C76" />
+      <View style={[styles.container, styles.loadingContainer]}>
+        <LottieView
+          source={require("../../../assets/animations/home[1].json")}
+          autoPlay
+          loop
+          style={{ width: 200, height: 200 }}
+        />
       </View>
     );
   }
 
+  const chunkArray = (array, chunkSize) => {
+    const result = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      result.push(array.slice(i, i + chunkSize));
+    }
+    return result;
+  };
+
   return (
     <View style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+      <Animated.View
+        style={[
+          styles.contentContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
       >
-        {properties.length === 0 ? (
-          <Text style={styles.noPropertiesText}>
-            No approved properties available
-          </Text>
-        ) : (
-          properties.map((property, index) => {
-            const cardWidth = Platform.OS === "web" ? 350 : width - 32;
-            return (
-              <TouchableOpacity
-                key={index}
-                onPress={() => handlePropertyPress(property)}
-                activeOpacity={0.9}
-                style={[styles.card, { width: cardWidth }]}
-              >
-                <PropertyImageSlider 
-                  images={formatImages(property)} 
-                  width={cardWidth} 
-                />
+        <View style={styles.searchFilterContainer}>
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by Property ID..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#999"
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setFilterModalVisible(true)}
+          >
+            <Ionicons name="filter" size={20} color="white" />
+          </TouchableOpacity>
+        </View>
+        {renderPagination()}
 
-                <View style={styles.propertyIdWrapper}>
-                  <Text style={styles.propertyIdText}>
-                    Property ID: {property?._id?.slice(-4)}
-                  </Text>
-                </View>
-
-                <View style={styles.headerRow}>
-                  <Text style={styles.propertyType}>{property.propertyType}</Text>
-                  <TouchableOpacity 
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleLike(property._id, !likedProperties[property._id]);
-                    }}
-                  >
-                    <Ionicons
-                      name={likedProperties[property._id] ? "heart" : "heart-outline"}
-                      size={26}
-                      color={likedProperties[property._id] ? "red" : "gray"}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.location}>📍 {property.location}</Text>
-
-                <View style={styles.priceRow}>
-                  <Text style={styles.price}>
-                    ₹ {parseInt(property.price).toLocaleString()}
-                  </Text>
-
-                  <View style={styles.priceButtons}>
-                    <TouchableOpacity
-                      style={[styles.btn, styles.enquireBtn]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleEnquiryNow(property);
-                      }}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.propertyScrollView}
+          contentContainerStyle={styles.propertyGridContainer}
+        >
+          {getPaginatedProperties().length > 0 ? (
+            chunkArray(getPaginatedProperties(), ITEMS_PER_ROW).map(
+              (row, rowIndex) => (
+                <View key={`row-${rowIndex}`} style={styles.propertyRow}>
+                  {row.map((item) => (
+                    <View
+                      key={item._id}
+                      style={[
+                        styles.propertyItemContainer,
+                        IS_WEB && { width: `${100 / ITEMS_PER_ROW}%` },
+                      ]}
                     >
-                      <Text style={styles.btnText}>Enquire</Text>
-                    </TouchableOpacity>
+                      <PropertyCard
+                        property={item}
+                        onPress={() => handlePropertyPress(item)}
+                        onEnquiryPress={() => handleEnquiryNow(item)}
+                        onSharePress={() => handleShare(item)}
+                        isLiked={likedProperties.includes(item._id)}
+                        onLikePress={() => toggleLike(item._id)}
+                      />
+                    </View>
+                  ))}
+                  {row.length < ITEMS_PER_ROW &&
+                    Array(ITEMS_PER_ROW - row.length)
+                      .fill()
+                      .map((_, index) => (
+                        <View
+                          key={`empty-${rowIndex}-${index}`}
+                          style={[
+                            styles.propertyItemContainer,
+                            IS_WEB && { width: `${100 / ITEMS_PER_ROW}%` },
+                          ]}
+                        />
+                      ))}
+                </View>
+              )
+            )
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No approved properties found</Text>
+            </View>
+          )}
+        </ScrollView>
 
+        <Modal
+          visible={isFilterModalVisible}
+          transparent={true}
+          animationType="slide"
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalHeading}>Filter Properties</Text>
+
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>Property Type</Text>
+                <View style={styles.inputContainer}>
+                  <View style={styles.inputWrapper}>
                     <TouchableOpacity
-                      style={[styles.btn, styles.shareBtn]}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleShare(property);
-                      }}
+                      style={styles.filterButtonDropdown}
+                      onPress={() =>
+                        setShowPropertyTypeDropdown(!showPropertyTypeDropdown)
+                      }
                     >
-                      <Text style={styles.btnText}>Share</Text>
+                      <Text style={styles.filterButtonText}>
+                        {filterCriteria.propertyType ||
+                          "-- Select Property Type --"}
+                      </Text>
+                      <MaterialIcons
+                        name={
+                          showPropertyTypeDropdown
+                            ? "arrow-drop-up"
+                            : "arrow-drop-down"
+                        }
+                        size={24}
+                        color="#E82E5F"
+                        style={styles.icon}
+                      />
                     </TouchableOpacity>
+                    {showPropertyTypeDropdown && (
+                      <View style={styles.dropdownContainer}>
+                        <ScrollView style={styles.scrollView}>
+                          <TouchableOpacity
+                            style={styles.listItem}
+                            onPress={() => {
+                              setFilterCriteria({
+                                ...filterCriteria,
+                                propertyType: "",
+                              });
+                              setShowPropertyTypeDropdown(false);
+                            }}
+                          >
+                            <Text>-- Select Property Type --</Text>
+                          </TouchableOpacity>
+                          {uniquePropertyTypes.map((type, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={styles.listItem}
+                              onPress={() => {
+                                setFilterCriteria({
+                                  ...filterCriteria,
+                                  propertyType: type,
+                                });
+                                setShowPropertyTypeDropdown(false);
+                              }}
+                            >
+                              <Text>{type}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
                   </View>
                 </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
-      </ScrollView>
+              </View>
 
-      <Modal
-        visible={isPropertyModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setPropertyModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            {!referredInfo ? (
-              <View style={styles.noReferredInfo}>
-                <Text style={styles.noReferredInfoText}>
-                  No referral information available
-                </Text>
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>Location</Text>
+                <View style={styles.inputContainer}>
+                  <View style={styles.inputWrapper}>
+                    <TouchableOpacity
+                      style={styles.filterButtonDropdown}
+                      onPress={() =>
+                        setShowLocationDropdown(!showLocationDropdown)
+                      }
+                    >
+                      <Text style={styles.filterButtonText}>
+                        {filterCriteria.location || "-- Select Location --"}
+                      </Text>
+                      <MaterialIcons
+                        name={
+                          showLocationDropdown
+                            ? "arrow-drop-up"
+                            : "arrow-drop-down"
+                        }
+                        size={24}
+                        color="#E82E5F"
+                        style={styles.icon}
+                      />
+                    </TouchableOpacity>
+                    {showLocationDropdown && (
+                      <View style={styles.dropdownContainer}>
+                        <ScrollView style={styles.scrollView}>
+                          <TouchableOpacity
+                            style={styles.listItem}
+                            onPress={() => {
+                              setFilterCriteria({
+                                ...filterCriteria,
+                                location: "",
+                              });
+                              setShowLocationDropdown(false);
+                            }}
+                          >
+                            <Text>-- Select Location --</Text>
+                          </TouchableOpacity>
+                          {uniqueLocations.map((location, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={styles.listItem}
+                              onPress={() => {
+                                setFilterCriteria({
+                                  ...filterCriteria,
+                                  location: location,
+                                });
+                                setShowLocationDropdown(false);
+                              }}
+                            >
+                              <Text>{location}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>Price (in lakhs)</Text>
+                <View style={styles.inputContainer}>
+                  <View style={styles.inputWrapper}>
+                    <TouchableOpacity
+                      style={styles.filterButtonDropdown}
+                      onPress={() => setShowPriceDropdown(!showPriceDropdown)}
+                    >
+                      <Text style={styles.filterButtonText}>
+                        {filterCriteria.price
+                          ? `${filterCriteria.price} Lakh`
+                          : "-- Select Price --"}
+                      </Text>
+                      <MaterialIcons
+                        name={
+                          showPriceDropdown
+                            ? "arrow-drop-up"
+                            : "arrow-drop-down"
+                        }
+                        size={24}
+                        color="#E82E5F"
+                        style={styles.icon}
+                      />
+                    </TouchableOpacity>
+                    {showPriceDropdown && (
+                      <View style={styles.dropdownContainer}>
+                        <ScrollView style={styles.scrollView}>
+                          <TouchableOpacity
+                            style={styles.listItem}
+                            onPress={() => {
+                              setFilterCriteria({
+                                ...filterCriteria,
+                                price: "",
+                              });
+                              setShowPriceDropdown(false);
+                            }}
+                          >
+                            <Text>-- Select Price --</Text>
+                          </TouchableOpacity>
+                          {uniquePrices.map((price, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={styles.listItem}
+                              onPress={() => {
+                                setFilterCriteria({
+                                  ...filterCriteria,
+                                  price: price,
+                                });
+                                setShowPriceDropdown(false);
+                              }}
+                            >
+                              <Text>{price} Lakh</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.modalButtonContainer}>
                 <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setPropertyModalVisible(false)}
+                  style={[styles.modalButton, styles.applyButton]}
+                  onPress={applyFilters}
                 >
-                  <Text style={styles.closeButtonText}>Close</Text>
+                  <Text style={styles.modalButtonText}>Apply</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.resetButton]}
+                  onPress={resetFilters}
+                >
+                  <Text style={styles.modalButtonText}>Reset</Text>
                 </TouchableOpacity>
               </View>
-            ) : (
-              <>
-                <Image
-                  source={require("../../../assets/man.png")}
-                  style={styles.agentLogo}
-                />
-                <Text style={styles.modalTitle}>Referred By</Text>
-                <Text style={styles.modalText}>Name: {referredInfo.name}</Text>
-                <Text style={styles.modalText}>
-                  Mobile: {referredInfo.mobileNumber}
-                </Text>
-                <TouchableOpacity
-                  style={styles.callButton}
-                  onPress={() =>
-                    Linking.openURL(`tel:${referredInfo.mobileNumber}`)
-                  }
-                >
-                  <Ionicons name="call" size={20} color="white" />
-                  <Text style={styles.callButtonText}>Call Now</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setPropertyModalVisible(false)}
-                >
-                  <Text style={styles.closeButtonText}>Close</Text>
-                </TouchableOpacity>
-              </>
-            )}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+
+        <Modal
+          visible={isPropertyModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setPropertyModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              {!referredInfo ? (
+                <View style={styles.noReferredInfo}>
+                  <Text style={styles.noReferredInfoText}>
+                    No referral information available
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setPropertyModalVisible(false)}
+                  >
+                    <Text style={styles.closeButtonText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <Image
+                    source={require("../../../assets/man.png")}
+                    style={styles.agentLogo}
+                  />
+                  <Text style={styles.modalTitle}>Referred By</Text>
+                  <Text style={styles.modalText}>
+                    Name: {referredInfo.name}
+                  </Text>
+                  <Text style={styles.modalText}>
+                    Mobile: {referredInfo.mobileNumber}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.callButton}
+                    onPress={() =>
+                      Linking.openURL(`tel:${referredInfo.mobileNumber}`)
+                    }
+                  >
+                    <Ionicons name="call" size={20} color="white" />
+                    <Text style={styles.callButtonText}>Call Now</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setPropertyModalVisible(false)}
+                  >
+                    <Text style={styles.closeButtonText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        </Modal>
+      </Animated.View>
     </View>
   );
 };
@@ -364,8 +813,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#EEF2F3",
-    paddingHorizontal: Platform.OS === "web" ? "20%" : 16,
-    paddingVertical: 16,
+    paddingBottom: Platform.OS === "web" ? "45%" : "20%",
+    paddingTop:20
+  },
+  contentContainer: {
+    flex: 1,
+    width: "100%",
   },
   loadingContainer: {
     flex: 1,
@@ -373,120 +826,217 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#EEF2F3",
   },
-  scrollView: {
-    flex: 1,
+  searchFilterContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 15,
+    paddingHorizontal: 15,
+    width: "100%",
   },
-  scrollContent: {
+  searchContainer: {
+    flex: 1,
+    marginRight: 10,
+  },
+  searchInput: {
+    height: 40,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    backgroundColor: "#fff",
+    width: "100%",
+  },
+  filterButton: {
+    backgroundColor: "#3E5C76",
+    padding: 10,
+    borderRadius: 5,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
     alignItems: "center",
   },
-  noPropertiesText: {
-    textAlign: "center",
-    marginTop: 20,
+  propertyScrollView: {
+    width: "100%",
+    marginBottom: 10,
+  },
+  propertyGridContainer: {
+    paddingHorizontal: Platform.OS === "web" ? 8 : 15,
+  },
+  propertyRow: {
+    flexDirection: "row",
+    justifyContent: Platform.OS === "web" ? "space-between" : "center",
+    marginBottom: 8,
+    flexWrap: "wrap",
+  },
+  propertyItemContainer: {
+    width: Platform.OS === "web" ? "32%" : "95%",
+    marginBottom: Platform.OS === "web" ? 0 : 15,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    height: height * 0.5,
+  },
+  emptyText: {
     fontSize: 16,
     color: "#666",
   },
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    marginVertical: 10,
-    overflow: "hidden",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
-  },
-  imageSlider: {
-    position: "relative",
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    overflow: "hidden",
-  },
-  pagination: {
-    position: "absolute",
-    bottom: 8,
-    alignSelf: "center",
-    flexDirection: "row",
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 3,
-  },
-  activeDot: {
-    backgroundColor: "#fff",
-  },
-  inactiveDot: {
-    backgroundColor: "rgba(255,255,255,0.4)",
-  },
-  propertyIdWrapper: {
-    backgroundColor: "#EEF2F3",
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    margin: 14,
-    marginBottom: 6,
-  },
-  propertyIdText: {
-    fontSize: 13,
-    color: "#555",
-    fontWeight: "500",
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 14,
-  },
-  propertyType: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  location: {
-    fontSize: 15,
-    color: "#555",
-    marginTop: 4,
-    paddingHorizontal: 14,
-  },
-  priceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 10,
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    flexWrap: "wrap",
-  },
-  price: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1B4D3E",
-  },
-  priceButtons: {
-    flexDirection: "row",
-    marginTop: Platform.OS === "web" ? 0 : 6,
-  },
-  btn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginLeft: 8,
-    alignItems: "center",
+  modalOverlay: {
+    flex: 1,
     justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    width: "100%",
   },
-  enquireBtn: {
+  modalContent: {
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: 20,
+    width: Platform.OS === "web" ? "50%" : "90%",
+    maxHeight: "80%",
+  },
+  modalHeading: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  filterGroup: {
+    marginBottom: 15,
+    width: "100%",
+  },
+  filterLabel: {
+    fontSize: 16,
+    marginBottom: 5,
+    fontWeight: "bold",
+  },
+  inputContainer: {
+    width: "100%",
+    position: "relative",
+  },
+  inputWrapper: {
+    position: "relative",
+    width: "100%",
+  },
+  filterButtonDropdown: {
+    width: "100%",
+    height: 47,
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 2,
+    marginBottom: 5,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  filterButtonText: {
+    flex: 1,
+  },
+  icon: {
+    right: 0,
+    top: 0,
+  },
+  dropdownContainer: {
+    position: "absolute",
+    top: 50,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    backgroundColor: "#FFF",
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 5,
+    marginBottom: 5,
+    maxHeight: 200,
+    width: "100%",
+  },
+  scrollView: {
+    maxHeight: 200,
+    width: "100%",
+  },
+  listItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
+    width: "100%",
+  },
+  modalButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    width: "100%",
+  },
+  modalButton: {
+    padding: 12,
+    borderRadius: 5,
+    width: "48%",
+    alignItems: "center",
+  },
+  applyButton: {
     backgroundColor: "#3E5C76",
   },
-  shareBtn: {
+  resetButton: {
     backgroundColor: "#666",
   },
-  btnText: {
+  modalButtonText: {
     color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  paginationContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    backgroundColor: "#fff",
+  },
+  pageNumbersContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 5,
+  },
+  pageButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginHorizontal: 5,
+    borderRadius: 5,
+    backgroundColor: "#3E5C76",
+  },
+  disabledButton: {
+    backgroundColor: "#ccc",
+  },
+  pageButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  pageNumber: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginHorizontal: 3,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "#3E5C76",
+    minWidth: 35,
+    alignItems: "center",
+  },
+  activePage: {
+    backgroundColor: "#3E5C76",
+  },
+  pageNumberText: {
+    color: "#3E5C76",
+  },
+  activePageText: {
+    color: "#fff",
   },
   modalContainer: {
     flex: 1,

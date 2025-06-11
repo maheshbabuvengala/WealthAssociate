@@ -878,7 +878,6 @@ const ViewAllProperties = () => {
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
