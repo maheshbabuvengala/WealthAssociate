@@ -42,7 +42,6 @@ yarn-error.*
 
 # dependencies
 node_modules/
-Backend
 
 # Expo
 .expo/
