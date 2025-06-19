@@ -5,7 +5,7 @@ import LazyImage from "../components/home/LazyImage";
 // Cache expiration time (1 day in milliseconds)
 const CACHE_EXPIRATION_TIME = 24 * 60 * 60 * 1000;
 
-// Helper function to get property tag
+// 🔹 Categorizes properties based on how many days ago they were created
 const getPropertyTag = (createdAt) => {
   const currentDate = new Date();
   const propertyDate = new Date(createdAt);
@@ -18,25 +18,29 @@ const getPropertyTag = (createdAt) => {
   return "Listed Property";
 };
 
-// Fetch properties from API
+// 🔹 Fetch from API, cache it, and preload images
 const fetchPropertiesFromAPI = async () => {
   try {
     const response = await fetch(`${API_URL}/properties/getApproveProperty`);
     const data = await response.json();
 
     if (data && Array.isArray(data) && data.length > 0) {
-      // Cache the data with timestamp
+      // Cache data with timestamp
       const cacheData = {
         data: data,
         timestamp: new Date().getTime(),
       };
       await AsyncStorage.setItem("propertyCache", JSON.stringify(cacheData));
 
-      // Preload images
+      // Preload images safely
       data.forEach((property) => {
         const images = normalizeImageSources(property);
         images.forEach((uri) => {
-          LazyImage.preload(uri);
+          try {
+            LazyImage.preload(uri);
+          } catch (error) {
+            console.error(`Error preloading image ${uri}:`, error);
+          }
         });
       });
 
@@ -49,7 +53,7 @@ const fetchPropertiesFromAPI = async () => {
   }
 };
 
-// Get cached properties if they're still valid
+// 🔹 Try loading from AsyncStorage cache
 const getCachedProperties = async () => {
   try {
     const cachedData = await AsyncStorage.getItem("propertyCache");
@@ -68,43 +72,68 @@ const getCachedProperties = async () => {
   }
 };
 
-// Normalize image sources
+// 🔹 Normalize and fix image URLs (handles all common corruption cases)
 const normalizeImageSources = (property) => {
   if (!property) return [];
 
-  if (Array.isArray(property.newImageUrls)) {
-    return property.newImageUrls.filter(
-      (url) => url && typeof url === "string"
-    );
-  } else if (
-    typeof property.newImageUrls === "string" &&
-    property.newImageUrls
-  ) {
-    return [property.newImageUrls];
-  }
+  const extractUrls = (urls) => {
+    if (!urls) return [];
 
-  if (Array.isArray(property.imageUrls)) {
-    return property.imageUrls.filter((url) => url && typeof url === "string");
-  } else if (typeof property.imageUrls === "string" && property.imageUrls) {
-    return [property.imageUrls];
-  }
+    const urlArray = Array.isArray(urls) ? urls : [urls];
 
-  return [];
+    return urlArray
+      .filter((url) => url && typeof url === "string")
+      .map((rawUrl) => {
+        let url = rawUrl.trim();
+
+        // Case 1: If protocol exists but not at the start (e.g. "cloudfront.nethttps://...")
+        const protocolIndex = Math.max(
+          url.lastIndexOf("http://"),
+          url.lastIndexOf("https://")
+        );
+        if (protocolIndex > 0) {
+          url = url.substring(protocolIndex);
+        }
+
+        // Case 2: Add https if missing
+        else if (!url.startsWith("http://") && !url.startsWith("https://")) {
+          if (url.match(/[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/)) {
+            url = `https://${url}`;
+          }
+        }
+
+        // Case 3: Remove duplicate protocols if any
+        url = url.replace(/(https?:\/\/)+/g, "$1");
+
+        // Final validation
+        try {
+          new URL(url);
+          return url;
+        } catch {
+          console.warn(`Invalid URL skipped: ${rawUrl}`);
+          return null;
+        }
+      })
+      .filter((url) => url !== null);
+  };
+
+  return [
+    ...extractUrls(property.newImageUrls),
+    ...extractUrls(property.imageUrls),
+  ];
 };
 
-// Main function to get properties (uses cache if available and valid)
+// 🔹 Main function that tries cache first, else falls back to fetch
 export const getProperties = async () => {
-  // First try to get cached data
   const cachedProperties = await getCachedProperties();
   if (cachedProperties) {
     return cachedProperties;
   }
 
-  // If no valid cache, fetch from API
   return await fetchPropertiesFromAPI();
 };
 
-// Get categorized properties
+// 🔹 Returns grouped properties for display
 export const getCategorizedProperties = async () => {
   const properties = await getProperties();
 

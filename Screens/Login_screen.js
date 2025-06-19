@@ -13,6 +13,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
@@ -32,6 +33,8 @@ export default function LoginScreen() {
   const navigation = useNavigation();
   const [adminData, setAdminData] = useState(null);
   const [clickCount, setClickCount] = useState(0);
+  const { width } = useWindowDimensions();
+  const isMobileWidth = width < 768;
 
   useEffect(() => {
     if (clickCount === 5) {
@@ -173,25 +176,24 @@ export default function LoginScreen() {
     }
   };
 
- useFocusEffect(
-  React.useCallback(() => {
-    const onBackPress = () => {
-      Alert.alert("Exit App", "Are you sure you want to exit?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Exit", onPress: () => BackHandler.exitApp() },
-      ]);
-      return true;
-    };
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        Alert.alert("Exit App", "Are you sure you want to exit?", [
+          { text: "Cancel", style: "cancel" },
+          { text: "Exit", onPress: () => BackHandler.exitApp() },
+        ]);
+        return true;
+      };
 
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      onBackPress
-    );
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
+      );
 
-    return () => backHandler.remove(); // ✅ Correct way to remove
-  }, [])
-);
-
+      return () => backHandler.remove();
+    }, [])
+  );
 
   return (
     <KeyboardAvoidingView
@@ -199,41 +201,69 @@ export default function LoginScreen() {
       style={styles.keyboardAvoidingView}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={[
+          styles.scrollContainer,
+          isMobileWidth && styles.mobileScrollContainer,
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.container}>
-            <View style={styles.card}>
-              {Platform.OS !== "android" && Platform.OS !== "ios" && (
+            <View
+              style={[
+                styles.card,
+                isMobileWidth ? styles.mobileCard : styles.webCard,
+              ]}
+            >
+              {/* Left Section - Only shown on web in larger views */}
+              {Platform.OS === "web" && !isMobileWidth && (
                 <View style={styles.leftSection}>
-                  <TouchableOpacity onPress={handleLogoPress}>
+                  <TouchableOpacity
+                    onPress={handleLogoPress}
+                    style={styles.logoContainer}
+                  >
                     <Image
                       source={logo1}
                       style={styles.logo}
                       resizeMode="contain"
+                      onError={(e) =>
+                        console.log("Image error:", e.nativeEvent.error)
+                      }
                     />
                   </TouchableOpacity>
                 </View>
               )}
 
-              <View style={styles.rightSection}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={() => navigation.goBack()}
-                >
-                  <Icon name="arrow-back" size={24} color="#3E5C76" />
-                </TouchableOpacity>
+              {/* Right Section - Form content */}
+              <View
+                style={[
+                  styles.rightSection,
+                  isMobileWidth && styles.mobileRightSection,
+                ]}
+              >
+                {Platform.OS !== "web" && (
+                  <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                  >
+                    <Icon name="arrow-back" size={24} color="#3E5C76" />
+                  </TouchableOpacity>
+                )}
 
                 <View style={styles.header}>
                   <Image
                     source={logo2}
-                    style={styles.appLogo}
+                    style={[
+                      styles.appLogo,
+                      isMobileWidth && styles.mobileAppLogo,
+                    ]}
                     resizeMode="contain"
                   />
-                  <Text style={styles.welcomeText}>
-                    Welcome back! Log in to your {loginType} account
-                  </Text>
+                  <TouchableOpacity onPress={handleLogoPress}>
+                    <Text style={styles.welcomeText}>
+                      Welcome back! Log in to your {loginType} account
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
                 {errorMessage ? (
@@ -279,7 +309,9 @@ export default function LoginScreen() {
                         style={styles.eyeIcon}
                       >
                         <Icon
-                          name={showPassword ? "eye-outline" : "eye-off-outline"}
+                          name={
+                            showPassword ? "eye-outline" : "eye-off-outline"
+                          }
                           size={20}
                           color="#3E5C76"
                         />
@@ -289,7 +321,10 @@ export default function LoginScreen() {
 
                   <View style={styles.actions}>
                     <TouchableOpacity
-                      style={[styles.loginButton, loading && styles.disabledButton]}
+                      style={[
+                        styles.loginButton,
+                        loading && styles.disabledButton,
+                      ]}
                       onPress={handleLogin}
                       disabled={loading}
                     >
@@ -304,7 +339,9 @@ export default function LoginScreen() {
                       style={styles.forgotPassword}
                       onPress={() => navigation.navigate("Forgetpassword")}
                     >
-                      <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
+                      <Text style={styles.forgotPasswordText}>
+                        Forgot your password?
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -323,95 +360,118 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
+    padding: 24,
+  },
+  mobileScrollContainer: {
+    padding: 16,
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: "#F5F7FA",
   },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
+    justifyContent: "center",
+    alignItems: "center",
   },
   card: {
-    width: '100%',
-    maxWidth: Platform.select({
-      web: 800,
-      default: '100%',
-    }),
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
     padding: 24,
-    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+  },
+  webCard: {
+    width: "80%",
+    maxWidth: 1000,
+    flexDirection: "row",
+    minHeight: 600,
+  },
+  mobileCard: {
+    width: "100%",
+    maxWidth: 500,
   },
   leftSection: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingRight: 24,
+    borderRightWidth: 1,
+    borderRightColor: "#E5E7EB",
+  },
+  logoContainer: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logo: {
+    width: "100%",
+    maxWidth: 300,
+    height: 250,
+    ...Platform.select({
+      web: {
+        cursor: "pointer",
+        userSelect: "none",
+      },
+    }),
   },
   rightSection: {
     flex: 1,
-    position: 'relative',
+    position: "relative",
+    paddingLeft: 24,
+  },
+  mobileRightSection: {
+    paddingLeft: 0,
   },
   backButton: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
+    position: "absolute",
+    top: Platform.OS === "web" ? 16 : 0,
+    left: Platform.OS === "web" ? 16 : 0,
     zIndex: 1,
     padding: 8,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 32,
-  },
-  logo: {
-    width: 200,
-    height: 150,
   },
   appLogo: {
     width: 120,
     height: 100,
     marginBottom: 16,
   },
-  tagline: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontFamily: 'Cairo-Medium',
-    marginBottom: 8,
+  mobileAppLogo: {
+    width: 100,
+    height: 80,
   },
   welcomeText: {
     fontSize: 18,
-    color: '#1F2937',
-    fontFamily: 'Cairo-SemiBold',
-    textAlign: 'center',
+    color: "#1F2937",
+    fontFamily: "Cairo-SemiBold",
+    textAlign: "center",
   },
   form: {
-    width: '100%',
+    width: "100%",
   },
   inputGroup: {
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    color: '#374151',
-    fontFamily: 'Cairo-SemiBold',
+    color: "#374151",
+    fontFamily: "Cairo-SemiBold",
     marginBottom: 8,
     marginLeft: 4,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: "#E5E7EB",
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 52,
@@ -419,10 +479,10 @@ const styles = StyleSheet.create({
   inputField: {
     flex: 1,
     fontSize: 16,
-    color: '#1F2937',
-    fontFamily: 'Cairo-Regular',
+    color: "#1F2937",
+    fontFamily: "Cairo-Regular",
     paddingVertical: 14,
-    outlineStyle:"none"
+    outlineStyle: "none",
   },
   inputIcon: {
     marginLeft: 8,
@@ -432,16 +492,16 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: 24,
-    alignItems: 'center',
+    alignItems: "center",
   },
   loginButton: {
-    backgroundColor: '#3E5C76',
+    backgroundColor: "#3E5C76",
     borderRadius: 12,
-    width: '100%',
+    width: "100%",
     height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -451,24 +511,24 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontFamily: 'Cairo-SemiBold',
+    fontFamily: "Cairo-SemiBold",
   },
   forgotPassword: {
     marginTop: 16,
   },
   forgotPasswordText: {
-    color: '#3E5C76',
+    color: "#3E5C76",
     fontSize: 14,
-    fontFamily: 'Cairo-SemiBold',
-    textDecorationLine: 'underline',
+    fontFamily: "Cairo-SemiBold",
+    textDecorationLine: "underline",
   },
   errorText: {
-    color: '#EF4444',
+    color: "#EF4444",
     fontSize: 14,
-    fontFamily: 'Cairo-Regular',
-    textAlign: 'center',
+    fontFamily: "Cairo-Regular",
+    textAlign: "center",
     marginBottom: 16,
     paddingHorizontal: 16,
   },
