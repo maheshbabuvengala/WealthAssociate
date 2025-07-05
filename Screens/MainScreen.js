@@ -16,12 +16,12 @@ import logo2 from "../assets/exp.jpg";
 import logo3 from "../assets/logosubW.png";
 import logo4 from "../assets/quote.png";
 import logo5 from "../assets/cardbg.png";
-const isSmallDevice = width < 450;
+import { Dimensions } from 'react-native';
 
 const LoginScreen = () => {
   const navigation = useNavigation();
-  const { width } = useWindowDimensions();
-  const isSmallDevice = width < 450;
+  const { width } = Dimensions.get('window');
+const isSmallDevice = width < 450;
 
   return (
     <ImageBackground

@@ -73,9 +73,9 @@ TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
         });
       }
     }
-    return BackgroundFetch.Result.NewData;
+    return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (error) {
-    return BackgroundFetch.Result.Failed;
+    return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });
 
@@ -86,8 +86,6 @@ Notifications.setNotificationHandler({
     shouldSetBadge: true,
   }),
 });
-
-
 
 const getAuthToken = async () => {
   try {
@@ -198,20 +196,20 @@ const CallCenterDashboard = () => {
   const isFirstRender = useRef(true);
 
   useEffect(() => {
-  // Initialize socket connection
-  const socket = io(API_URL, {
-    transports: ['websocket'],
-    reconnectionAttempts: 5,
-  });
+    // Initialize socket connection
+    const socket = io(API_URL, {
+      transports: ["websocket"],
+      reconnectionAttempts: 5,
+    });
 
-  socketRef.current = socket;
+    socketRef.current = socket;
 
-  return () => {
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-    }
-  };
-}, []);
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const trackInitialLogin = async () => {
@@ -450,132 +448,142 @@ const CallCenterDashboard = () => {
       }
     }
   };
-useEffect(() => {
-  if (!socketRef.current) return;
+  useEffect(() => {
+    if (!socketRef.current) return;
 
-  const socket = socketRef.current;
-const handleNewNotification = (type, data) => {
-  const notificationId = data._id || `${type}-${Date.now()}`;
+    const socket = socketRef.current;
+    const handleNewNotification = (type, data) => {
+      const notificationId = data._id || `${type}-${Date.now()}`;
 
-  // Only process if not already processed or if it's a pending item
-  if (!processedNotificationIds.current.has(notificationId) || data.isPending) {
-    processedNotificationIds.current.add(notificationId);
+      // Only process if not already processed or if it's a pending item
+      if (
+        !processedNotificationIds.current.has(notificationId) ||
+        data.isPending
+      ) {
+        processedNotificationIds.current.add(notificationId);
 
-    setNewNotifications(prev => ({
-      ...prev,
-      [type]: [
-        {
-          ...data,
-          type,
-          createdAt: data.createdAt || new Date().toISOString(),
-          isPending: data.isPending || false,
-        },
-        ...prev[type],
-      ],
-    }));
+        setNewNotifications((prev) => ({
+          ...prev,
+          [type]: [
+            {
+              ...data,
+              type,
+              createdAt: data.createdAt || new Date().toISOString(),
+              isPending: data.isPending || false,
+            },
+            ...prev[type],
+          ],
+        }));
 
-    setNotificationCounts(prev => ({
-      ...prev,
-      [type]: prev[type] + 1,
-    }));
+        setNotificationCounts((prev) => ({
+          ...prev,
+          [type]: prev[type] + 1,
+        }));
 
-    // Always play sound for pending items if active
-    if (isActive && (notificationSettings[type] || data.isPending)) {
-      playNotificationSound();
-      
-      Notifications.scheduleNotificationAsync({
-        content: {
-          title: `New ${type}`,
-          body: `New ${type} registered: ${
-            data.FullName || data.propertyType || "Item"
-          }`,
-          sound: "default",
-          priority: Notifications.AndroidNotificationPriority.HIGH,
-        },
-        trigger: null,
-      });
-    }
-  }
-};
+        // Always play sound for pending items if active
+        if (isActive && (notificationSettings[type] || data.isPending)) {
+          playNotificationSound();
 
-  const handleAssignedByOther = (data) => {
-    const { type, id } = data;
-
-    // Remove from new notifications if present
-    setNewNotifications(prev => {
-      const updatedNew = {
-        ...prev,
-        [type]: prev[type].filter(item => item._id !== id)
-      };
-      
-      // Check if we should stop the sound
-      const totalNew = Object.values(updatedNew).reduce(
-        (sum, items) => sum + items.length, 
-        0
-      );
-      const totalPending = Object.values(pendingNotifications).reduce(
-        (sum, items) => sum + items.length, 
-        0
-      );
-      
-      if (totalNew + totalPending <= 0) {
-        stopNotificationSound();
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: `New ${type}`,
+              body: `New ${type} registered: ${
+                data.FullName || data.propertyType || "Item"
+              }`,
+              sound: "default",
+              priority: Notifications.AndroidNotificationPriority.HIGH,
+            },
+            trigger: null,
+          });
+        }
       }
+    };
 
-      return updatedNew;
-    });
+    const handleAssignedByOther = (data) => {
+      const { type, id } = data;
 
-    // Remove from pending notifications if present
-    setPendingNotifications(prev => {
-      const updatedPending = {
+      // Remove from new notifications if present
+      setNewNotifications((prev) => {
+        const updatedNew = {
+          ...prev,
+          [type]: prev[type].filter((item) => item._id !== id),
+        };
+
+        // Check if we should stop the sound
+        const totalNew = Object.values(updatedNew).reduce(
+          (sum, items) => sum + items.length,
+          0
+        );
+        const totalPending = Object.values(pendingNotifications).reduce(
+          (sum, items) => sum + items.length,
+          0
+        );
+
+        if (totalNew + totalPending <= 0) {
+          stopNotificationSound();
+        }
+
+        return updatedNew;
+      });
+
+      // Remove from pending notifications if present
+      setPendingNotifications((prev) => {
+        const updatedPending = {
+          ...prev,
+          [type]: prev[type].filter((item) => item._id !== id),
+        };
+
+        return updatedPending;
+      });
+
+      // Update counts
+      setNotificationCounts((prev) => ({
         ...prev,
-        [type]: prev[type].filter(item => item._id !== id)
-      };
-      
-      return updatedPending;
-    });
+        [type]: Math.max(0, prev[type] - 1),
+      }));
 
-    // Update counts
-    setNotificationCounts(prev => ({
-      ...prev,
-      [type]: Math.max(0, prev[type] - 1)
-    }));
+      setPendingCounts((prev) => ({
+        ...prev,
+        [type]: Math.max(0, prev[type] - 1),
+      }));
+    };
 
-    setPendingCounts(prev => ({
-      ...prev,
-      [type]: Math.max(0, prev[type] - 1)
-    }));
-  };
+    const notificationHandlers = {
+      new_agent: (data) => handleNewNotification("agents", data.agent),
+      new_customer: (data) => handleNewNotification("customers", data.customer),
+      new_property: (data) =>
+        handleNewNotification("properties", data.property),
+      new_requested_property: (data) =>
+        handleNewNotification("requestedProperties", data.property),
+      new_skilled_labor: (data) => handleNewNotification("skilled", data.labor),
+      new_investor: (data) => handleNewNotification("investors", data.investor),
+      new_requestExpert: (data) =>
+        handleNewNotification("expertRequests", data.expert),
+      new_Expert: (data) =>
+        handleNewNotification("expertRegistrations", data.expert),
+      new_requestedExpert: (data) =>
+        handleNewNotification("expertCallRequests", data.expert),
+      assigned_by_other: handleAssignedByOther,
+    };
 
-  const notificationHandlers = {
-    new_agent: (data) => handleNewNotification("agents", data.agent),
-    new_customer: (data) => handleNewNotification("customers", data.customer),
-    new_property: (data) => handleNewNotification("properties", data.property),
-    new_requested_property: (data) => 
-      handleNewNotification("requestedProperties", data.property),
-    new_skilled_labor: (data) => handleNewNotification("skilled", data.labor),
-    new_investor: (data) => handleNewNotification("investors", data.investor),
-    new_requestExpert: (data) => 
-      handleNewNotification("expertRequests", data.expert),
-    new_Expert: (data) => 
-      handleNewNotification("expertRegistrations", data.expert),
-    new_requestedExpert: (data) => 
-      handleNewNotification("expertCallRequests", data.expert),
-    assigned_by_other: handleAssignedByOther,
-  };
-
-  // Set up all event listeners
-  Object.entries(notificationHandlers).forEach(([event, handler]) => {
-    socket.on(event, handler);
-  });
-
-  // Cleanup function
-  return () => {
+    // Set up all event listeners
     Object.entries(notificationHandlers).forEach(([event, handler]) => {
-      socket.off(event, handler);
+      socket.on(event, handler);
     });
-  };
-}, [isActive, notificationSettings, notificationCounts, pendingCounts, pendingNotifications]);
+
+    // Cleanup function
+    return () => {
+      Object.entries(notificationHandlers).forEach(([event, handler]) => {
+        socket.off(event, handler);
+      });
+    };
+  }, [
+    isActive,
+    notificationSettings,
+    notificationCounts,
+    pendingCounts,
+    pendingNotifications,
+  ]);
 
   const toggleStatus = async () => {
     const newStatus = !isActive;
@@ -1043,60 +1051,66 @@ const handleNewNotification = (type, data) => {
     );
   };
 
- const handleAcceptNotification = async (type, id, isPending) => {
-  try {
-    const token = await AsyncStorage.getItem("authToken");
-    const executiveId = await AsyncStorage.getItem("callexecutiveId");
+  const handleAcceptNotification = async (type, id, isPending) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const executiveId = await AsyncStorage.getItem("callexecutiveId");
 
-    const response = await fetch(`${API_URL}/callexe/${type}/${id}/accept`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        token: token || "",
-      },
-      body: JSON.stringify({ executiveId }),
-    });
+      const response = await fetch(`${API_URL}/callexe/${type}/${id}/accept`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token: token || "",
+        },
+        body: JSON.stringify({ executiveId }),
+      });
 
-    if (response.ok) {
-      // Update state immediately
-      if (isPending) {
-        setPendingNotifications(prev => ({
-          ...prev,
-          [type]: prev[type].filter(item => item._id !== id)
-        }));
-        setPendingCounts(prev => ({
-          ...prev,
-          [type]: Math.max(0, prev[type] - 1)
-        }));
+      if (response.ok) {
+        // Update state immediately
+        if (isPending) {
+          setPendingNotifications((prev) => ({
+            ...prev,
+            [type]: prev[type].filter((item) => item._id !== id),
+          }));
+          setPendingCounts((prev) => ({
+            ...prev,
+            [type]: Math.max(0, prev[type] - 1),
+          }));
+        } else {
+          setNewNotifications((prev) => ({
+            ...prev,
+            [type]: prev[type].filter((item) => item._id !== id),
+          }));
+          setNotificationCounts((prev) => ({
+            ...prev,
+            [type]: Math.max(0, prev[type] - 1),
+          }));
+        }
+
+        // Check if we should stop the sound
+        const totalNew = Object.values(notificationCounts).reduce(
+          (sum, count) => sum + count,
+          0
+        );
+        const totalPending = Object.values(pendingCounts).reduce(
+          (sum, count) => sum + count,
+          0
+        );
+
+        if (totalNew + totalPending <= 0) {
+          stopNotificationSound();
+        }
+
+        Alert.alert("Success", `${type} accepted successfully`);
       } else {
-        setNewNotifications(prev => ({
-          ...prev,
-          [type]: prev[type].filter(item => item._id !== id)
-        }));
-        setNotificationCounts(prev => ({
-          ...prev,
-          [type]: Math.max(0, prev[type] - 1)
-        }));
+        const errorData = await response.json();
+        Alert.alert("Error", errorData.message || "Failed to accept");
       }
-
-      // Check if we should stop the sound
-      const totalNew = Object.values(notificationCounts).reduce((sum, count) => sum + count, 0);
-      const totalPending = Object.values(pendingCounts).reduce((sum, count) => sum + count, 0);
-      
-      if (totalNew + totalPending <= 0) {
-        stopNotificationSound();
-      }
-
-      Alert.alert("Success", `${type} accepted successfully`);
-    } else {
-      const errorData = await response.json();
-      Alert.alert("Error", errorData.message || "Failed to accept");
+    } catch (error) {
+      console.error("Error accepting notification:", error);
+      Alert.alert("Error", "Failed to accept. Please try again.");
     }
-  } catch (error) {
-    console.error("Error accepting notification:", error);
-    Alert.alert("Error", "Failed to accept. Please try again.");
-  }
-};
+  };
 
   const handleRejectNotification = async (type, id, isPending) => {
     try {
@@ -1687,7 +1701,7 @@ const handleNewNotification = (type, data) => {
           baseMenuItems.push({
             title: "Agents",
             icon: "person-outline",
-            subItems: ["View Agents","View All Agents", "View Customers"],
+            subItems: ["View Agents", "View All Agents", "View Customers"],
           });
           break;
         case "Customers":
